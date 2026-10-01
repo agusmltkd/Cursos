@@ -339,7 +339,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <label class="c">Teléfono<input name="telefono"></label>
         <label class="c" style="grid-column:1/-1">Correo <span class="gris" style="font-weight:400">si lo pones, recibe la confirmación</span><input name="email" type="email"></label>
       </div>
-      <p class="gris" style="margin:0;font-size:14px">Si hay hueco se le asigna plaza; si no, entra en lista de espera.</p>
+      <label style="display:flex;gap:9px;align-items:flex-start;font-size:14px;cursor:pointer"><input type="checkbox" name="forzar" style="accent-color:var(--verde);width:18px;height:18px;margin-top:2px"> <span>Darle plaza aunque el curso esté completo <span class="gris">(si no, entra en lista de espera)</span></span></label>
       <div class="error" id="fa-err"></div>
     </div>
     <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Añadir asistente</button></div>
@@ -565,7 +565,7 @@ function pintarCursos() {
     return `<tr class="click ${pasado ? "pasado" : ""}" data-ver="${c.id}" tabindex="0">
       <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
       <td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
-      <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}</span></div></td>
+      <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}${c.ocupadas > c.cupo_max ? ` <span class="badge b-azul">+${c.ocupadas - c.cupo_max}</span>` : ""}</span></div></td>
       <td class="hide-m">${c.espera || "—"}</td><td class="hide-m">${pasado ? "—" : fcorta(c.cargo)}</td><td>${estadoBadge(c)}</td></tr>`;
   }).join("") || `<tr><td colspan="7" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
 }
@@ -593,7 +593,7 @@ async function cargarInscritos() {
   const vista = { ...actual, ocupadas: conf };
   const dCargo = diasHasta(actual.cargo);
   $("#dc-resumen").innerHTML = `${disco(vista, 56)}
-    <div class="cifra"><b>${conf} / ${actual.cupo_max}</b><span>plazas confirmadas</span></div>
+    <div class="cifra"><b>${conf} / ${actual.cupo_max}</b><span>plazas confirmadas${conf > actual.cupo_max ? `, ${conf - actual.cupo_max} por encima del cupo` : ""}</span></div>
     <div class="cifra"><b>${esp}</b><span>en lista de espera</span></div>
     <div class="cifra ${conf < actual.quorum_min ? "alerta" : ""}"><b>${actual.quorum_min}</b><span>quórum mínimo${conf < actual.quorum_min ? `, faltan ${actual.quorum_min - conf}` : ", alcanzado"}</span></div>
     <div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`;
@@ -608,6 +608,7 @@ async function cargarInscritos() {
       <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">
+        ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
         ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}
       </div></td></tr>`;
@@ -633,6 +634,17 @@ $("#dc-tb").addEventListener("click", async e => {
     if (!confirm("¿Eliminar definitivamente este registro? No se puede deshacer.")) return;
     await sb.from("inscripciones").delete().eq("id", i.id);
     toast("Registro eliminado"); await cargarInscritos(); cargarCursos();
+  }
+  if (b.dataset.act === "plaza") {
+    const conf = inscritos.filter(x => x.estado === "confirmada").length;
+    const lleno = conf >= actual.cupo_max;
+    if (!confirm(lleno
+      ? `El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max} y recibirá el correo de plaza asignada.`
+      : `¿Dar plaza a ${i.tecnicos.nombre}? Recibirá el correo de plaza asignada.`)) return;
+    const { data, error } = await sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false });
+    if (error) return toast(error.message);
+    toast(data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada");
+    await cargarInscritos(); cargarCursos();
   }
   if (b.dataset.act === "mover") {
     moviendo = i;
@@ -704,7 +716,13 @@ $("#f-add").addEventListener("submit", async e => {
   const { data, error } = await sb.rpc("inscribirse", { p_curso: actual.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto, p_email_centro: v.email_centro,
     p_nombre: v.nombre, p_dni: v.dni, p_telefono: v.telefono, p_email: v.email });
   if (error) { $("#fa-err").textContent = error.message; return; }
-  $("#dlg-add").close(); toast(data.estado === "confirmada" ? "Asistente añadido con plaza" : "Asistente añadido a la lista de espera");
+  let estado = data.estado;
+  if (estado === "lista_espera" && v.forzar) {
+    const r = await sb.rpc("dar_plaza", { p_ins: data.id, p_directo: true });
+    if (r.error) { $("#fa-err").textContent = r.error.message; return; }
+    estado = "extra";
+  }
+  $("#dlg-add").close(); toast(estado === "extra" ? "Asistente añadido con plaza por encima del cupo" : estado === "confirmada" ? "Asistente añadido con plaza" : "Asistente añadido a la lista de espera");
   await cargarCursos(); actual = cursos.find(c => c.id === actual.id); await cargarInscritos();
 });
 
