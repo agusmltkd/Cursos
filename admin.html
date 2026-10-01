@@ -156,6 +156,11 @@ dialog::backdrop{background:rgba(8,22,14,.55)}
 .acc{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end}
 select.mini{padding:4px 8px;font-size:13px}
 .vacio-t{text-align:center;padding:28px;color:var(--gris)}
+.soltar{display:grid;gap:6px;border:2px dashed var(--linea-2);border-radius:14px;padding:26px;text-align:center;cursor:pointer;background:var(--hover)}
+.soltar:hover{border-color:var(--verde)}
+.soltar input{margin:10px auto 0;border:0;background:transparent}
+.problemas{margin-top:14px;border:1px solid var(--linea);border-radius:12px;padding:12px 14px;max-height:200px;overflow:auto;font-size:13.5px}
+.problemas li{margin:2px 0}
 
 @media (max-width:900px){.panel-grid{grid-template-columns:1fr}#login{grid-template-columns:1fr}.login-marca{min-height:240px}}
 @media (max-width:640px){
@@ -228,6 +233,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <label style="display:flex;gap:7px;align-items:center;font-size:14px"><input type="checkbox" id="f-pasados" style="accent-color:var(--verde)"> Mostrar celebrados</label>
         <span class="esp"></span>
         <a class="btn sec" href="./" target="_blank" rel="noopener">Ver formulario público</a>
+        <button class="btn sec" id="importar">Importar Excel</button>
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
       <div class="caja scroll"><table>
@@ -325,6 +331,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" required list="dl-centros" autocomplete="off"></label>
         <label class="c">Persona de contacto<input name="contacto"></label>
         <label class="c">Teléfono del centro<input name="tel_contacto"></label>
+        <label class="c" style="grid-column:1/-1">Correo del centro técnico<input name="email_centro" type="email"></label>
       </div>
       <div class="grid2">
         <label class="c" style="grid-column:1/-1">Nombre y apellidos<input name="nombre" required></label>
@@ -339,6 +346,29 @@ select.mini{padding:4px 8px;font-size:13px}
   </form>
 </dialog>
 <datalist id="dl-centros"></datalist>
+
+<!-- Importar Excel -->
+<dialog id="dlg-imp">
+  <div class="dh"><div><h2>Importar inscripciones desde Excel</h2><div class="gris">Las columnas del antiguo formulario de Google, en el mismo orden.</div></div><button class="x" data-close aria-label="Cerrar">×</button></div>
+  <div class="db">
+    <div id="imp-paso1">
+      <label class="soltar" id="imp-soltar">
+        <b>Elige el archivo Excel o CSV</b>
+        <span class="gris">Marca temporal, centro técnico, persona de contacto, teléfono del centro, asistente, DNI, foto DNI (se ignora), teléfono, correo, lugar, fecha Online, fecha Sevilla, fecha Zaragoza y correo del centro.</span>
+        <input type="file" id="imp-file" accept=".xlsx,.xls,.csv">
+      </label>
+      <p class="gris" style="font-size:14px;margin:14px 0 0">No se envía ningún correo a los importados. Los cursos que no existan se crean solos, y si alguien ya está apuntado a ese curso se salta. Puedes importar el mismo archivo dos veces sin duplicar nada.</p>
+    </div>
+    <div id="imp-paso2" class="hidden">
+      <div class="resumen-c" id="imp-cifras"></div>
+      <h3 style="margin:6px 0 8px;font-size:15px">Cursos detectados</h3>
+      <div class="caja scroll" style="max-height:300px"><table><thead><tr><th>Curso</th><th>Sede</th><th>Registros</th><th>En la base</th></tr></thead><tbody id="imp-cursos"></tbody></table></div>
+      <div id="imp-problemas"></div>
+    </div>
+    <div id="imp-paso3" class="hidden"></div>
+  </div>
+  <div class="df"><button class="btn sec" type="button" data-close>Cerrar</button><button class="btn hidden" id="imp-ok">Importar</button></div>
+</dialog>
 
 <!-- Mover -->
 <dialog id="dlg-mover" class="peq">
@@ -543,7 +573,7 @@ async function abrirCurso(id) {
 }
 async function cargarInscritos() {
   const { data, error } = await sb.from("inscripciones")
-    .select("*, tecnicos(nombre,dni,telefono,email), centros(nombre)").eq("curso_id", actual.id).order("created_at");
+    .select("*, tecnicos(nombre,dni,telefono,email), centros(nombre,email)").eq("curso_id", actual.id).order("created_at");
   if (error) return toast("No se han podido cargar los inscritos");
   const orden = { confirmada: 0, lista_espera: 1, cancelada: 2 };
   inscritos = data.sort((a, b) => orden[a.estado] - orden[b.estado] || a.created_at.localeCompare(b.created_at));
@@ -561,12 +591,11 @@ async function cargarInscritos() {
     return `<tr data-id="${i.id}" style="${i.estado === "cancelada" ? "opacity:.55" : ""}">
       <td class="gris">${i.estado === "confirmada" ? ++n : ""}</td>
       <td><b>${esc(t.nombre)}</b><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
-      <td>${esc(t.dni)}</td><td>${esc(i.centros?.nombre || "")}</td>
+      <td>${esc(t.dni)}</td><td>${esc(i.centros?.nombre || "")}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
       <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">
-        ${i.dni_foto_path ? `<button class="btn sec mini" data-act="foto">DNI</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
         ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}
       </div></td></tr>`;
@@ -582,11 +611,6 @@ let moviendo = null;
 $("#dc-tb").addEventListener("click", async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const i = inscritos.find(x => x.id === b.closest("tr").dataset.id);
-  if (b.dataset.act === "foto") {
-    const { data, error } = await sb.storage.from("dni").createSignedUrl(i.dni_foto_path, 300);
-    if (error) return toast("No se encuentra la foto del DNI");
-    window.open(data.signedUrl, "_blank", "noopener");
-  }
   if (b.dataset.act === "cancelar") {
     if (!confirm(`¿Dar de baja a ${i.tecnicos.nombre}? Si tenía plaza, pasa automáticamente al primero de la lista de espera.`)) return;
     const { error } = await sb.from("inscripciones").update({ estado: "cancelada" }).eq("id", i.id);
@@ -595,7 +619,6 @@ $("#dc-tb").addEventListener("click", async e => {
   }
   if (b.dataset.act === "borrar") {
     if (!confirm("¿Eliminar definitivamente este registro? No se puede deshacer.")) return;
-    if (i.dni_foto_path) await sb.storage.from("dni").remove([i.dni_foto_path]);
     await sb.from("inscripciones").delete().eq("id", i.id);
     toast("Registro eliminado"); await cargarInscritos(); cargarCursos();
   }
@@ -616,8 +639,8 @@ $("#f-mover").addEventListener("submit", async e => {
 });
 $("#dc-csv").addEventListener("click", () => {
   csv(`inscritos_${actual.sede}_${actual.fecha_inicio}.csv`,
-    ["Estado","Fecha inscripción","Centro técnico","Persona de contacto","Teléfono centro","Nombre y apellidos","DNI","Teléfono asistente","Correo asistente","Asistió"],
-    inscritos.map(i => [i.estado, new Date(i.created_at).toLocaleString("es-ES"), i.centros?.nombre, i.contacto_nombre, i.contacto_telefono, i.tecnicos.nombre, i.tecnicos.dni, i.tecnicos.telefono, i.tecnicos.email, i.asistio == null ? "" : i.asistio ? "Sí" : "No"]));
+    ["Estado","Fecha inscripción","Centro técnico","Correo centro","Persona de contacto","Teléfono centro","Nombre y apellidos","DNI","Teléfono asistente","Correo asistente","Asistió"],
+    inscritos.map(i => [i.estado, new Date(i.created_at).toLocaleString("es-ES"), i.centros?.nombre, i.centros?.email, i.contacto_nombre, i.contacto_telefono, i.tecnicos.nombre, i.tecnicos.dni, i.tecnicos.telefono, i.tecnicos.email, i.asistio == null ? "" : i.asistio ? "Sí" : "No"]));
 });
 $("#dc-mails").addEventListener("click", async () => {
   const m = inscritos.filter(i => i.estado === "confirmada" && i.tecnicos.email).map(i => i.tecnicos.email).join("; ");
@@ -666,8 +689,8 @@ $("#dc-add").addEventListener("click", async () => {
 $("#f-add").addEventListener("submit", async e => {
   e.preventDefault();
   const v = Object.fromEntries(new FormData(e.target));
-  const { data, error } = await sb.rpc("inscribir", { p_curso: actual.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto,
-    p_nombre: v.nombre, p_dni: v.dni, p_foto: null, p_telefono: v.telefono, p_email: v.email });
+  const { data, error } = await sb.rpc("inscribirse", { p_curso: actual.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto, p_email_centro: v.email_centro,
+    p_nombre: v.nombre, p_dni: v.dni, p_telefono: v.telefono, p_email: v.email });
   if (error) { $("#fa-err").textContent = error.message; return; }
   $("#dlg-add").close(); toast(data.estado === "confirmada" ? "Asistente añadido con plaza" : "Asistente añadido a la lista de espera");
   await cargarCursos(); actual = cursos.find(c => c.id === actual.id); await cargarInscritos();
@@ -779,6 +802,137 @@ $("#procesar").addEventListener("click", async e => {
   else toast(`Enviados: ${data.enviados}. Descartados: ${data.descartados}. Fallidos: ${data.fallidos}.`);
   cargarCorreos();
 });
+
+/* ---------- importar Excel ---------- */
+const MESNUM = { ENERO:1, FEBRERO:2, MARZO:3, ABRIL:4, MAYO:5, JUNIO:6, JULIO:7, AGOSTO:8, SEPTIEMBRE:9, SETIEMBRE:9, OCTUBRE:10, NOVIEMBRE:11, DICIEMBRE:12 };
+const sinAcentos = t => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+const pad = n => String(n).padStart(2, "0");
+let importables = [];
+function cargarXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, mal) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload = ok; s.onerror = () => mal(new Error("No se ha podido cargar el lector de Excel")); document.head.append(s); });
+}
+function leerMarca(v) {
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === "number") return new Date(Math.round((v - 25569) * 864e5));
+  const m = String(v ?? "").trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)); }
+  const d = new Date(v); return isNaN(d) ? null : d;
+}
+function leerFechasCurso(txt, marca) {
+  let t = sinAcentos(txt).toUpperCase();
+  const tipo = /INICIA/.test(t) ? "iniciacion" : "actualizacion";
+  const anioTxt = (t.match(/\b(20\d\d)\b/) || [])[1];
+  t = t.replace(/\b20\d\d\b/g, " ");
+  const toks = t.match(/\d{1,2}|[A-Z]+/g) || [];
+  let pend = [], dm = [];
+  for (const k of toks) {
+    if (/^\d+$/.test(k)) pend.push(+k);
+    else if (MESNUM[k]) { pend.forEach(d => dm.push([d, MESNUM[k]])); pend = []; }
+  }
+  if (!dm.length) return null;
+  let anio = anioTxt ? +anioTxt : (marca || new Date()).getFullYear();
+  if (!anioTxt && marca) {
+    const primera = new Date(anio, dm[0][1] - 1, dm[0][0]);
+    if (primera < new Date(marca.getTime() - 60 * 864e5)) anio++;
+  }
+  let prevMes = dm[0][1], y = anio;
+  const fechas = dm.map(([d, m]) => { if (m < prevMes) y++; prevMes = m; return `${y}-${pad(m)}-${pad(d)}`; });
+  if (fechas.some(f => isNaN(D(f)) || +f.slice(8) !== D(f).getDate())) return null;
+  return { tipo, fechas: [...new Set(fechas)].sort() };
+}
+function columnas(cab) {
+  const n = cab.map(h => sinAcentos(h).toLowerCase());
+  const busca = (re, def) => { const i = n.findIndex(h => re.test(h)); return i >= 0 ? i : def; };
+  return {
+    marca: busca(/marca/, 0), centro: busca(/nombre del centro/, 1), contacto: busca(/persona de contacto/, 2),
+    tel_centro: busca(/telefono.*centro/, 3), nombre: busca(/nombre y apellidos/, 4), dni: busca(/^(?!.*foto).*dni/, 5),
+    telefono: busca(/telefono.*asistente/, 7), email: busca(/correo.*asistente/, 8), lugar: busca(/^lugar/, 9),
+    online: busca(/fecha.*online/, 10), sevilla: busca(/fecha.*sevilla/, 11), zaragoza: busca(/fecha.*zaragoza/, 12),
+    email_centro: busca(/correo.*centro/, 13)
+  };
+}
+$("#importar").addEventListener("click", () => {
+  importables = []; $("#imp-file").value = "";
+  $("#imp-paso1").classList.remove("hidden"); $("#imp-paso2").classList.add("hidden"); $("#imp-paso3").classList.add("hidden");
+  $("#imp-ok").classList.add("hidden");
+  $("#dlg-imp").showModal();
+});
+$("#imp-file").addEventListener("change", async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    await cargarXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+    const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: "" });
+    const conCab = /marca|centro|dni/i.test(sinAcentos(filas[0]?.join(" ")));
+    const col = columnas(conCab ? filas[0].map(String) : []);
+    const cuerpo = filas.slice(conCab ? 1 : 0);
+    importables = []; const problemas = [], avisos = [];
+    cuerpo.forEach((r, i) => {
+      const nfila = i + (conCab ? 2 : 1), val = k => String(r[col[k]] ?? "").trim();
+      if (!r.some(x => String(x).trim())) return;
+      const marca = leerMarca(r[col.marca]);
+      const sedes = [["Online", val("online")], ["Sevilla", val("sevilla")], ["Zaragoza", val("zaragoza")]].filter(x => x[1]);
+      let sede = sedes[0]?.[0], txt = sedes[0]?.[1];
+      if (!sede) { const l = sinAcentos(val("lugar")).toLowerCase(); sede = l.includes("zarag") ? "Zaragoza" : l.includes("online") ? "Online" : l.includes("sevil") ? "Sevilla" : null; }
+      if (!txt) { problemas.push(`Fila ${nfila}: no tiene fecha de curso elegida.`); return; }
+      if (!sede) { problemas.push(`Fila ${nfila}: no se sabe la sede.`); return; }
+      const fc = leerFechasCurso(txt, marca);
+      if (!fc) { problemas.push(`Fila ${nfila}: no se entiende la fecha “${txt}”.`); return; }
+      if (!val("nombre") || !val("dni")) { problemas.push(`Fila ${nfila}: falta el nombre o el DNI.`); return; }
+      if (!val("centro")) { problemas.push(`Fila ${nfila}: falta el centro técnico.`); return; }
+      if (!dniValido(val("dni"))) avisos.push(`Fila ${nfila}: el DNI “${val("dni")}” no tiene una letra válida (se importa igualmente).`);
+      importables.push({ fila: nfila, marca: marca ? marca.toISOString() : null, centro: val("centro"), contacto: val("contacto"), tel_centro: val("tel_centro"),
+        email_centro: val("email_centro"), nombre: val("nombre"), dni: val("dni"), telefono: val("telefono"), email: val("email"), sede, tipo: fc.tipo, fechas: fc.fechas });
+    });
+    const grupos = {};
+    for (const f of importables) { const k = `${f.sede}|${f.tipo}|${f.fechas.join(",")}`; (grupos[k] ||= { ...f, n: 0 }).n++; }
+    const existe = g => cursos.some(c => c.sede === g.sede && c.tipo === g.tipo && c.fechas.join(",") === g.fechas.join(","));
+    const lista = Object.values(grupos).sort((a, b) => a.fechas[0].localeCompare(b.fechas[0]));
+    const nuevos = lista.filter(g => !existe(g)).length;
+    $("#imp-cifras").innerHTML = `<div class="cifra"><b>${importables.length}</b><span>registros listos</span></div>
+      <div class="cifra"><b>${lista.length}</b><span>cursos distintos</span></div>
+      <div class="cifra"><b>${nuevos}</b><span>cursos que se crearán</span></div>
+      <div class="cifra ${problemas.length ? "alerta" : ""}"><b>${problemas.length}</b><span>filas que no se importan</span></div>`;
+    $("#imp-cursos").innerHTML = lista.map(g => `<tr><td><b>${textoFechas(g.fechas)}</b> ${tipoBadge(g.tipo)}</td><td>${sedeTag(g.sede)}</td><td>${g.n}</td>
+      <td>${existe(g) ? `<span class="badge b-ok">Ya existe</span>` : `<span class="badge b-azul">Se creará</span>`}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio-t">No se ha encontrado ningún registro válido.</td></tr>`;
+    $("#imp-problemas").innerHTML = (problemas.length || avisos.length)
+      ? `<ul class="problemas">${[...problemas.map(p => `<li style="color:var(--rojo)">${esc(p)}</li>`), ...avisos.map(p => `<li class="gris">${esc(p)}</li>`)].join("")}</ul>` : "";
+    $("#imp-paso1").classList.add("hidden"); $("#imp-paso2").classList.remove("hidden");
+    const ok = $("#imp-ok"); ok.textContent = `Importar ${importables.length} registros`; ok.disabled = false; ok.classList.toggle("hidden", !importables.length);
+  } catch (ex) { toast(ex.message || "No se ha podido leer el archivo"); }
+});
+$("#imp-ok").addEventListener("click", async e => {
+  const btn = e.target; btn.disabled = true;
+  const total = { insertadas: 0, en_espera: 0, duplicadas: 0, cursos_creados: 0, errores: [] };
+  const orden = [...importables].sort((a, b) => String(a.marca).localeCompare(String(b.marca)));
+  for (let i = 0; i < orden.length; i += 150) {
+    btn.textContent = `Importando ${Math.min(i + 150, orden.length)} de ${orden.length}…`;
+    const { data, error } = await sb.rpc("importar_inscripciones", { p_filas: orden.slice(i, i + 150) });
+    if (error) { total.errores.push({ fila: "-", error: error.message }); break; }
+    for (const k of ["insertadas","en_espera","duplicadas","cursos_creados"]) total[k] += data[k];
+    total.errores.push(...data.errores);
+  }
+  $("#imp-paso2").classList.add("hidden"); btn.classList.add("hidden");
+  $("#imp-paso3").classList.remove("hidden");
+  $("#imp-paso3").innerHTML = `<div class="resumen-c">
+      <div class="cifra"><b>${total.insertadas}</b><span>inscripciones importadas</span></div>
+      <div class="cifra"><b>${total.duplicadas}</b><span>ya estaban, se han saltado</span></div>
+      <div class="cifra"><b>${total.cursos_creados}</b><span>cursos creados</span></div>
+      ${total.en_espera ? `<div class="cifra"><b>${total.en_espera}</b><span>en lista de espera por cupo</span></div>` : ""}
+      <div class="cifra ${total.errores.length ? "alerta" : ""}"><b>${total.errores.length}</b><span>con error</span></div></div>
+    ${total.errores.length ? `<ul class="problemas">${total.errores.map(x => `<li style="color:var(--rojo)">Fila ${esc(x.fila)}: ${esc(x.error)}</li>`).join("")}</ul>` : `<p>Listo. Ya puedes ver los técnicos y sus renovaciones en la pestaña <b>Técnicos y renovaciones</b>.</p>`}`;
+  toast("Importación terminada");
+  cargarCursos();
+});
+function dniValido(v) {
+  const d = String(v).toUpperCase().replace(/[\s.\-]/g, "");
+  let n;
+  if (/^[XYZ]\d{7}[A-Z]$/.test(d)) n = "XYZ".indexOf(d[0]) + d.slice(1, 8);
+  else if (/^\d{8}[A-Z]$/.test(d)) n = d.slice(0, 8);
+  else return false;
+  return "TRWAGMYFPDXBNJZSQVHLCKE"[parseInt(n, 10) % 23] === d[8];
+}
 
 iniciar();
 </script>
