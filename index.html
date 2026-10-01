@@ -301,6 +301,12 @@ const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } 
 const leer = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
 
 let cursos = [], filtro = { sede: "", tipo: "", libres: false }, sel = null;
+const SEDE_FIJA = (() => { const v = new URLSearchParams(location.search).get("sede"); return ["Sevilla","Zaragoza","Online"].find(x => x.toLowerCase() === String(v || "").toLowerCase()) || null; })();
+if (SEDE_FIJA) {
+  filtro.sede = SEDE_FIJA;
+  document.querySelector("#f-sede").classList.add("hidden");
+  document.querySelector(".heroe p").textContent = `Convocatorias de ${SEDE_FIJA}. Elige una, rellena los datos del técnico y la plaza queda reservada al momento, por orden de inscripción.`;
+}
 
 /* ---------- textos de fechas ---------- */
 function bloqueFecha(f) {
@@ -342,6 +348,7 @@ function textoPlazas(c) {
 
 /* ---------- paso 1 ---------- */
 function pintarFiltros() {
+  if (SEDE_FIJA) return;
   const sedes = ["Sevilla", "Zaragoza", "Online"];
   const cuenta = s => cursos.filter(c => !s || c.sede === s).length;
   $("#f-sede").innerHTML = [["", "Todas"], ...sedes.map(s => [s, s])]

@@ -220,7 +220,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <div class="avisos" id="avisos"></div>
       </div>
       <h2 class="sec-t">Calendario <span id="cal-anio"></span> <small>Pulsa una convocatoria para ver sus inscritos</small></h2>
-      <div class="leyenda"><span><i style="background:var(--verde)"></i>Sevilla</span><span><i style="background:var(--azul)"></i>Zaragoza</span><span><i style="background:var(--violeta)"></i>Online</span><span>Las cifras son plazas ocupadas sobre el cupo</span></div>
+      <div class="leyenda"><span id="leyenda-sedes"><span><i style="background:var(--verde)"></i>Sevilla</span> <span style="margin-left:12px"><i style="background:var(--azul)"></i>Zaragoza</span> <span style="margin-left:12px"><i style="background:var(--violeta)"></i>Online</span></span><span>Las cifras son plazas ocupadas sobre el cupo</span></div>
       <div class="anual" id="anual"></div>
     </section>
 
@@ -232,7 +232,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <select id="f-tipo" aria-label="Tipo"><option value="">Todos los tipos</option><option value="actualizacion">Actualización</option><option value="iniciacion">Iniciación</option></select>
         <label style="display:flex;gap:7px;align-items:center;font-size:14px"><input type="checkbox" id="f-pasados" style="accent-color:var(--verde)"> Mostrar celebrados</label>
         <span class="esp"></span>
-        <a class="btn sec" href="./" target="_blank" rel="noopener">Ver formulario público</a>
+        <a class="btn sec" id="ver-publico" href="./" target="_blank" rel="noopener">Ver formulario público</a>
         <button class="btn sec" id="importar">Importar Excel</button>
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
@@ -299,7 +299,7 @@ select.mini{padding:4px 8px;font-size:13px}
     <div class="db" style="display:grid;gap:14px">
       <div class="grid2">
         <label class="c">Tipo<select name="tipo"><option value="actualizacion">Actualización (2 jornadas)</option><option value="iniciacion">Iniciación (4 jornadas)</option></select></label>
-        <label class="c">Sede<select name="sede"><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select></label>
+        <label class="c">Sede<select name="sede" id="fc-sede"><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select></label>
       </div>
       <div>
         <label class="c">Primera jornada<input type="date" name="inicio" required></label>
@@ -462,8 +462,22 @@ async function iniciar() {
   const { data: esAdmin } = await sb.rpc("es_admin");
   if (!esAdmin) { $("#login").classList.remove("hidden"); $("#login-err").textContent = "Este usuario no tiene permiso de gestión."; await sb.auth.signOut(); return; }
   $("#yo").textContent = session.user.email;
+  const { data: sede } = await sb.rpc("admin_sede");
+  if (sede) aplicarSede(sede);
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
+}
+
+/* ---------- gestor de una sola sede ---------- */
+let miSede = null;
+function aplicarSede(sede) {
+  miSede = sede;
+  $(".marca span").textContent = `Adiestramientos ${sede}`;
+  document.title = `Gestión de adiestramientos ${sede} · WORTACH`;
+  const fs = $("#f-sede"); fs.innerHTML = `<option>${sede}</option>`; fs.value = sede; fs.classList.add("hidden");
+  $("#fc-sede").innerHTML = `<option>${sede}</option>`;
+  $("#leyenda-sedes").classList.add("hidden");
+  $("#ver-publico").href = `./?sede=${encodeURIComponent(sede)}`;
 }
 
 /* ---------- pestañas ---------- */
@@ -929,7 +943,7 @@ $("#imp-file").addEventListener("change", async e => {
     const conCab = /marca|centro|dni/i.test(sinAcentos(filas[0]?.join(" ")));
     const col = columnas(conCab ? filas[0].map(String) : []);
     const cuerpo = filas.slice(conCab ? 1 : 0);
-    importables = []; const problemas = [], avisos = [];
+    importables = []; const problemas = [], avisos = []; let otrasSedes = 0;
     cuerpo.forEach((r, i) => {
       const nfila = i + (conCab ? 2 : 1), val = k => String(r[col[k]] ?? "").trim();
       if (!r.some(x => String(x).trim())) return;
@@ -939,6 +953,7 @@ $("#imp-file").addEventListener("change", async e => {
       if (!sede) { const l = sinAcentos(val("lugar")).toLowerCase(); sede = l.includes("zarag") ? "Zaragoza" : l.includes("online") ? "Online" : l.includes("sevil") ? "Sevilla" : null; }
       if (!txt) { problemas.push(`Fila ${nfila}: no tiene fecha de curso elegida.`); return; }
       if (!sede) { problemas.push(`Fila ${nfila}: no se sabe la sede.`); return; }
+      if (miSede && sede !== miSede) { otrasSedes++; return; }
       const fc = leerFechasCurso(txt, marca);
       if (!fc) { problemas.push(`Fila ${nfila}: no se entiende la fecha “${txt}”.`); return; }
       if (!val("nombre") || !val("dni")) { problemas.push(`Fila ${nfila}: falta el nombre o el DNI.`); return; }
@@ -955,7 +970,7 @@ $("#imp-file").addEventListener("change", async e => {
     $("#imp-cifras").innerHTML = `<div class="cifra"><b>${importables.length}</b><span>registros listos</span></div>
       <div class="cifra"><b>${lista.length}</b><span>cursos distintos</span></div>
       <div class="cifra"><b>${nuevos}</b><span>cursos que se crearán</span></div>
-      <div class="cifra ${problemas.length ? "alerta" : ""}"><b>${problemas.length}</b><span>filas que no se importan</span></div>`;
+      <div class="cifra ${problemas.length ? "alerta" : ""}"><b>${problemas.length}</b><span>filas que no se importan</span></div>${otrasSedes ? `<div class="cifra"><b>${otrasSedes}</b><span>de otras sedes, se ignoran</span></div>` : ""}`;
     $("#imp-cursos").innerHTML = lista.map(g => `<tr><td><b>${textoFechas(g.fechas)}</b> ${tipoBadge(g.tipo)}</td><td>${sedeTag(g.sede)}</td><td>${g.n}</td>
       <td>${existe(g) ? `<span class="badge b-ok">Ya existe</span>` : `<span class="badge b-azul">Se creará</span>`}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio-t">No se ha encontrado ningún registro válido.</td></tr>`;
     $("#imp-problemas").innerHTML = (problemas.length || avisos.length)
