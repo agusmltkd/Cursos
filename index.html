@@ -4,160 +4,313 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adiestramiento de tacógrafos · WORTACH</title>
-<meta name="description" content="Planificación e inscripción en los adiestramientos de tacógrafos de WORTACH">
+<meta name="description" content="Convocatorias e inscripción en los adiestramientos de tacógrafos de WORTACH para centros técnicos.">
+<meta name="theme-color" content="#0f3a24">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#f4f6f9; --card:#fff; --ink:#14202e; --muted:#5b6878; --line:#e1e6ec;
-  --brand:#0f3d6e; --brand-2:#1b5fa8; --accent:#f2a516;
-  --ok:#1f8a4c; --ok-bg:#e6f4ec; --warn:#b26a00; --warn-bg:#fff4e0; --bad:#b42318; --bad-bg:#fdecea;
-  --radius:14px;
+  --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
+  --papel:#f2f4f1; --panel:#ffffff; --tinta:#16201b; --gris:#5a6660; --linea:#d9dfdb; --linea-2:#c3ccc7;
+  --ambar:#a86b00; --ambar-suave:#fbf0d9; --rojo:#b8372d; --rojo-suave:#fbe7e4;
+  --ocupada:#d5dcd8;
+  --f-tit:"Archivo","Arial Black",system-ui,sans-serif;
+  --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
 }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
+  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740;
+  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --ocupada:#2f3a34; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
+  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740;
+  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --ocupada:#2f3a34; color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
-header{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:28px 16px 64px}
-.wrap{max-width:980px;margin:0 auto;padding:0 16px}
-header .wrap{padding:0}
-.logo{font-weight:700;letter-spacing:.12em;font-size:13px;opacity:.85}
-h1{font-size:clamp(22px,4vw,30px);margin:6px 0 8px;line-height:1.2}
-header p{margin:0;opacity:.9;max-width:640px}
-main{margin-top:-40px}
-.card{background:var(--card);border-radius:var(--radius);box-shadow:0 1px 3px rgba(16,32,48,.08),0 8px 24px rgba(16,32,48,.05);padding:20px}
-.info{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));font-size:14px;color:var(--muted)}
-.info b{color:var(--ink)}
-.info div{background:var(--bg);border-radius:10px;padding:12px 14px}
-.filters{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 12px}
-.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
-.chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#fff}
-.sep{width:1px;background:var(--line);margin:0 4px}
-.mes{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 0 8px}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
-.curso{background:#fff;border:2px solid transparent;border-radius:var(--radius);padding:16px;cursor:pointer;text-align:left;font:inherit;color:inherit;box-shadow:0 1px 2px rgba(16,32,48,.06);transition:border-color .15s,transform .15s;width:100%}
-.curso:hover{border-color:#c9d6e5;transform:translateY(-1px)}
-.curso.sel{border-color:var(--brand-2)}
-.curso .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.fechas{font-weight:700;font-size:17px}
-.dias{color:var(--muted);font-size:13px;margin-top:2px}
-.badge{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;white-space:nowrap}
-.b-act{background:#e8f0fb;color:var(--brand-2)}
-.b-ini{background:#fff1d6;color:#8a5a00}
-.sede{display:flex;align-items:center;gap:6px;margin:12px 0 10px;font-size:14px;color:var(--muted)}
-.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
-.bar.medio i{background:var(--accent)}
-.bar.lleno i{background:var(--bad)}
-.plazas{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
-.plazas b.ok{color:var(--ok)} .plazas b.medio{color:var(--warn)} .plazas b.lleno{color:var(--bad)}
-.vacio{text-align:center;color:var(--muted);padding:30px}
-#form-card{margin:28px 0 40px;scroll-margin-top:16px}
-#form-card h2{margin:0 0 4px;font-size:20px}
-.resumen{background:var(--bg);border-radius:10px;padding:12px 14px;margin:14px 0 6px;font-size:14px}
-fieldset{border:0;padding:0;margin:18px 0 0}
-legend{font-weight:600;margin-bottom:10px;font-size:15px}
-.fila{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-label{display:block;font-size:13px;font-weight:500;color:var(--muted)}
-input[type=text],input[type=email],input[type=tel]{display:block;width:100%;margin-top:5px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;color:var(--ink);background:#fff}
-input:focus{outline:2px solid var(--brand-2);outline-offset:-1px;border-color:transparent}
-.file{margin-top:5px;border:1.5px dashed #c3ceda;border-radius:10px;padding:14px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;background:#fafbfc}
-.file.tiene{border-style:solid;border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
-.file input{display:none}
-.check{display:flex;gap:10px;align-items:flex-start;margin-top:18px;font-size:13px;color:var(--muted)}
-.check input{margin-top:3px;width:18px;height:18px;flex:none}
-.err{color:var(--bad);font-size:13px;margin-top:4px;min-height:1em}
-.acciones{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-.btn{border:0;border-radius:10px;padding:12px 20px;font:inherit;font-weight:600;cursor:pointer;background:var(--brand);color:#fff}
-.btn:disabled{opacity:.6;cursor:wait}
-.btn.sec{background:#fff;color:var(--brand);border:1px solid var(--line)}
-.aviso{border-radius:10px;padding:12px 14px;margin-top:14px;font-size:14px}
-.aviso.warn{background:var(--warn-bg);color:var(--warn)}
-.aviso.bad{background:var(--bad-bg);color:var(--bad)}
-.ok-box{text-align:center;padding:10px 0}
-.ok-box .ico{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:0 auto 10px;font-size:28px;background:var(--ok-bg);color:var(--ok)}
-.ok-box.espera .ico{background:var(--warn-bg);color:var(--warn)}
-footer{text-align:center;color:var(--muted);font-size:13px;padding:10px 16px 40px}
-footer a{color:var(--brand-2)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);font:16px/1.55 var(--f)}
+a{color:var(--verde)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--verde);outline-offset:2px}
 .hidden{display:none!important}
+.envoltura{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* ---------- cabecera ---------- */
+.cab{background:var(--verde-noche);color:#e9f1ec;position:relative;overflow:hidden}
+.barra{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0}
+.barra img{height:38px;width:auto;display:block}
+.contacto{display:flex;gap:18px;font-size:14px;flex-wrap:wrap;justify-content:flex-end}
+.contacto a{color:#e9f1ec;text-decoration:none;opacity:.85}
+.contacto a:hover{opacity:1;text-decoration:underline}
+.heroe{display:grid;grid-template-columns:1.25fr 1fr;gap:40px;padding:34px 0 56px;position:relative;z-index:1}
+.heroe h1{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(32px,5.4vw,58px);line-height:1.02;letter-spacing:-.01em;margin:0 0 18px}
+.heroe h1 .anio{color:#5fd393;display:block}
+.heroe p{margin:0;max-width:46ch;font-size:17px;color:#c9dbd0}
+.que-curso{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:20px 22px;align-self:end}
+.que-curso h2{font-family:var(--f-tit);font-stretch:112%;font-size:17px;margin:0 0 12px;font-weight:700}
+.que-curso dl{margin:0;display:grid;gap:12px}
+.que-curso dt{font-weight:600;color:#fff;display:flex;gap:10px;align-items:baseline}
+.que-curso dt small{font-weight:500;color:#9fc4ae;font-size:13px}
+.que-curso dd{margin:2px 0 0;color:#c9dbd0;font-size:14.5px}
+body.compacto .heroe{display:none}
+body.compacto .pasos{margin-top:-6px}
+body.compacto .cab{padding-bottom:30px}
+.simbolo-fondo{position:absolute;right:-90px;top:-40px;width:520px;height:auto;opacity:.09;pointer-events:none}
+
+/* ---------- pasos ---------- */
+.pasos{display:flex;gap:6px;margin:-24px 0 0;position:relative;z-index:2;list-style:none;padding:0}
+.pasos li{flex:1;background:var(--panel);border:1px solid var(--linea);padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:14px;color:var(--gris)}
+.pasos li:first-child{border-radius:14px 0 0 14px}.pasos li:last-child{border-radius:0 14px 14px 0}
+.pasos .n{width:26px;height:26px;border-radius:50%;border:2px solid var(--linea-2);display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
+.pasos li.activo{color:var(--tinta);font-weight:600;border-color:var(--verde);box-shadow:inset 0 -3px 0 var(--verde)}
+.pasos li.activo .n{background:var(--verde);border-color:var(--verde);color:#fff}
+.pasos li.hecho .n{background:var(--verde-suave);border-color:var(--verde);color:var(--verde)}
+
+/* ---------- filtros ---------- */
+.filtros{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:30px 0 8px}
+.segmento{display:inline-flex;background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
+.segmento button{border:0;background:transparent;padding:8px 14px;border-radius:9px;cursor:pointer;font-size:15px;color:var(--gris);display:flex;gap:7px;align-items:center}
+.segmento button[aria-pressed=true]{background:var(--verde-noche);color:#fff}
+:root[data-theme="dark"] .segmento button[aria-pressed=true]{background:var(--verde);color:#062a15}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .segmento button[aria-pressed=true]{background:var(--verde);color:#062a15}}
+.segmento .cnt{font-size:12px;opacity:.7}
+.interruptor{display:flex;gap:9px;align-items:center;font-size:15px;cursor:pointer;color:var(--gris)}
+.interruptor input{width:18px;height:18px;accent-color:var(--verde)}
+
+/* ---------- lista de convocatorias ---------- */
+.mes-tit{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:20px;margin:30px 0 10px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.mes-tit small{font-family:var(--f);font-weight:400;font-size:14px;color:var(--gris)}
+.lista{display:grid;gap:8px}
+.conv{display:grid;grid-template-columns:96px 1fr auto auto;gap:20px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:14px 18px 14px 14px;cursor:pointer;transition:border-color .15s}
+.conv:hover{border-color:var(--verde)}
+.conv.completo{background:transparent}
+.calend{background:var(--papel);border-radius:12px;padding:8px 6px;text-align:center;line-height:1}
+.calend .d{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:24px;letter-spacing:-.02em;display:block;white-space:nowrap}
+.calend .m{font-size:13px;color:var(--gris);display:block;margin-top:4px}
+.conv .tipo{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:999px;margin-bottom:4px}
+.t-act{background:var(--verde-suave);color:var(--verde-osc)}
+.t-ini{background:var(--ambar-suave);color:var(--ambar)}
+:root[data-theme="dark"] .t-act{color:var(--verde)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-act{color:var(--verde)}}
+.conv .dias{font-weight:600;font-size:16.5px;display:block}
+.conv .lugar{color:var(--gris);font-size:14.5px;display:flex;gap:6px;align-items:center;margin-top:2px}
+.plazas{display:flex;align-items:center;gap:12px;min-width:170px}
+.plazas .txt{font-size:14.5px;line-height:1.3}
+.plazas .txt b{display:block;font-size:15.5px}
+.ok b{color:var(--verde)} .pocas b{color:var(--ambar)} .lleno b{color:var(--rojo)}
+.conv .ir{font-weight:600;color:var(--verde);font-size:15px;padding:9px 14px;border-radius:10px;border:1.5px solid var(--verde);white-space:nowrap}
+.conv:hover .ir{background:var(--verde);color:#fff}
+.conv.completo .ir{border-color:var(--linea-2);color:var(--gris)}
+.conv.completo:hover .ir{background:var(--gris);color:#fff}
+.disco{flex:none;display:block}
+.vacio{background:var(--panel);border:1px dashed var(--linea-2);border-radius:16px;padding:34px;text-align:center;color:var(--gris);margin-top:20px}
+
+/* condiciones */
+.condiciones{margin:44px 0 10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:28px;border-top:1px solid var(--linea);padding-top:26px}
+.condiciones h3{font-family:var(--f-tit);font-stretch:112%;font-size:16px;margin:0 0 6px}
+.condiciones p{margin:0;color:var(--gris);font-size:15px}
+.horario{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:15px;color:var(--gris)}
+.horario b{color:var(--tinta);font-weight:600}
+
+/* ---------- formulario ---------- */
+.volver{background:none;border:0;color:var(--verde);cursor:pointer;padding:0;font-weight:600;margin:30px 0 14px;font-size:15px}
+.paso2{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
+.hoja{background:var(--panel);border:1px solid var(--linea);border-radius:18px;padding:26px}
+.hoja h2{font-family:var(--f-tit);font-stretch:112%;font-size:24px;margin:0 0 4px}
+.hoja>p{margin:0 0 6px;color:var(--gris)}
+fieldset{border:0;padding:0;margin:24px 0 0}
+legend{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:16px;margin-bottom:12px;padding:0;display:flex;gap:10px;align-items:center}
+.recordado{font-family:var(--f);font-weight:400;font-size:13px;color:var(--verde);background:var(--verde-suave);padding:2px 9px;border-radius:999px}
+.campos{display:grid;gap:14px 16px;grid-template-columns:1fr 1fr}
+.campos .ancho{grid-column:1/-1}
+label.c{display:block;font-size:14px;font-weight:500}
+label.c input{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1.5px solid var(--linea-2);border-radius:11px;background:var(--panel);font-size:16px}
+label.c input:focus{border-color:var(--verde);outline:none;box-shadow:0 0 0 3px var(--verde-suave)}
+label.c input.mal{border-color:var(--rojo)}
+.ayuda{font-size:13px;color:var(--gris);font-weight:400}
+.archivo{display:flex;gap:14px;align-items:center;margin-top:6px;border:1.5px dashed var(--linea-2);border-radius:12px;padding:14px;cursor:pointer;background:var(--papel)}
+.archivo:hover{border-color:var(--verde)}
+.archivo.tiene{border-style:solid;border-color:var(--verde);background:var(--verde-suave)}
+.archivo .ico{width:46px;height:46px;border-radius:10px;background:var(--panel);display:grid;place-items:center;flex:none;overflow:hidden;border:1px solid var(--linea)}
+.archivo .ico img{width:100%;height:100%;object-fit:cover}
+.archivo input{position:absolute;width:1px;height:1px;opacity:0}
+.archivo b{display:block;font-size:15px}
+.acepto{display:flex;gap:12px;align-items:flex-start;margin-top:22px;font-size:14px;color:var(--gris);cursor:pointer}
+.acepto input{width:20px;height:20px;margin-top:1px;accent-color:var(--verde);flex:none}
+.error{color:var(--rojo);font-size:14.5px;margin-top:14px;min-height:1.4em;font-weight:500}
+.acciones{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:12px;padding:14px 22px;font-weight:600;font-size:16px;cursor:pointer;background:var(--verde);color:#fff}
+.btn:hover{background:var(--verde-osc)}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn.sec{background:transparent;color:var(--tinta);border:1.5px solid var(--linea-2)}
+.btn.sec:hover{border-color:var(--tinta)}
+:root[data-theme="dark"] .btn:not(.sec){color:#062a15}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn:not(.sec){color:#062a15}}
+
+.resumen{position:sticky;top:16px;background:var(--verde-noche);color:#e9f1ec;border-radius:18px;padding:22px;overflow:hidden}
+.resumen .tipo{background:rgba(255,255,255,.12);color:#fff}
+.resumen h3{font-family:var(--f-tit);font-stretch:112%;font-size:22px;line-height:1.15;margin:8px 0 2px}
+.resumen .sede{color:#9fc4ae;font-size:15px}
+.jornadas{list-style:none;padding:0;margin:18px 0;border-top:1px solid rgba(255,255,255,.14)}
+.jornadas li{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.14);font-size:14.5px}
+.jornadas li span:last-child{color:#9fc4ae;font-variant-numeric:tabular-nums}
+.resumen .estado{display:flex;gap:12px;align-items:center;font-size:14.5px}
+.resumen .cargo{font-size:13.5px;color:#9fc4ae;margin-top:14px}
+.aviso-espera{background:var(--ambar-suave);color:var(--ambar);border-radius:12px;padding:12px 14px;margin-top:16px;font-size:14.5px}
+
+/* ---------- confirmación ---------- */
+.final{background:var(--panel);border:1px solid var(--linea);border-radius:20px;padding:40px 28px;text-align:center;max-width:640px;margin:36px auto 0}
+.sello{width:84px;height:84px;margin:0 auto 18px}
+.final h2{font-family:var(--f-tit);font-stretch:112%;font-size:clamp(24px,4vw,32px);margin:0 0 8px;line-height:1.1}
+.final p{color:var(--gris);margin:0 auto 6px;max-width:48ch}
+.final .ficha{background:var(--papel);border-radius:14px;padding:16px;margin:22px 0;text-align:left;display:grid;gap:4px;font-size:15px}
+.final .acciones{justify-content:center}
+
+/* pie */
+.pie{margin-top:60px;border-top:1px solid var(--linea);padding:26px 0 40px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;color:var(--gris);font-size:14px}
+.pie img{height:28px}
+.logo-osc{display:none}
+:root[data-theme="dark"] .logo-cla{display:none} :root[data-theme="dark"] .logo-osc{display:block}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-cla{display:none}:root:not([data-theme="light"]) .logo-osc{display:block}}
+
+@media (max-width:860px){
+  .heroe{grid-template-columns:1fr;gap:24px;padding-bottom:50px}
+  .paso2{grid-template-columns:1fr}
+  .resumen{position:static;order:-1}
+}
+@media (max-width:640px){
+  .barra img{height:30px}
+  .contacto a.mail{display:none}
+  .pasos li{padding:10px;font-size:13px;flex:0 0 auto}
+  .pasos li.activo{flex:1;white-space:nowrap}
+  .segmento{flex-wrap:nowrap;overflow-x:auto;max-width:100%}
+  .segmento button{padding:8px 11px;white-space:nowrap}
+  .pasos li .t{display:none}
+  .pasos li.activo .t{display:inline}
+  .conv{grid-template-columns:76px 1fr;gap:12px 14px;padding:12px}
+  .calend .d{font-size:18px}
+  .heroe h1{font-size:30px}
+  .plazas{grid-column:1/-1;min-width:0}
+  .conv .ir{display:none}
+  .campos{grid-template-columns:1fr}
+  .hoja{padding:20px 16px}
+  .simbolo-fondo{width:340px;right:-120px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <div class="logo">WORTACH · ASISTENCIA TÉCNICA</div>
-    <h1>Adiestramiento de tacógrafos <span id="anio"></span></h1>
-    <p>Consulta las convocatorias con plazas disponibles e inscribe a los técnicos de tu centro.</p>
+
+<header class="cab">
+  <svg class="simbolo-fondo" viewBox="0 0 223 247" aria-hidden="true" fill="none" stroke="#5fd393" stroke-width="16">
+    <path d="M8 8H112A103 103 0 0 1 215 111V239H8Z"/><circle cx="111.5" cy="127" r="96"/><path d="M111.5 8V239M8 127H215"/>
+  </svg>
+  <div class="envoltura">
+    <div class="barra">
+      <img src="icons/logo-oscuro.png" alt="WORTACH, el mundo del tacógrafo" width="148" height="38">
+      <nav class="contacto" aria-label="Contacto">
+        <a href="tel:+34954360572">954 360 572</a>
+        <a class="mail" href="mailto:asistencia@wortach.com">asistencia@wortach.com</a>
+      </nav>
+    </div>
+    <div class="heroe">
+      <div>
+        <h1>Adiestramiento de tacógrafos <span class="anio" id="anio">2026</span></h1>
+        <p>Elige una convocatoria, rellena los datos del técnico y la plaza queda reservada al momento, por orden de inscripción.</p>
+      </div>
+      <aside class="que-curso">
+        <h2>¿Qué curso le toca a tu técnico?</h2>
+        <dl>
+          <div><dt>Iniciación <small>4 jornadas</small></dt><dd>Si nunca ha hecho el adiestramiento.</dd></div>
+          <div><dt>Actualización <small>2 jornadas</small></dt><dd>Reciclaje obligatorio cada año para quien ya tiene la iniciación.</dd></div>
+        </dl>
+      </aside>
+    </div>
   </div>
 </header>
 
-<main class="wrap">
-  <section class="card">
-    <div class="info">
-      <div><b>Plazas por orden de inscripción.</b> Se asignan automáticamente y en riguroso orden. Si un curso está completo, la inscripción pasa a lista de espera.</div>
-      <div><b>Quórum mínimo de 6 asistentes.</b> La planificación puede cambiar por cambios legislativos o por no alcanzar el quórum.</div>
-      <div><b>Cargo con 45 días de antelación</b> a la celebración del adiestramiento.</div>
-      <div><b>Horarios.</b> 1ª jornada: 10:00 a 18:30. Resto de jornadas: 9:00 a 17:15.</div>
+<main class="envoltura">
+  <ol class="pasos" id="pasos">
+    <li data-p="1" class="activo"><span class="n">1</span><span class="t">Convocatoria</span></li>
+    <li data-p="2"><span class="n">2</span><span class="t">Datos del técnico</span></li>
+    <li data-p="3"><span class="n">3</span><span class="t">Confirmación</span></li>
+  </ol>
+
+  <!-- PASO 1 -->
+  <section id="paso1">
+    <div class="filtros">
+      <div class="segmento" role="group" aria-label="Sede" id="f-sede"></div>
+      <div class="segmento" role="group" aria-label="Tipo de curso" id="f-tipo">
+        <button data-v="" aria-pressed="true">Todos</button>
+        <button data-v="actualizacion" aria-pressed="false">Actualización</button>
+        <button data-v="iniciacion" aria-pressed="false">Iniciación</button>
+      </div>
+      <label class="interruptor"><input type="checkbox" id="f-libres"> Solo con plazas libres</label>
     </div>
+    <div id="lista" aria-live="polite"><div class="vacio">Cargando convocatorias…</div></div>
+
+    <section class="condiciones" aria-label="Condiciones">
+      <div><h3>Plazas por orden de llegada</h3><p>Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y le avisamos por correo si se libera una plaza.</p></div>
+      <div><h3>Quórum mínimo de 6</h3><p>Una convocatoria puede cambiar por cambios legislativos o si no reúne 6 asistentes. Si ocurre, os avisamos para reubicar la plaza.</p></div>
+      <div><h3>Cargo 45 días antes</h3><p>WORTACH realiza el cargo al centro técnico 45 días antes de la primera jornada.</p></div>
+      <div><h3>Horarios</h3><div class="horario"><b>1ª jornada</b><span>10:00 a 18:30</span><b>Resto</b><span>9:00 a 17:15</span></div></div>
+    </section>
   </section>
 
-  <div class="filters" role="toolbar" aria-label="Filtros">
-    <button class="chip" data-f="sede" data-v="" aria-pressed="true">Todas las sedes</button>
-    <button class="chip" data-f="sede" data-v="Sevilla" aria-pressed="false">Sevilla</button>
-    <button class="chip" data-f="sede" data-v="Zaragoza" aria-pressed="false">Zaragoza</button>
-    <button class="chip" data-f="sede" data-v="Online" aria-pressed="false">Online</button>
-    <span class="sep"></span>
-    <button class="chip" data-f="tipo" data-v="" aria-pressed="true">Todos</button>
-    <button class="chip" data-f="tipo" data-v="actualizacion" aria-pressed="false">Actualización</button>
-    <button class="chip" data-f="tipo" data-v="iniciacion" aria-pressed="false">Iniciación</button>
-  </div>
-
-  <div id="lista"><div class="vacio">Cargando convocatorias…</div></div>
-
-  <section id="form-card" class="card hidden" aria-live="polite">
-    <div id="form-zona">
-      <h2>Inscripción</h2>
-      <div class="resumen" id="resumen"></div>
-      <div id="aviso-lleno" class="aviso warn hidden">Este curso está completo. Puedes inscribirte igualmente y quedarás en <b>lista de espera</b>; te avisaremos por correo si se libera una plaza.</div>
-      <form id="f" novalidate>
+  <!-- PASO 2 -->
+  <section id="paso2" class="hidden">
+    <button class="volver" id="volver">‹ Cambiar de convocatoria</button>
+    <div class="paso2">
+      <form class="hoja" id="f" novalidate>
+        <h2>Datos de la inscripción</h2>
+        <p>Todos los campos son obligatorios.</p>
         <fieldset>
-          <legend>Centro técnico</legend>
-          <div class="fila">
-            <label>Nombre del centro técnico<input type="text" name="centro" required autocomplete="organization"></label>
-            <label>Persona de contacto<input type="text" name="contacto" required></label>
-            <label>Teléfono del centro<input type="tel" name="tel_contacto" required autocomplete="tel"></label>
+          <legend>Centro técnico <span class="recordado hidden" id="recordado">Recordado de tu última inscripción</span></legend>
+          <div class="campos">
+            <label class="c ancho">Nombre del centro técnico<input name="centro" autocomplete="organization"></label>
+            <label class="c">Persona de contacto<input name="contacto" autocomplete="name"></label>
+            <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" autocomplete="tel" inputmode="tel"></label>
           </div>
         </fieldset>
         <fieldset>
-          <legend>Asistente</legend>
-          <div class="fila">
-            <label>Nombre y apellidos<input type="text" name="nombre" required autocomplete="name"></label>
-            <label>DNI / NIE (número y letra)<input type="text" name="dni" required placeholder="12345678Z" autocapitalize="characters"></label>
-          </div>
-          <div class="fila" style="margin-top:12px">
-            <label>Teléfono del asistente<input type="tel" name="telefono" required></label>
-            <label>Correo electrónico del asistente<input type="email" name="email" required autocomplete="email"></label>
-          </div>
-          <label style="margin-top:12px">Foto del DNI / NIE
-            <div class="file" id="file-box" tabindex="0" role="button">
-              <span id="file-txt">Pulsa para hacer una foto o elegir archivo (imagen o PDF)</span>
-              <input type="file" name="foto" accept="image/*,application/pdf">
+          <legend>Técnico que asiste</legend>
+          <div class="campos">
+            <label class="c ancho">Nombre y apellidos<input name="nombre" autocomplete="off"></label>
+            <label class="c">DNI o NIE <span class="ayuda">con letra</span><input name="dni" placeholder="12345678Z" autocapitalize="characters" autocomplete="off"></label>
+            <label class="c">Teléfono<input name="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
+            <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibirá la confirmación y los recordatorios</span><input name="email" type="email" inputmode="email" autocomplete="off"></label>
+            <div class="ancho">
+              <span class="c" style="font-size:14px;font-weight:500">Foto del DNI o NIE</span>
+              <label class="archivo" id="archivo">
+                <span class="ico" id="arch-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M14 10h4M14 13h4M6 16h6"/></svg></span>
+                <span><b id="arch-tit">Hacer foto o subir archivo</b><span class="ayuda" id="arch-sub">Imagen o PDF, por las dos caras si es posible</span></span>
+                <input type="file" name="foto" accept="image/*,application/pdf">
+              </label>
             </div>
-          </label>
+          </div>
         </fieldset>
-        <label class="check"><input type="checkbox" name="acepto" required>
-          <span>Confirmo que los datos son correctos, que el centro técnico acepta el cargo del adiestramiento con 45 días de antelación y que el asistente consiente el tratamiento de sus datos por WORTACH para gestionar el adiestramiento.</span></label>
-        <div class="err" id="err"></div>
-        <div class="acciones">
-          <button class="btn" type="submit" id="enviar">Enviar inscripción</button>
-          <button class="btn sec" type="button" id="cancelar">Elegir otro curso</button>
-        </div>
+        <label class="acepto"><input type="checkbox" name="acepto">
+          <span>Los datos son correctos, el centro técnico acepta el cargo del adiestramiento 45 días antes y el técnico consiente que WORTACH trate sus datos para gestionarlo.</span></label>
+        <div class="error" id="err" role="alert"></div>
+        <div class="acciones"><button class="btn" type="submit" id="enviar">Reservar plaza</button></div>
       </form>
+      <aside class="resumen" id="resumen" aria-label="Convocatoria elegida"></aside>
     </div>
-    <div id="ok-zona" class="hidden"></div>
   </section>
-</main>
 
-<footer>¿Dudas? <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · 954 360 572</footer>
+  <!-- PASO 3 -->
+  <section id="paso3" class="hidden"><div class="final" id="final"></div></section>
+
+  <footer class="pie">
+    <img class="logo-cla" src="icons/logo.png" alt="WORTACH" width="109" height="28">
+    <img class="logo-osc" src="icons/logo-oscuro.png" alt="WORTACH" width="109" height="28">
+    <span>Asistencia Técnica · <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · <a href="tel:+34954360572">954 360 572</a></span>
+  </footer>
+</main>
 
 <script>
 const SUPABASE_URL = "https://ylnwqtgyfeqihggjneba.supabase.co";
@@ -165,92 +318,147 @@ const SUPABASE_KEY = "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-const DIAS = ["dom","lun","mar","mié","jue","vie","sáb"];
+const DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const D = s => new Date(s + "T12:00:00");
 const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
+const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const leer = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
 
-let cursos = [], filtro = { sede: "", tipo: "" }, sel = null, archivo = null;
+let cursos = [], filtro = { sede: "", tipo: "", libres: false }, sel = null, archivo = null;
 
-function textoFechas(fechas) {
-  const d = fechas.map(D);
-  const mismoMes = d.every(x => x.getMonth() === d[0].getMonth());
-  if (mismoMes) {
-    const nums = d.map(x => x.getDate());
-    const n = nums.length > 1 ? nums.slice(0, -1).join(", ") + " y " + nums.at(-1) : nums[0];
-    return `${n} de ${MESES[d[0].getMonth()]}`;
-  }
-  return d.map(x => `${x.getDate()} ${MESES[x.getMonth()].slice(0,3)}`).join(", ");
+/* ---------- textos de fechas ---------- */
+function bloqueFecha(f) {
+  const a = D(f[0]), b = D(f.at(-1));
+  if (a.getMonth() === b.getMonth()) return { d: f.length > 1 ? `${a.getDate()}–${b.getDate()}` : `${a.getDate()}`, m: MESES[a.getMonth()].slice(0,3) };
+  return { d: `${a.getDate()}–${b.getDate()}`, m: `${MESES[a.getMonth()].slice(0,3)}–${MESES[b.getMonth()].slice(0,3)}` };
 }
-const textoDias = f => f.map(s => DIAS[D(s).getDay()]).join(" · ") + ` · ${f.length} jornadas`;
+function frase(f) {
+  const d = f.map(D);
+  const partes = d.map((x, i) => `${DIAS[x.getDay()].slice(0,3)} ${x.getDate()}` + ((i === d.length - 1 || x.getMonth() !== d[i+1].getMonth()) ? ` de ${MESES[x.getMonth()]}` : ""));
+  return partes.length > 1 ? partes.slice(0,-1).join(", ") + " y " + partes.at(-1) : partes[0];
+}
+const fLarga = s => { const d = D(s); return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const restaDias = (s, n) => { const d = D(s); d.setDate(d.getDate() - n); return d.toISOString().slice(0,10); };
 
-function nivel(c) { return c.libres === 0 ? "lleno" : c.libres <= 3 ? "medio" : "ok"; }
+/* ---------- disco de plazas (tacógrafo) ---------- */
+function disco(c, tam = 46, oscuro = false) {
+  const n = c.cupo_max, r = tam / 2 - 4, cx = tam / 2, sw = n > 24 ? 4 : 6;
+  const gap = n > 1 ? Math.min(8, 90 / n) : 0;
+  const pol = a => [cx + r * Math.cos(a * Math.PI / 180), cx + r * Math.sin(a * Math.PI / 180)];
+  let segs = "";
+  for (let i = 0; i < n; i++) {
+    const a0 = -90 + i * 360 / n + gap / 2, a1 = a0 + 360 / n - gap;
+    const [x0, y0] = pol(a0), [x1, y1] = pol(a1), large = (a1 - a0) > 180 ? 1 : 0;
+    const libre = i >= c.ocupadas;
+    const col = libre ? (c.libres <= 3 ? "var(--ambar)" : "var(--verde)") : (oscuro ? "rgba(255,255,255,.18)" : "var(--ocupada)");
+    segs += n === 1 ? `<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}"/>`
+      : `<path d="M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}" fill="none" stroke="${col}" stroke-width="${sw}"/>`;
+  }
+  const txt = c.libres === 0 ? `<path d="M${cx-6} ${cx-6}l12 12M${cx+6} ${cx-6}l-12 12" stroke="var(--rojo)" stroke-width="2.4" stroke-linecap="round"/>`
+    : `<text x="${cx}" y="${cx}" text-anchor="middle" dominant-baseline="central" font-family="Archivo,Arial" font-weight="800" font-size="${tam*(String(c.libres).length > 1 ? 0.3 : 0.38)}" fill="${oscuro ? "#fff" : "currentColor"}">${c.libres}</text>`;
+  return `<svg class="disco" width="${tam}" height="${tam}" viewBox="0 0 ${tam} ${tam}" role="img" aria-label="${c.libres} de ${c.cupo_max} plazas libres">${segs}${txt}</svg>`;
+}
+const nivel = c => c.libres === 0 ? "lleno" : c.libres <= 3 ? "pocas" : "ok";
+function textoPlazas(c) {
+  if (c.libres === 0) return `<b>Completo</b>${c.en_espera ? `${c.en_espera} en lista de espera` : "Lista de espera abierta"}`;
+  return `<b>${c.libres} plaza${c.libres === 1 ? "" : "s"} libre${c.libres === 1 ? "" : "s"}</b>de ${c.cupo_max}`;
+}
 
+/* ---------- paso 1 ---------- */
+function pintarFiltros() {
+  const sedes = ["Sevilla", "Zaragoza", "Online"];
+  const cuenta = s => cursos.filter(c => !s || c.sede === s).length;
+  $("#f-sede").innerHTML = [["", "Todas"], ...sedes.map(s => [s, s])]
+    .filter(([s]) => !s || cuenta(s))
+    .map(([v, t]) => `<button data-v="${v}" aria-pressed="${filtro.sede === v}">${t} <span class="cnt">${cuenta(v)}</span></button>`).join("");
+}
 function pintar() {
-  const lista = cursos.filter(c => (!filtro.sede || c.sede === filtro.sede) && (!filtro.tipo || c.tipo === filtro.tipo));
-  if (!lista.length) { $("#lista").innerHTML = `<div class="card vacio">No hay convocatorias abiertas con estos filtros.</div>`; return; }
-  let html = "", mesAct = "";
-  for (const c of lista) {
-    const d = D(c.fecha_inicio), m = `${MESES[d.getMonth()]} ${d.getFullYear()}`;
-    if (m !== mesAct) { if (mesAct) html += "</div>"; html += `<div class="mes">${m}</div><div class="grid">`; mesAct = m; }
-    const nv = nivel(c), pct = Math.min(100, c.ocupadas / c.cupo_max * 100);
-    const txt = c.libres === 0 ? `Completo${c.en_espera ? ` · ${c.en_espera} en espera` : ""}` : `Quedan ${c.libres} plaza${c.libres === 1 ? "" : "s"}`;
-    html += `<button class="curso ${sel?.id === c.id ? "sel" : ""}" data-id="${c.id}">
-      <div class="top"><div><div class="fechas">${textoFechas(c.fechas)}</div><div class="dias">${textoDias(c.fechas)}</div></div>
-      <span class="badge ${c.tipo === "iniciacion" ? "b-ini" : "b-act"}">${TIPO[c.tipo]}</span></div>
-      <div class="sede">${c.sede === "Online" ? "💻" : "📍"} ${esc(c.sede)}</div>
-      <div class="bar ${nv}"><i style="width:${pct}%"></i></div>
-      <div class="plazas"><b class="${nv}">${txt}</b><span>${c.ocupadas}/${c.cupo_max}</span></div>
-    </button>`;
-  }
-  $("#lista").innerHTML = html + "</div>";
+  const lista = cursos.filter(c => (!filtro.sede || c.sede === filtro.sede) && (!filtro.tipo || c.tipo === filtro.tipo) && (!filtro.libres || c.libres > 0));
+  if (!cursos.length) { $("#lista").innerHTML = `<div class="vacio">Ahora mismo no hay convocatorias abiertas. Escríbenos a <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> y te avisamos cuando se publiquen.</div>`; return; }
+  if (!lista.length) { $("#lista").innerHTML = `<div class="vacio">No hay convocatorias con estos filtros. Prueba con otra sede o tipo de curso.</div>`; return; }
+  const grupos = {};
+  for (const c of lista) { const d = D(c.fecha_inicio), k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,"0")}`; (grupos[k] ||= []).push(c); }
+  $("#lista").innerHTML = Object.entries(grupos).map(([k, cs]) => {
+    const d = D(cs[0].fecha_inicio), libres = cs.reduce((s, c) => s + c.libres, 0);
+    return `<h2 class="mes-tit">${MESES[d.getMonth()][0].toUpperCase() + MESES[d.getMonth()].slice(1)} ${d.getFullYear()} <small>${cs.length} convocatoria${cs.length > 1 ? "s" : ""}, ${libres} plaza${libres === 1 ? "" : "s"} libre${libres === 1 ? "" : "s"}</small></h2>
+      <div class="lista">${cs.map(fila).join("")}</div>`;
+  }).join("");
 }
+function fila(c) {
+  const b = bloqueFecha(c.fechas);
+  return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}">
+    <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
+    <span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>
+      <span class="dias">${frase(c.fechas)}</span>
+      <span class="lugar">${icoSede(c.sede)} ${esc(c.sede)} <span aria-hidden="true">·</span> ${c.fechas.length} jornadas</span></span>
+    <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
+    <span class="ir">${c.libres === 0 ? "Lista de espera" : "Inscribirse"}</span>
+  </button>`;
+}
+const icoSede = s => s === "Online"
+  ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`
+  : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>`;
+
+$("#f-sede").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; filtro.sede = b.dataset.v; pintarFiltros(); pintar(); });
+$("#f-tipo").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; filtro.tipo = b.dataset.v; $$("#f-tipo button").forEach(x => x.setAttribute("aria-pressed", x === b)); pintar(); });
+$("#f-libres").addEventListener("change", e => { filtro.libres = e.target.checked; pintar(); });
+$("#lista").addEventListener("click", e => { const b = e.target.closest(".conv"); if (!b) return; sel = cursos.find(c => c.id === b.dataset.id); irPaso(2); });
 
 async function cargar() {
   const { data, error } = await sb.rpc("cursos_disponibles");
-  if (error) { $("#lista").innerHTML = `<div class="card vacio">No se han podido cargar las convocatorias. Inténtalo de nuevo en unos minutos.</div>`; return; }
+  if (error) { if (!cursos.length) $("#lista").innerHTML = `<div class="vacio">No se han podido cargar las convocatorias. Comprueba tu conexión y recarga la página.</div>`; return; }
   cursos = data;
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0,4)))];
-  $("#anio").textContent = anios.length ? anios.join("–") : "";
-  if (sel) sel = cursos.find(c => c.id === sel.id) || null;
-  pintar();
+  if (anios.length) $("#anio").textContent = anios.join("–");
+  if (sel) { const nuevo = cursos.find(c => c.id === sel.id); if (nuevo) { sel = nuevo; if (!$("#paso2").classList.contains("hidden")) pintarResumen(); } }
+  pintarFiltros(); pintar();
 }
 
-document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => {
-  filtro[b.dataset.f] = b.dataset.v;
-  document.querySelectorAll(`.chip[data-f=${b.dataset.f}]`).forEach(x => x.setAttribute("aria-pressed", x === b));
-  pintar();
-}));
+/* ---------- navegación ---------- */
+function irPaso(n) {
+  [1,2,3].forEach(i => $("#paso" + i).classList.toggle("hidden", i !== n));
+  $$("#pasos li").forEach(li => { const p = +li.dataset.p; li.classList.toggle("activo", p === n); li.classList.toggle("hecho", p < n); });
+  document.body.classList.toggle("compacto", n !== 1);
+  if (n === 2) { prepararForm(); pintarResumen(); }
+  if (n === 1) pintar();
+  $("#pasos").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#volver").addEventListener("click", () => irPaso(1));
 
-$("#lista").addEventListener("click", e => {
-  const b = e.target.closest(".curso"); if (!b) return;
-  sel = cursos.find(c => c.id === b.dataset.id);
-  abrirForm();
-});
-
-function abrirForm() {
-  pintar();
-  $("#form-card").classList.remove("hidden");
-  $("#form-zona").classList.remove("hidden");
-  $("#ok-zona").classList.add("hidden");
-  $("#resumen").innerHTML = `<b>${TIPO[sel.tipo]} · ${esc(sel.sede)}</b><br>${textoFechas(sel.fechas)} de ${D(sel.fecha_inicio).getFullYear()} (${textoDias(sel.fechas)})`;
-  $("#aviso-lleno").classList.toggle("hidden", sel.libres > 0);
-  $("#enviar").textContent = sel.libres > 0 ? "Enviar inscripción" : "Apuntarse a la lista de espera";
+/* ---------- paso 2 ---------- */
+function horarioJornadas(c) {
+  return c.fechas.map((f, i) => `<li><span>${fLarga(f)}</span><span>${i === 0 ? "10:00 – 18:30" : "9:00 – 17:15"}</span></li>`).join("");
+}
+function pintarResumen() {
+  const c = sel, cargo = D(restaDias(c.fecha_inicio, 45));
+  $("#resumen").innerHTML = `<span class="tipo" style="display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
+    <h3>${frase(c.fechas)}</h3><div class="sede">${esc(c.sede)}, ${c.fechas.length} jornadas</div>
+    <ul class="jornadas">${horarioJornadas(c)}</ul>
+    <div class="estado">${disco(c, 54, true)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
+    <div class="cargo">Cargo al centro técnico: ${cargo.getDate()} de ${MESES[cargo.getMonth()]} de ${cargo.getFullYear()}.</div>`;
+  $("#enviar").textContent = c.libres === 0 ? "Apuntarse a la lista de espera" : "Reservar plaza";
+}
+function prepararForm() {
+  const f = $("#f"), cen = leer("wortach_centro");
+  if (cen && !f.centro.value) { f.centro.value = cen.centro || ""; f.contacto.value = cen.contacto || ""; f.tel_contacto.value = cen.tel_contacto || ""; }
+  $("#recordado").classList.toggle("hidden", !(cen && f.centro.value === cen.centro));
   $("#err").textContent = "";
-  $("#form-card").scrollIntoView({ behavior: "smooth" });
 }
 
-$("#cancelar").addEventListener("click", () => { sel = null; $("#form-card").classList.add("hidden"); pintar(); window.scrollTo({ top: 0, behavior: "smooth" }); });
-
-const fileInput = document.querySelector("input[name=foto]");
-$("#file-box").addEventListener("click", () => fileInput.click());
-$("#file-box").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
+const fileInput = $("input[name=foto]");
 fileInput.addEventListener("change", () => {
   archivo = fileInput.files[0] || null;
-  $("#file-box").classList.toggle("tiene", !!archivo);
-  $("#file-txt").textContent = archivo ? `✓ ${archivo.name}` : "Pulsa para hacer una foto o elegir archivo (imagen o PDF)";
+  $("#archivo").classList.toggle("tiene", !!archivo);
+  $("#arch-tit").textContent = archivo ? "Documento añadido" : "Hacer foto o subir archivo";
+  $("#arch-sub").textContent = archivo ? `${archivo.name} · pulsa para cambiarlo` : "Imagen o PDF, por las dos caras si es posible";
+  const ico = $("#arch-ico");
+  if (archivo && archivo.type.startsWith("image/") && archivo.type !== "image/heic") ico.innerHTML = `<img alt="" src="${URL.createObjectURL(archivo)}">`;
+  else ico.innerHTML = archivo ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></svg>` : ico.dataset.orig;
 });
+$("#arch-ico").dataset.orig = $("#arch-ico").innerHTML;
 
 function dniValido(v) {
   const d = v.toUpperCase().replace(/[\s.\-]/g, "");
@@ -260,6 +468,7 @@ function dniValido(v) {
   else return false;
   return "TRWAGMYFPDXBNJZSQVHLCKE"[parseInt(n, 10) % 23] === d[8];
 }
+$("input[name=dni]").addEventListener("blur", e => { const v = e.target.value.trim(); e.target.classList.toggle("mal", !!v && !dniValido(v)); });
 
 async function comprimir(file) {
   if (!file.type.startsWith("image/") || file.type === "image/heic") return file;
@@ -277,52 +486,76 @@ async function comprimir(file) {
 $("#f").addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target, v = Object.fromEntries(new FormData(f));
-  const err = m => { $("#err").textContent = m; };
-  for (const k of ["centro","contacto","tel_contacto","nombre","dni","telefono","email"])
-    if (!String(v[k] || "").trim()) return err("Rellena todos los campos.");
-  if (!dniValido(v.dni)) return err("El DNI/NIE no es válido. Revisa el número y la letra.");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return err("El correo electrónico no es válido.");
-  if (!archivo) return err("Adjunta la foto del DNI/NIE.");
-  if (!f.acepto.checked) return err("Debes aceptar las condiciones.");
+  const err = (m, campo) => { $("#err").textContent = m; if (campo) f[campo].focus(); };
+  const nombres = { centro: "el nombre del centro técnico", contacto: "la persona de contacto", tel_contacto: "el teléfono del centro", nombre: "el nombre del técnico", dni: "el DNI o NIE", telefono: "el teléfono del técnico", email: "el correo del técnico" };
+  for (const k of Object.keys(nombres)) if (!String(v[k] || "").trim()) return err(`Falta ${nombres[k]}.`, k);
+  if (!dniValido(v.dni)) return err("El DNI o NIE no es válido: revisa el número y la letra.", "dni");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return err("El correo electrónico no es válido.", "email");
+  if (!archivo) return err("Añade la foto del DNI o NIE.");
+  if (!f.acepto.checked) return err("Marca la casilla de conformidad para continuar.");
   err("");
-  const btn = $("#enviar"); btn.disabled = true; btn.textContent = "Enviando…";
+  const btn = $("#enviar"), txt = btn.textContent; btn.disabled = true; btn.textContent = "Enviando…";
   try {
     const file = await comprimir(archivo);
-    const ext = (file.type === "application/pdf" ? "pdf" : (file.type.split("/")[1] || "jpg").replace("jpeg","jpg"));
-    const ruta = `${crypto.randomUUID()}.${ext}`;
+    const ext = file.type === "application/pdf" ? "pdf" : ((file.type.split("/")[1] || "jpg").replace("jpeg","jpg"));
+    const ruta = `${crypto.randomUUID()}.${["jpg","png","webp","heic","pdf"].includes(ext) ? ext : "jpg"}`;
     const up = await sb.storage.from("dni").upload(ruta, file, { contentType: file.type || "image/jpeg", upsert: false });
-    if (up.error) throw new Error("No se ha podido subir la foto del DNI. Prueba con otra imagen.");
+    if (up.error) throw new Error("No se ha podido subir la foto del DNI. Prueba con otra imagen o con un PDF.");
     const { data, error } = await sb.rpc("inscribir", {
       p_curso: sel.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto,
       p_nombre: v.nombre, p_dni: v.dni, p_foto: ruta, p_telefono: v.telefono, p_email: v.email
     });
-    if (error) throw new Error(error.code === "P0001" ? error.message : "No se ha podido completar la inscripción. Inténtalo de nuevo.");
-    mostrarOk(data, v);
-    await cargar();
+    if (error) throw new Error(error.code === "P0001" ? error.message + "." : "No se ha podido completar la inscripción. Inténtalo de nuevo en unos minutos.");
+    guardar("wortach_centro", { centro: v.centro.trim(), contacto: v.contacto.trim(), tel_contacto: v.tel_contacto.trim() });
+    mostrarFinal(data, v);
+    cargar();
   } catch (ex) { err(ex.message); }
-  finally { btn.disabled = false; btn.textContent = sel?.libres > 0 ? "Enviar inscripción" : "Apuntarse a la lista de espera"; }
+  finally { btn.disabled = false; btn.textContent = txt; }
 });
 
-function mostrarOk(r, v) {
-  const espera = r.estado === "lista_espera";
-  $("#form-zona").classList.add("hidden");
-  const z = $("#ok-zona"); z.classList.remove("hidden");
-  z.innerHTML = `<div class="ok-box ${espera ? "espera" : ""}">
-    <div class="ico">${espera ? "⏳" : "✓"}</div>
-    <h2>${espera ? `En lista de espera (posición ${r.posicion})` : "Inscripción confirmada"}</h2>
-    <p>${esc(v.nombre)} · ${TIPO[sel.tipo]} en ${esc(sel.sede)}, ${textoFechas(sel.fechas)}.</p>
-    <p style="color:var(--muted);font-size:14px">${espera ? "Si se libera una plaza, se asignará por orden y recibirá un correo." : "Recibirá un correo de confirmación y recordatorios antes del curso."}</p>
-    <div class="acciones" style="justify-content:center">
-      <button class="btn" id="otro">Inscribir a otro técnico de ${esc(v.centro)}</button>
-      <button class="btn sec" id="fin">Terminar</button>
-    </div></div>`;
-  $("#otro").onclick = () => {
-    const f = $("#f");
-    for (const k of ["nombre","dni","telefono","email"]) f[k].value = "";
-    f.acepto.checked = false; fileInput.value = ""; fileInput.dispatchEvent(new Event("change"));
-    abrirForm();
-  };
-  $("#fin").onclick = () => { $("#f").reset(); fileInput.dispatchEvent(new Event("change")); sel = null; $("#form-card").classList.add("hidden"); pintar(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+/* ---------- paso 3 ---------- */
+function mostrarFinal(r, v) {
+  const espera = r.estado === "lista_espera", c = sel;
+  $("#final").innerHTML = `
+    <svg class="sello" viewBox="0 0 84 84" aria-hidden="true">
+      <circle cx="42" cy="42" r="38" fill="none" stroke="${espera ? "var(--ambar)" : "var(--verde)"}" stroke-width="6"/>
+      ${espera ? `<path d="M42 22v21l13 8" fill="none" stroke="var(--ambar)" stroke-width="6" stroke-linecap="round"/>`
+               : `<path d="M26 43l11 11 21-23" fill="none" stroke="var(--verde)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`}
+    </svg>
+    <h2>${espera ? `En lista de espera, posición ${r.posicion}` : "Plaza reservada"}</h2>
+    <p>${espera ? `Si se libera una plaza se asigna por orden y ${esc(v.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(v.email)}. También recibirá un recordatorio una semana antes y el día anterior.`}</p>
+    <div class="ficha">
+      <b>${esc(v.nombre)}</b>
+      <span>${TIPO[c.tipo]} en ${esc(c.sede)}</span>
+      <span>${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
+      <span style="color:var(--gris)">${esc(v.centro)}</span>
+    </div>
+    <div class="acciones">
+      ${espera ? "" : `<button class="btn sec" id="ics">Añadir al calendario</button>`}
+      <button class="btn" id="otro">Inscribir a otro técnico</button>
+      <button class="btn sec" id="otra">Ver otras convocatorias</button>
+    </div>`;
+  irPaso(3);
+  if (!espera) $("#ics").onclick = () => descargarIcs(c, v);
+  const limpiar = () => { const f = $("#f"); ["nombre","dni","telefono","email"].forEach(k => { f[k].value = ""; f[k].classList.remove("mal"); }); f.acepto.checked = false; fileInput.value = ""; fileInput.dispatchEvent(new Event("change")); };
+  $("#otro").onclick = () => { limpiar(); irPaso(2); };
+  $("#otra").onclick = () => { limpiar(); sel = null; irPaso(1); };
+}
+function descargarIcs(c, v) {
+  const p = n => String(n).padStart(2, "0");
+  const ev = c.fechas.map((f, i) => {
+    const d = f.replace(/-/g, ""), [h0, h1] = i === 0 ? ["100000", "183000"] : ["090000", "171500"];
+    return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
+      `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
+      `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
+      `LOCATION:${c.sede === "Online" ? "Online" : "WORTACH " + c.sede}`,
+      `DESCRIPTION:Asistente: ${v.nombre}. Dudas: asistencia@wortach.com / 954 360 572`, "END:VEVENT"].join("\r\n");
+  });
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//WORTACH//Adiestramientos//ES", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  a.download = `adiestramiento-wortach-${c.fecha_inicio}.ics`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 cargar();

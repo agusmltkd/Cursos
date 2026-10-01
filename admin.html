@@ -5,125 +5,247 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Gestión de adiestramientos · WORTACH</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#0f3a24">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--bg:#f4f6f9;--card:#fff;--ink:#14202e;--muted:#5b6878;--line:#e1e6ec;--brand:#0f3d6e;--brand-2:#1b5fa8;--accent:#f2a516;
---ok:#1f8a4c;--ok-bg:#e6f4ec;--warn:#b26a00;--warn-bg:#fff4e0;--bad:#b42318;--bad-bg:#fdecea;--info-bg:#e8f0fb}
+:root{
+  --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
+  --papel:#f2f4f1; --panel:#fff; --tinta:#16201b; --gris:#5a6660; --linea:#dde3df; --linea-2:#c3ccc7; --hover:#f6f8f6;
+  --ambar:#a86b00; --ambar-suave:#fbf0d9; --rojo:#b8372d; --rojo-suave:#fbe7e4; --azul:#2f6fde; --azul-suave:#e5eefc; --violeta:#7b52c2; --violeta-suave:#efe8fa;
+  --ocupada:#d5dcd8;
+  --f-tit:"Archivo","Arial Black",system-ui,sans-serif; --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
+  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740; --hover:#1d2620;
+  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --azul:#6b9cf0; --azul-suave:#18243a; --violeta:#a98be0; --violeta-suave:#261d36; --ocupada:#2f3a34; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
+  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740; --hover:#1d2620;
+  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --azul:#6b9cf0; --azul-suave:#18243a; --violeta:#a98be0; --violeta-suave:#261d36; --ocupada:#2f3a34; color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+body{margin:0;font:15px/1.5 var(--f);background:var(--papel);color:var(--tinta)}
 .hidden{display:none!important}
 button,input,select,textarea{font:inherit;color:inherit}
-.btn{border:0;border-radius:9px;padding:9px 14px;font-weight:600;cursor:pointer;background:var(--brand);color:#fff;white-space:nowrap}
-.btn.sec{background:#fff;color:var(--brand);border:1px solid var(--line)}
-.btn.peligro{background:#fff;color:var(--bad);border:1px solid #f1c4bf}
-.btn.mini{padding:5px 9px;font-size:12px;font-weight:500}
-.btn:disabled{opacity:.6;cursor:wait}
-input,select,textarea{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff}
-label{font-size:12px;font-weight:500;color:var(--muted);display:block}
-label>input,label>select,label>textarea{display:block;width:100%;margin-top:4px}
+:focus-visible{outline:3px solid var(--verde);outline-offset:2px}
+a{color:var(--verde)}
+.tit{font-family:var(--f-tit);font-stretch:112%;font-weight:700}
+.btn{border:0;border-radius:10px;padding:9px 15px;font-weight:600;cursor:pointer;background:var(--verde);color:#fff;white-space:nowrap;text-decoration:none;display:inline-flex;gap:7px;align-items:center}
+.btn:hover{background:var(--verde-osc)}
+.btn.sec{background:var(--panel);color:var(--tinta);border:1px solid var(--linea-2)}
+.btn.sec:hover{border-color:var(--tinta);background:var(--panel)}
+.btn.peligro{background:var(--panel);color:var(--rojo);border:1px solid var(--rojo)}
+.btn.mini{padding:5px 10px;font-size:13px;font-weight:500;border-radius:8px}
+.btn:disabled{opacity:.6;cursor:progress}
+:root[data-theme="dark"] .btn:not(.sec):not(.peligro){color:#062a15}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn:not(.sec):not(.peligro){color:#062a15}}
+input,select,textarea{border:1px solid var(--linea-2);border-radius:10px;padding:8px 11px;background:var(--panel)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-suave)}
+label.c{font-size:13px;font-weight:500;display:block}
+label.c>input,label.c>select,label.c>textarea{display:block;width:100%;margin-top:5px}
+.gris{color:var(--gris)}
+
 /* login */
-#login{min-height:100vh;display:grid;place-items:center;padding:16px}
-#login form{background:#fff;padding:28px;border-radius:16px;width:100%;max-width:360px;box-shadow:0 8px 30px rgba(16,32,48,.08);display:grid;gap:12px}
-#login h1{margin:0;font-size:20px}
-/* layout */
-header{background:var(--brand);color:#fff}
-.bar{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.bar .t{font-weight:700;letter-spacing:.04em}
-nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}
-nav button{background:transparent;border:0;color:#cfe0f3;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:500}
-nav button[aria-selected=true]{background:rgba(255,255,255,.14);color:#fff}
-header .salir{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff}
-main{max-width:1200px;margin:0 auto;padding:18px 16px 60px}
-.card{background:var(--card);border-radius:14px;box-shadow:0 1px 3px rgba(16,32,48,.07);padding:16px}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+#login{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.login-marca{background:var(--verde-noche);color:#e9f1ec;padding:40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.login-marca img{height:40px;width:auto;align-self:flex-start;position:relative}
+.login-marca h1{font-family:var(--f-tit);font-stretch:112%;font-size:clamp(28px,4vw,44px);line-height:1.05;margin:0;position:relative}
+.login-marca p{color:#9fc4ae;margin:10px 0 0;position:relative}
+.login-marca svg{position:absolute;right:-80px;bottom:-60px;width:420px;opacity:.1}
+.login-form{display:grid;place-items:center;padding:24px}
+.login-form form{width:100%;max-width:360px;display:grid;gap:14px}
+.login-form h2{margin:0;font-size:24px}
+.error{color:var(--rojo);font-size:14px;min-height:1.3em;font-weight:500}
+
+/* cabecera */
+.cab{background:var(--verde-noche);color:#e9f1ec;position:sticky;top:0;z-index:20}
+.cab .in{max-width:1280px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:22px;min-height:60px;flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
+.marca img{height:28px}
+.marca span{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:15px;border-left:1px solid rgba(255,255,255,.25);padding-left:12px}
+nav.tabs{display:flex;gap:2px;flex:1;overflow-x:auto}
+nav.tabs button{background:transparent;border:0;color:#b8d0c1;padding:19px 12px 17px;cursor:pointer;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected=true]{color:#fff;border-bottom-color:#5fd393}
+.usuario{display:flex;gap:10px;align-items:center;font-size:13px;color:#b8d0c1}
+.usuario button{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+main{max-width:1280px;margin:0 auto;padding:22px 18px 70px}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:16px}
+.caja.pad{padding:18px}
+h2.sec-t{font-family:var(--f-tit);font-stretch:112%;font-size:18px;margin:0 0 12px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h2.sec-t small{font-family:var(--f);font-weight:400;font-size:14px;color:var(--gris)}
+
+/* panel */
+.cifras{display:flex;flex-wrap:wrap;gap:10px 34px;margin:4px 0 22px;align-items:flex-end}
+.cifra b{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:30px;line-height:1;display:block;letter-spacing:-.01em}
+.cifra span{font-size:13.5px;color:var(--gris)}
+.cifra.alerta b{color:var(--rojo)}
+.cifras .anio-sel{margin-left:auto}
+.panel-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;margin-bottom:26px}
+.proximo{align-self:start;background:var(--verde-noche);color:#e9f1ec;border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.proximo .et{font-size:13.5px;color:#9fc4ae}
+.proximo h3{font-family:var(--f-tit);font-stretch:112%;font-size:26px;line-height:1.1;margin:6px 0 4px}
+.proximo .meta{color:#c9dbd0}
+.proximo .fila{display:flex;gap:18px;align-items:center;margin:18px 0;flex-wrap:wrap}
+.proximo .fila .txt{font-size:14.5px}
+.proximo .fila .txt b{font-size:17px;display:block}
+.proximo .cuenta{margin-left:auto;text-align:right}
+.proximo .cuenta b{font-family:var(--f-tit);font-stretch:112%;font-size:34px;line-height:1;display:block}
+.proximo .acc{display:flex;gap:8px;flex-wrap:wrap}
+.proximo .btn.sec{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.proximo .btn.sec:hover{border-color:#fff}
+.proximo .btn:not(.sec){background:#5fd393;color:#062a15}
+.avisos{display:grid;gap:10px;align-content:start}
+.aviso{border-radius:14px;padding:14px 16px;border:1px solid var(--linea);background:var(--panel)}
+.aviso h3{margin:0 0 6px;font-size:14.5px;display:flex;gap:8px;align-items:center}
+.aviso h3 i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.aviso ul{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.aviso li{font-size:14px;display:flex;justify-content:space-between;gap:10px}
+.aviso li a{cursor:pointer;color:var(--tinta);text-decoration:underline;text-decoration-color:var(--linea-2);text-underline-offset:3px}
+.aviso li span{color:var(--gris);white-space:nowrap}
+.aviso.vacio{color:var(--gris);font-size:14px}
+
+/* calendario anual */
+.anual{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.mes{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:12px;min-height:96px}
+.mes.pasado{opacity:.6}
+.mes.actual{border-color:var(--verde);box-shadow:inset 0 3px 0 var(--verde)}
+.mes h4{margin:0 0 8px;font-size:14px;display:flex;justify-content:space-between}
+.mes h4 span{font-weight:400;color:var(--gris);font-size:12.5px}
+.chip{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:var(--hover);border-radius:8px;padding:6px 8px;margin-top:4px;cursor:pointer;font-size:13px;border-left:3px solid var(--c,var(--verde))}
+.chip:hover{background:var(--verde-suave)}
+.chip b{font-variant-numeric:tabular-nums}
+.chip .oc{font-variant-numeric:tabular-nums;color:var(--gris)}
+.chip.cancel{text-decoration:line-through;opacity:.6}
+.leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--gris);margin:-4px 0 12px}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* tablas */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .toolbar .esp{flex:1}
-.alertas{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:14px}
-.alerta{border-radius:12px;padding:12px 14px}
-.alerta h3{margin:0 0 6px;font-size:13px}
-.alerta ul{margin:0;padding-left:18px}
-.alerta.warn{background:var(--warn-bg);color:#6b4200}
-.alerta.bad{background:var(--bad-bg);color:#7a1a12}
-.alerta a{color:inherit;cursor:pointer;text-decoration:underline}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-tr.click{cursor:pointer} tr.click:hover td{background:#f8fafc}
-tr.pasado td{color:var(--muted)}
 .scroll{overflow-x:auto}
-.badge{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
-.b-act{background:var(--info-bg);color:var(--brand-2)} .b-ini{background:#fff1d6;color:#8a5a00}
-.b-ok{background:var(--ok-bg);color:var(--ok)} .b-warn{background:var(--warn-bg);color:var(--warn)} .b-bad{background:var(--bad-bg);color:var(--bad)} .b-gris{background:#eef1f4;color:var(--muted)}
-.ocup{display:flex;align-items:center;gap:8px;min-width:120px}
-.ocup .b{flex:1;height:6px;background:var(--line);border-radius:9px;overflow:hidden;max-width:90px}
-.ocup .b i{display:block;height:100%;background:var(--ok)}
-.ocup .b i.q{background:var(--accent)} .ocup .b i.f{background:var(--bad)}
-.muted{color:var(--muted)}
-.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
-.stat b{font-size:18px;display:block}
-.stat[aria-pressed=true]{border-color:var(--brand-2);box-shadow:0 0 0 1px var(--brand-2)}
-/* dialogs */
-dialog{border:0;border-radius:16px;padding:0;width:min(1000px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
-dialog.peq{width:min(560px,calc(100vw - 24px))}
-dialog::backdrop{background:rgba(14,26,40,.45)}
-.dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:1}
-.dh h2{margin:0;font-size:18px}
-.db{padding:16px 18px}
-.df{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
-.x{background:none;border:0;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12.5px;color:var(--gris);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--linea);white-space:nowrap;background:var(--panel);position:sticky;top:0}
+td{padding:10px 12px;border-bottom:1px solid var(--linea);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--hover)}
+tr.pasado td{color:var(--gris)}
+.badge{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.b-act{background:var(--verde-suave);color:var(--verde-osc)} .b-ini{background:var(--ambar-suave);color:var(--ambar)}
+.b-ok{background:var(--verde-suave);color:var(--verde-osc)} .b-warn{background:var(--ambar-suave);color:var(--ambar)} .b-bad{background:var(--rojo-suave);color:var(--rojo)} .b-gris{background:var(--hover);color:var(--gris);border:1px solid var(--linea)} .b-azul{background:var(--azul-suave);color:var(--azul)}
+:root[data-theme="dark"] .b-act,:root[data-theme="dark"] .b-ok{color:var(--verde)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-act,:root:not([data-theme="light"]) .b-ok{color:var(--verde)}}
+.sede{display:inline-flex;align-items:center;gap:7px}
+.sede i{width:9px;height:9px;border-radius:3px;background:var(--c)}
+.ocup{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+.disco{flex:none;display:block}
+
+/* pestañas internas */
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:8px 14px;cursor:pointer;text-align:left}
+.stat b{font-family:var(--f-tit);font-stretch:112%;font-size:20px;display:block;line-height:1.2}
+.stat span{font-size:13px;color:var(--gris)}
+.stat[aria-pressed=true]{border-color:var(--verde);box-shadow:inset 0 -3px 0 var(--verde)}
+
+/* diálogos */
+dialog{border:0;border-radius:18px;padding:0;width:min(1060px,calc(100vw - 24px));max-height:calc(100vh - 24px);background:var(--panel);color:var(--tinta);box-shadow:0 24px 70px rgba(0,0,0,.3)}
+dialog.peq{width:min(580px,calc(100vw - 24px))}
+dialog::backdrop{background:rgba(8,22,14,.55)}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--linea);position:sticky;top:0;background:var(--panel);z-index:2}
+.dh h2{margin:0;font-family:var(--f-tit);font-stretch:112%;font-size:21px;line-height:1.15}
+.db{padding:18px 20px}
+.df{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--linea);flex-wrap:wrap;position:sticky;bottom:0;background:var(--panel)}
+.x{background:none;border:0;font-size:26px;cursor:pointer;color:var(--gris);line-height:1;padding:0 4px}
 .grid2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-.jornadas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
-.jornadas input{width:150px}
-.resumen{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px}
-.resumen div{background:var(--bg);border-radius:10px;padding:8px 12px}
-.resumen b{display:block;font-size:16px}
-.err{color:var(--bad);font-size:13px;min-height:1em}
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.2)}
-.acc{display:flex;gap:4px;flex-wrap:wrap}
-select.mini{padding:4px 6px;font-size:12px}
-@media (max-width:640px){th,td{padding:7px 6px}.hide-m{display:none}}
+.jornadas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.jornadas input{width:160px}
+.resumen-c{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.resumen-c .cifra b{font-size:24px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--verde-noche);color:#fff;padding:11px 18px;border-radius:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
+.acc{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end}
+select.mini{padding:4px 8px;font-size:13px}
+.vacio-t{text-align:center;padding:28px;color:var(--gris)}
+
+@media (max-width:900px){.panel-grid{grid-template-columns:1fr}#login{grid-template-columns:1fr}.login-marca{min-height:240px}}
+@media (max-width:640px){
+  th,td{padding:8px}.hide-m{display:none}
+  .marca span,.usuario .em{display:none}
+  .usuario{margin-left:auto}
+  .cab .in{gap:10px}
+  nav.tabs{order:3;flex-basis:100%}
+  nav.tabs button{padding:10px 10px 9px}
+  .cab{position:static}
+  .cifras{gap:10px 22px}
+  .cifras .anio-sel{margin-left:0}
+}
 </style>
 </head>
 <body>
 
-<section id="login">
-  <form id="loginf">
-    <h1>Gestión de adiestramientos</h1>
-    <p class="muted" style="margin:0">WORTACH · acceso interno</p>
-    <label>Correo<input type="email" name="email" required autocomplete="username"></label>
-    <label>Contraseña<input type="password" name="pass" required autocomplete="current-password"></label>
-    <div class="err" id="login-err"></div>
-    <button class="btn" type="submit">Entrar</button>
-  </form>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="simbolo" viewBox="0 0 223 247"><g fill="none" stroke="currentColor" stroke-width="16"><path d="M8 8H112A103 103 0 0 1 215 111V239H8Z"/><circle cx="111.5" cy="127" r="96"/><path d="M111.5 8V239M8 127H215"/></g></symbol>
+</svg>
+
+<section id="login" class="hidden">
+  <div class="login-marca">
+    <img src="icons/logo-oscuro.png" alt="WORTACH, el mundo del tacógrafo" width="156" height="40">
+    <div><h1>Gestión de adiestramientos</h1><p>Convocatorias, inscritos y renovaciones de los técnicos.</p></div>
+    <svg style="color:#5fd393"><use href="#simbolo"/></svg>
+  </div>
+  <div class="login-form">
+    <form id="loginf">
+      <h2 class="tit">Entrar</h2>
+      <label class="c">Correo<input type="email" name="email" required autocomplete="username"></label>
+      <label class="c">Contraseña<input type="password" name="pass" required autocomplete="current-password"></label>
+      <div class="error" id="login-err"></div>
+      <button class="btn" type="submit" style="justify-content:center;padding:12px">Entrar</button>
+    </form>
+  </div>
 </section>
 
 <div id="app" class="hidden">
-  <header><div class="bar">
-    <span class="t">WORTACH · Adiestramientos</span>
-    <nav role="tablist">
-      <button role="tab" data-tab="cursos" aria-selected="true">Cursos</button>
+  <header class="cab"><div class="in">
+    <a class="marca" href="./admin.html"><img src="icons/logo-oscuro.png" alt="WORTACH" width="109" height="28"><span>Adiestramientos</span></a>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="panel" aria-selected="true">Panel</button>
+      <button role="tab" data-tab="cursos" aria-selected="false">Cursos</button>
       <button role="tab" data-tab="tecnicos" aria-selected="false">Técnicos y renovaciones</button>
       <button role="tab" data-tab="correos" aria-selected="false">Correos</button>
     </nav>
-    <button class="btn sec mini salir" id="salir">Salir</button>
+    <div class="usuario"><span class="em" id="yo"></span><button id="salir">Salir</button></div>
   </div></header>
 
   <main>
+    <!-- PANEL -->
+    <section data-panel="panel">
+      <div class="cifras" id="cifras"></div>
+      <div class="panel-grid">
+        <div class="proximo" id="proximo"></div>
+        <div class="avisos" id="avisos"></div>
+      </div>
+      <h2 class="sec-t">Calendario <span id="cal-anio"></span> <small>Pulsa una convocatoria para ver sus inscritos</small></h2>
+      <div class="leyenda"><span><i style="background:var(--verde)"></i>Sevilla</span><span><i style="background:var(--azul)"></i>Zaragoza</span><span><i style="background:var(--violeta)"></i>Online</span><span>Las cifras son plazas ocupadas sobre el cupo</span></div>
+      <div class="anual" id="anual"></div>
+    </section>
+
     <!-- CURSOS -->
-    <section data-panel="cursos">
-      <div class="alertas" id="alertas"></div>
+    <section data-panel="cursos" class="hidden">
       <div class="toolbar">
-        <select id="f-anio"></select>
-        <select id="f-sede"><option value="">Todas las sedes</option><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select>
-        <select id="f-tipo"><option value="">Todos los tipos</option><option value="actualizacion">Actualización</option><option value="iniciacion">Iniciación</option></select>
-        <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink)"><input type="checkbox" id="f-pasados"> Mostrar pasados</label>
+        <select id="f-anio" aria-label="Año"></select>
+        <select id="f-sede" aria-label="Sede"><option value="">Todas las sedes</option><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select>
+        <select id="f-tipo" aria-label="Tipo"><option value="">Todos los tipos</option><option value="actualizacion">Actualización</option><option value="iniciacion">Iniciación</option></select>
+        <label style="display:flex;gap:7px;align-items:center;font-size:14px"><input type="checkbox" id="f-pasados" style="accent-color:var(--verde)"> Mostrar celebrados</label>
         <span class="esp"></span>
         <a class="btn sec" href="./" target="_blank" rel="noopener">Ver formulario público</a>
-        <button class="btn" id="nuevo-curso">+ Nuevo curso</button>
+        <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
-      <div class="card scroll"><table>
-        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Ocupación</th><th class="hide-m">Espera</th><th class="hide-m">Cargo (−45 d)</th><th>Estado</th></tr></thead>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Plazas</th><th class="hide-m">En espera</th><th class="hide-m">Cargo</th><th>Estado</th></tr></thead>
         <tbody id="tb-cursos"></tbody>
       </table></div>
     </section>
@@ -132,11 +254,11 @@ select.mini{padding:4px 6px;font-size:12px}
     <section data-panel="tecnicos" class="hidden">
       <div class="stats" id="stats-tec"></div>
       <div class="toolbar">
-        <input id="buscar-tec" placeholder="Buscar por nombre, DNI o centro…" style="min-width:260px;flex:1">
-        <button class="btn sec" id="csv-tec">Exportar a Excel (CSV)</button>
+        <input id="buscar-tec" type="search" placeholder="Buscar por nombre, DNI o centro técnico" style="min-width:260px;flex:1">
+        <button class="btn sec" id="csv-tec">Exportar a Excel</button>
       </div>
-      <div class="card scroll"><table>
-        <thead><tr><th>Nombre</th><th>DNI</th><th>Centro técnico</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th><th class="hide-m">Contacto</th></tr></thead>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Técnico</th><th>DNI</th><th>Centro técnico</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th><th class="hide-m">Contacto</th></tr></thead>
         <tbody id="tb-tec"></tbody>
       </table></div>
     </section>
@@ -148,9 +270,9 @@ select.mini{padding:4px 6px;font-size:12px}
         <span class="esp"></span>
         <button class="btn" id="procesar">Enviar pendientes ahora</button>
       </div>
-      <p class="muted" style="margin-top:0">Los correos se envían solos cada 15 minutos. Recordatorios: una semana antes y el día anterior al curso.</p>
-      <div class="card scroll"><table>
-        <thead><tr><th>Creado</th><th>Tipo</th><th>Destinatario</th><th class="hide-m">Curso</th><th>Estado</th></tr></thead>
+      <p class="gris" style="margin-top:0">Los correos salen solos cada 15 minutos: confirmación, lista de espera, plaza asignada, recordatorio una semana antes y el día anterior, y cancelación.</p>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Creado</th><th>Correo</th><th>Destinatario</th><th class="hide-m">Curso</th><th>Estado</th></tr></thead>
         <tbody id="tb-correos"></tbody>
       </table></div>
     </section>
@@ -159,50 +281,51 @@ select.mini{padding:4px 6px;font-size:12px}
 
 <!-- Detalle de curso -->
 <dialog id="dlg-curso">
-  <div class="dh"><div><h2 id="dc-titulo"></h2><div class="muted" id="dc-sub"></div></div><button class="x" data-close>×</button></div>
+  <div class="dh"><div><span id="dc-tipo"></span><h2 id="dc-titulo" style="margin-top:6px"></h2><div class="gris" id="dc-sub"></div></div><button class="x" data-close aria-label="Cerrar">×</button></div>
   <div class="db">
-    <div class="resumen" id="dc-resumen"></div>
+    <div class="resumen-c" id="dc-resumen"></div>
     <div class="toolbar">
-      <button class="btn" id="dc-add">+ Añadir asistente</button>
-      <button class="btn sec" id="dc-csv">Exportar a Excel (CSV)</button>
+      <button class="btn" id="dc-add">Añadir asistente</button>
+      <button class="btn sec" id="dc-firmas">Hoja de firmas</button>
+      <button class="btn sec" id="dc-csv">Exportar a Excel</button>
       <button class="btn sec" id="dc-mails">Copiar correos</button>
       <span class="esp"></span>
       <button class="btn sec" id="dc-editar">Editar curso</button>
       <button class="btn peligro" id="dc-cancelar">Cancelar curso</button>
     </div>
-    <div class="scroll"><table>
-      <thead><tr><th>#</th><th>Asistente</th><th>DNI</th><th>Centro técnico</th><th class="hide-m">Contacto</th><th>Estado</th><th>Asistió</th><th></th></tr></thead>
+    <div class="caja scroll"><table>
+      <thead><tr><th>#</th><th>Asistente</th><th>DNI</th><th>Centro técnico</th><th class="hide-m">Contacto del centro</th><th>Estado</th><th>Asistió</th><th></th></tr></thead>
       <tbody id="dc-tb"></tbody>
     </table></div>
   </div>
 </dialog>
 
-<!-- Editar/crear curso -->
+<!-- Crear / editar curso -->
 <dialog id="dlg-edit" class="peq">
   <form id="f-curso">
-    <div class="dh"><h2 id="fe-titulo">Nuevo curso</h2><button class="x" type="button" data-close>×</button></div>
-    <div class="db" style="display:grid;gap:12px">
+    <div class="dh"><h2 id="fe-titulo">Nuevo curso</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db" style="display:grid;gap:14px">
       <div class="grid2">
-        <label>Tipo<select name="tipo"><option value="actualizacion">Actualización (2 jornadas)</option><option value="iniciacion">Iniciación (4 jornadas)</option></select></label>
-        <label>Sede<select name="sede"><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select></label>
+        <label class="c">Tipo<select name="tipo"><option value="actualizacion">Actualización (2 jornadas)</option><option value="iniciacion">Iniciación (4 jornadas)</option></select></label>
+        <label class="c">Sede<select name="sede"><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select></label>
       </div>
       <div>
-        <label>Primera jornada<input type="date" name="inicio" required></label>
-        <label style="margin-top:10px">Jornadas (puedes ajustar cada fecha)</label>
+        <label class="c">Primera jornada<input type="date" name="inicio" required></label>
+        <div class="c" style="margin-top:12px;font-size:13px;font-weight:500">Jornadas <span class="gris" style="font-weight:400">se rellenan solas; puedes ajustar cada fecha</span></div>
         <div class="jornadas" id="jornadas"></div>
       </div>
       <div class="grid2">
-        <label>Cupo máximo<input type="number" name="cupo_max" min="1" value="10" required></label>
-        <label>Quórum mínimo<input type="number" name="quorum_min" min="0" value="6" required></label>
-        <label>Estado<select name="estado"><option value="abierto">Abierto (visible en el formulario)</option><option value="cerrado">Cerrado (no admite inscripciones)</option><option value="cancelado">Cancelado</option></select></label>
+        <label class="c">Cupo máximo<input type="number" name="cupo_max" min="1" value="10" required></label>
+        <label class="c">Quórum mínimo<input type="number" name="quorum_min" min="0" value="6" required></label>
       </div>
-      <label>Notas internas<textarea name="notas" rows="2"></textarea></label>
-      <div class="err" id="fe-err"></div>
+      <label class="c">Estado<select name="estado"><option value="abierto">Abierto: aparece en el formulario</option><option value="cerrado">Cerrado: no admite inscripciones</option><option value="cancelado">Cancelado: avisa a los inscritos</option></select></label>
+      <label class="c">Notas internas<textarea name="notas" rows="2"></textarea></label>
+      <div class="error" id="fe-err"></div>
     </div>
     <div class="df">
-      <button class="btn peligro hidden" type="button" id="fe-borrar" style="margin-right:auto">Eliminar</button>
+      <button class="btn peligro hidden" type="button" id="fe-borrar" style="margin-right:auto">Eliminar curso</button>
       <button class="btn sec" type="button" data-close>Cancelar</button>
-      <button class="btn" type="submit">Guardar</button>
+      <button class="btn" type="submit">Guardar curso</button>
     </div>
   </form>
 </dialog>
@@ -210,23 +333,23 @@ select.mini{padding:4px 6px;font-size:12px}
 <!-- Añadir asistente -->
 <dialog id="dlg-add" class="peq">
   <form id="f-add">
-    <div class="dh"><h2>Añadir asistente</h2><button class="x" type="button" data-close>×</button></div>
-    <div class="db" style="display:grid;gap:12px">
+    <div class="dh"><h2>Añadir asistente</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db" style="display:grid;gap:14px">
       <div class="grid2">
-        <label>Centro técnico<input name="centro" required list="dl-centros"></label>
-        <label>Persona de contacto<input name="contacto"></label>
-        <label>Teléfono del centro<input name="tel_contacto"></label>
+        <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" required list="dl-centros" autocomplete="off"></label>
+        <label class="c">Persona de contacto<input name="contacto"></label>
+        <label class="c">Teléfono del centro<input name="tel_contacto"></label>
       </div>
       <div class="grid2">
-        <label>Nombre y apellidos<input name="nombre" required></label>
-        <label>DNI / NIE<input name="dni" required></label>
-        <label>Teléfono<input name="telefono"></label>
-        <label>Correo<input name="email" type="email"></label>
+        <label class="c" style="grid-column:1/-1">Nombre y apellidos<input name="nombre" required></label>
+        <label class="c">DNI o NIE<input name="dni" required></label>
+        <label class="c">Teléfono<input name="telefono"></label>
+        <label class="c" style="grid-column:1/-1">Correo <span class="gris" style="font-weight:400">si lo pones, recibe la confirmación</span><input name="email" type="email"></label>
       </div>
-      <p class="muted" style="margin:0">Se asigna plaza si hay hueco; si no, pasa a lista de espera. Se le envía el correo de confirmación si tiene email.</p>
-      <div class="err" id="fa-err"></div>
+      <p class="gris" style="margin:0;font-size:14px">Si hay hueco se le asigna plaza; si no, entra en lista de espera.</p>
+      <div class="error" id="fa-err"></div>
     </div>
-    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Añadir</button></div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Añadir asistente</button></div>
   </form>
 </dialog>
 <datalist id="dl-centros"></datalist>
@@ -234,9 +357,9 @@ select.mini{padding:4px 6px;font-size:12px}
 <!-- Mover -->
 <dialog id="dlg-mover" class="peq">
   <form id="f-mover">
-    <div class="dh"><h2>Cambiar de curso</h2><button class="x" type="button" data-close>×</button></div>
-    <div class="db"><p id="fm-quien" style="margin-top:0"></p><label>Nuevo curso<select name="curso" id="fm-sel"></select></label><div class="err" id="fm-err"></div></div>
-    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Mover</button></div>
+    <div class="dh"><h2>Cambiar de curso</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db"><p id="fm-quien" style="margin-top:0"></p><label class="c">Nuevo curso<select name="curso" id="fm-sel"></select></label><div class="error" id="fm-err"></div></div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Cambiar de curso</button></div>
   </form>
 </dialog>
 
@@ -248,33 +371,54 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS = ["dom","lun","mar","mié","jue","vie","sáb"];
 const D = s => new Date(s + "T12:00:00");
 const iso = d => d.toISOString().slice(0,10);
-const hoy = iso(new Date(Date.now() - new Date().getTimezoneOffset()*60000));
+const hoy = iso(new Date(Date.now() - new Date().getTimezoneOffset() * 60000));
 const addDias = (s, n) => { const d = D(s); d.setDate(d.getDate() + n); return iso(d); };
-const fcorta = s => s ? `${D(s).getDate()} ${MESES[D(s).getMonth()]} ${D(s).getFullYear()}` : "—";
+const diasHasta = s => Math.round((D(s) - D(hoy)) / 864e5);
+const fcorta = s => s ? `${D(s).getDate()} ${MESES[D(s).getMonth()].slice(0,3)} ${D(s).getFullYear()}` : "—";
 const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
+const COLOR = { Sevilla: "var(--verde)", Zaragoza: "var(--azul)", Online: "var(--violeta)" };
 const tipoBadge = t => `<span class="badge ${t === "iniciacion" ? "b-ini" : "b-act"}">${TIPO[t]}</span>`;
+const sedeTag = s => `<span class="sede" style="--c:${COLOR[s]}"><i></i>${esc(s)}</span>`;
+function rango(f) {
+  const a = D(f[0]), b = D(f.at(-1));
+  return a.getMonth() === b.getMonth() ? (f.length > 1 ? `${a.getDate()}–${b.getDate()}` : `${a.getDate()}`) : `${a.getDate()}/${a.getMonth()+1}–${b.getDate()}/${b.getMonth()+1}`;
+}
 function textoFechas(f) {
   const d = f.map(D);
   if (d.every(x => x.getMonth() === d[0].getMonth())) {
     const n = d.map(x => x.getDate());
-    return (n.length > 1 ? n.slice(0,-1).join(", ") + " y " + n.at(-1) : n[0]) + ` ${MESES[d[0].getMonth()]} ${d[0].getFullYear()}`;
+    return (n.length > 1 ? n.slice(0,-1).join(", ") + " y " + n.at(-1) : n[0]) + ` de ${MESES[d[0].getMonth()]} ${d[0].getFullYear()}`;
   }
-  return d.map(x => `${x.getDate()} ${MESES[x.getMonth()]}`).join(", ") + ` ${d[0].getFullYear()}`;
+  return d.map(x => `${x.getDate()} ${MESES[x.getMonth()].slice(0,3)}`).join(", ") + ` ${d[0].getFullYear()}`;
 }
-function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 2800); }
+function disco(c, tam = 34, oscuro = false) {
+  const n = c.cupo_max, oc = Math.min(c.ocupadas, n), r = tam / 2 - 3, cx = tam / 2, sw = tam > 40 ? 6 : 4;
+  const gap = n > 1 ? Math.min(8, 90 / n) : 0;
+  const pol = a => [cx + r * Math.cos(a * Math.PI / 180), cx + r * Math.sin(a * Math.PI / 180)];
+  const lleno = oc >= n, bajo = oc < c.quorum_min;
+  let s = "";
+  for (let i = 0; i < n; i++) {
+    const a0 = -90 + i * 360 / n + gap / 2, a1 = a0 + 360 / n - gap, [x0, y0] = pol(a0), [x1, y1] = pol(a1);
+    const col = i < oc ? (lleno ? "var(--rojo)" : bajo ? "var(--ambar)" : (oscuro ? "#5fd393" : "var(--verde)")) : (oscuro ? "rgba(255,255,255,.13)" : "var(--ocupada)");
+    s += n === 1 ? `<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}"/>` : `<path d="M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}" fill="none" stroke="${col}" stroke-width="${sw}"/>`;
+  }
+  return `<svg class="disco" width="${tam}" height="${tam}" viewBox="0 0 ${tam} ${tam}" aria-hidden="true">${s}</svg>`;
+}
+function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; t.setAttribute("role", "status"); document.body.append(t); setTimeout(() => t.remove(), 3000); }
 function csv(nombre, cab, filas) {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const txt = "\ufeff" + [cab, ...filas].map(r => r.map(q).join(";")).join("\r\n");
+  const txt = "﻿" + [cab, ...filas].map(r => r.map(q).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([txt], { type: "text/csv;charset=utf-8" }));
   a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 $$("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
 
-/* ---------- Sesión ---------- */
+/* ---------- sesión ---------- */
 $("#loginf").addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
@@ -288,148 +432,202 @@ async function iniciar() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { $("#login").classList.remove("hidden"); $("#app").classList.add("hidden"); return; }
   const { data: esAdmin } = await sb.rpc("es_admin");
-  if (!esAdmin) { $("#login-err").textContent = "Tu usuario no tiene permiso de gestión."; await sb.auth.signOut(); return; }
+  if (!esAdmin) { $("#login").classList.remove("hidden"); $("#login-err").textContent = "Este usuario no tiene permiso de gestión."; await sb.auth.signOut(); return; }
+  $("#yo").textContent = session.user.email;
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
 }
 
-/* ---------- Pestañas ---------- */
-$$("nav button").forEach(b => b.addEventListener("click", () => {
-  $$("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  $$("[data-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.panel !== b.dataset.tab));
-  if (b.dataset.tab === "tecnicos") cargarTecnicos();
-  if (b.dataset.tab === "correos") cargarCorreos();
-  if (b.dataset.tab === "cursos") cargarCursos();
-}));
+/* ---------- pestañas ---------- */
+function abrirTab(t) {
+  $$("nav.tabs button").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === t));
+  $$("[data-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.panel !== t));
+  if (t === "tecnicos") cargarTecnicos();
+  if (t === "correos") cargarCorreos();
+  if (t === "cursos" || t === "panel") cargarCursos();
+}
+$$("nav.tabs button").forEach(b => b.addEventListener("click", () => abrirTab(b.dataset.tab)));
 
-/* ---------- Cursos ---------- */
-let cursos = [];
+/* ---------- datos de cursos ---------- */
+let cursos = [], anioPanel = hoy.slice(0,4), porRenovar = 0;
 async function cargarCursos() {
   const { data, error } = await sb.from("cursos").select("*, inscripciones(estado)").order("fecha_inicio");
-  if (error) return toast("Error cargando cursos");
+  if (error) return toast("No se han podido cargar los cursos");
   cursos = data.map(c => ({ ...c,
     ocupadas: c.inscripciones.filter(i => i.estado === "confirmada").length,
     espera: c.inscripciones.filter(i => i.estado === "lista_espera").length,
     cargo: addDias(c.fecha_inicio, -45) }));
-  const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0,4)))].sort().reverse();
+  const anios = [...new Set([hoy.slice(0,4), ...cursos.map(c => c.fecha_inicio.slice(0,4))])].sort().reverse();
   const sa = $("#f-anio"), prev = sa.value || hoy.slice(0,4);
   sa.innerHTML = `<option value="">Todos los años</option>` + anios.map(a => `<option ${a === prev ? "selected" : ""}>${a}</option>`).join("");
-  pintarCursos(); pintarAlertas();
+  const { count } = await sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).in("situacion", ["caducado","vence_pronto"]);
+  porRenovar = count || 0;
+  pintarPanel(anios); pintarCursos();
 }
-["#f-anio","#f-sede","#f-tipo","#f-pasados"].forEach(s => $(s).addEventListener("change", pintarCursos));
 
+/* ---------- panel ---------- */
+function pintarPanel(anios) {
+  const delAnio = cursos.filter(c => c.fecha_inicio.startsWith(anioPanel));
+  const vivos = delAnio.filter(c => c.estado !== "cancelado");
+  const plazas = vivos.reduce((s, c) => s + c.cupo_max, 0), ocup = vivos.reduce((s, c) => s + c.ocupadas, 0), esp = vivos.reduce((s, c) => s + c.espera, 0);
+  $("#cifras").innerHTML = `
+    <div class="cifra"><b>${vivos.length}</b><span>convocatorias en ${anioPanel}</span></div>
+    <div class="cifra"><b>${ocup}<span style="font-size:18px;color:var(--gris)"> / ${plazas}</span></b><span>plazas ocupadas</span></div>
+    <div class="cifra"><b>${esp}</b><span>en lista de espera</span></div>
+    <div class="cifra ${porRenovar ? "alerta" : ""}"><b>${porRenovar}</b><span><a href="#" id="ir-renov">técnicos por renovar</a></span></div>
+    <select class="anio-sel" id="anio-panel" aria-label="Año del panel">${anios.map(a => `<option ${a === anioPanel ? "selected" : ""}>${a}</option>`).join("")}</select>`;
+  $("#anio-panel").onchange = e => { anioPanel = e.target.value; pintarPanel(anios); };
+  $("#ir-renov").onclick = e => { e.preventDefault(); filtroSit = "caducado"; abrirTab("tecnicos"); };
+
+  const prox = cursos.find(c => c.estado !== "cancelado" && c.fecha_fin >= hoy);
+  if (prox) {
+    const d = diasHasta(prox.fecha_inicio), enCurso = d <= 0;
+    const q = prox.ocupadas >= prox.quorum_min;
+    $("#proximo").innerHTML = `<svg style="position:absolute;right:-50px;top:-30px;width:220px;height:240px;color:#5fd393;opacity:.08"><use href="#simbolo"/></svg>
+      <div class="et">${enCurso ? "En curso ahora" : "Próxima convocatoria"}</div>
+      <h3>${textoFechas(prox.fechas)}</h3>
+      <div class="meta">${TIPO[prox.tipo]} en ${esc(prox.sede)}, ${prox.fechas.length} jornadas</div>
+      <div class="fila">${disco(prox, 64, true)}
+        <div class="txt"><b>${prox.ocupadas} de ${prox.cupo_max} plazas</b>${prox.espera ? `${prox.espera} en espera. ` : ""}${q ? "Quórum alcanzado" : `Faltan ${prox.quorum_min - prox.ocupadas} para el quórum`}</div>
+        <div class="cuenta">${enCurso ? `<b>Hoy</b>` : `<b>${d}</b>día${d === 1 ? "" : "s"}`}</div></div>
+      <div class="acc"><button class="btn" data-ver="${prox.id}">Ver inscritos</button><button class="btn sec" data-firmas="${prox.id}">Hoja de firmas</button></div>`;
+  } else $("#proximo").innerHTML = `<div class="et">Próxima convocatoria</div><h3>No hay cursos programados</h3><div class="acc" style="margin-top:16px"><button class="btn" onclick="abrirEdicion(null)">Nuevo curso</button></div>`;
+
+  const futuros = cursos.filter(c => c.estado !== "cancelado" && c.fecha_inicio > hoy);
+  const cargos = futuros.filter(c => c.cargo >= addDias(hoy, -7) && c.cargo <= addDias(hoy, 21) && c.ocupadas > 0);
+  const quorum = futuros.filter(c => c.fecha_inicio <= addDias(hoy, 60) && c.ocupadas < c.quorum_min);
+  const llenos = futuros.filter(c => c.espera > 0);
+  const li = (c, extra) => `<li><a data-ver="${c.id}">${rango(c.fechas)} ${MESES[D(c.fecha_inicio).getMonth()].slice(0,3)}, ${TIPO[c.tipo]}, ${c.sede}</a><span>${extra}</span></li>`;
+  let h = "";
+  if (cargos.length) h += `<div class="aviso"><h3><i style="background:var(--ambar)"></i>Cargos de estas semanas</h3><ul>${cargos.map(c => li(c, `${c.cargo < hoy ? "fue el " : c.cargo === hoy ? "hoy, " : ""}${fcorta(c.cargo)}, ${c.ocupadas} plazas`)).join("")}</ul></div>`;
+  if (quorum.length) h += `<div class="aviso"><h3><i style="background:var(--rojo)"></i>Sin quórum en los próximos 60 días</h3><ul>${quorum.map(c => li(c, `${c.ocupadas} de ${c.quorum_min}`)).join("")}</ul></div>`;
+  if (llenos.length) h += `<div class="aviso"><h3><i style="background:var(--azul)"></i>Con lista de espera</h3><ul>${llenos.map(c => li(c, `${c.espera} esperando`)).join("")}</ul></div>`;
+  $("#avisos").innerHTML = h || `<div class="aviso vacio">Todo en orden: no hay cargos pendientes, cursos sin quórum ni listas de espera.</div>`;
+
+  $("#cal-anio").textContent = anioPanel;
+  const mesActual = hoy.slice(0,7);
+  $("#anual").innerHTML = MESES.map((m, i) => {
+    const k = `${anioPanel}-${String(i + 1).padStart(2, "0")}`;
+    const cs = delAnio.filter(c => c.fecha_inicio.startsWith(k));
+    return `<div class="mes ${k < mesActual ? "pasado" : ""} ${k === mesActual ? "actual" : ""}">
+      <h4>${m[0].toUpperCase() + m.slice(1)}<span>${cs.length ? cs.reduce((s, c) => s + c.ocupadas, 0) + " inscritos" : ""}</span></h4>
+      ${cs.map(c => `<button class="chip ${c.estado === "cancelado" ? "cancel" : ""}" style="--c:${COLOR[c.sede]}" data-ver="${c.id}" title="${TIPO[c.tipo]} en ${c.sede}">
+        <b>${rango(c.fechas)}</b><span>${c.sede}${c.tipo === "iniciacion" ? " · Inic." : ""}</span><span class="oc">${c.ocupadas}/${c.cupo_max}</span></button>`).join("") || `<span class="gris" style="font-size:13px">Sin convocatorias</span>`}
+    </div>`;
+  }).join("");
+}
+document.addEventListener("click", e => {
+  const v = e.target.closest("[data-ver]"); if (v) { abrirCurso(v.dataset.ver); return; }
+  const f = e.target.closest("[data-firmas]"); if (f) hojaFirmas(f.dataset.firmas);
+});
+
+/* ---------- lista de cursos ---------- */
+["#f-anio","#f-sede","#f-tipo","#f-pasados"].forEach(s => $(s).addEventListener("change", pintarCursos));
+function estadoBadge(c) {
+  const pasado = c.fecha_fin < hoy;
+  return c.estado === "cancelado" ? `<span class="badge b-bad">Cancelado</span>` : pasado ? `<span class="badge b-gris">Celebrado</span>`
+    : c.estado === "cerrado" ? `<span class="badge b-gris">Cerrado</span>` : c.ocupadas >= c.cupo_max ? `<span class="badge b-azul">Completo</span>`
+    : c.ocupadas < c.quorum_min ? `<span class="badge b-warn">Sin quórum</span>` : `<span class="badge b-ok">Abierto</span>`;
+}
 function pintarCursos() {
   const a = $("#f-anio").value, s = $("#f-sede").value, t = $("#f-tipo").value, pas = $("#f-pasados").checked;
   const lista = cursos.filter(c => (!a || c.fecha_inicio.startsWith(a)) && (!s || c.sede === s) && (!t || c.tipo === t) && (pas || c.fecha_fin >= hoy));
   $("#tb-cursos").innerHTML = lista.map(c => {
-    const pasado = c.fecha_fin < hoy, pct = Math.min(100, c.ocupadas / c.cupo_max * 100);
-    const cls = c.ocupadas >= c.cupo_max ? "f" : c.ocupadas < c.quorum_min ? "q" : "";
-    const est = c.estado === "cancelado" ? `<span class="badge b-bad">Cancelado</span>` : pasado ? `<span class="badge b-gris">Celebrado</span>`
-      : c.estado === "cerrado" ? `<span class="badge b-gris">Cerrado</span>` : c.ocupadas >= c.cupo_max ? `<span class="badge b-bad">Completo</span>`
-      : c.ocupadas < c.quorum_min ? `<span class="badge b-warn">Sin quórum</span>` : `<span class="badge b-ok">Abierto</span>`;
-    return `<tr class="click ${pasado ? "pasado" : ""}" data-id="${c.id}">
-      <td><b>${textoFechas(c.fechas)}</b></td><td>${tipoBadge(c.tipo)}</td><td>${esc(c.sede)}</td>
-      <td><div class="ocup"><span class="b"><i class="${cls}" style="width:${pct}%"></i></span>${c.ocupadas}/${c.cupo_max}</div></td>
-      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m">${pasado ? "—" : fcorta(c.cargo)}</td><td>${est}</td></tr>`;
-  }).join("") || `<tr><td colspan="7" class="muted" style="text-align:center;padding:24px">No hay cursos con estos filtros.</td></tr>`;
+    const pasado = c.fecha_fin < hoy;
+    return `<tr class="click ${pasado ? "pasado" : ""}" data-ver="${c.id}" tabindex="0">
+      <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
+      <td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+      <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}</span></div></td>
+      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m">${pasado ? "—" : fcorta(c.cargo)}</td><td>${estadoBadge(c)}</td></tr>`;
+  }).join("") || `<tr><td colspan="7" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
 }
-$("#tb-cursos").addEventListener("click", e => { const tr = e.target.closest("tr[data-id]"); if (tr) abrirCurso(tr.dataset.id); });
+$("#tb-cursos").addEventListener("keydown", e => { if (e.key === "Enter") { const tr = e.target.closest("tr[data-ver]"); if (tr) abrirCurso(tr.dataset.ver); } });
 
-function pintarAlertas() {
-  const vivos = cursos.filter(c => c.estado !== "cancelado" && c.fecha_inicio > hoy);
-  const cargos = vivos.filter(c => c.cargo <= addDias(hoy, 14) && c.ocupadas > 0);
-  const quorum = vivos.filter(c => c.fecha_inicio <= addDias(hoy, 60) && c.ocupadas < c.quorum_min);
-  const li = (c, extra) => `<li><a data-id="${c.id}">${textoFechas(c.fechas)} · ${TIPO[c.tipo]} · ${c.sede}</a> — ${extra}</li>`;
-  let h = "";
-  if (cargos.length) h += `<div class="alerta warn"><h3>Cargos a realizar (45 días antes)</h3><ul>${cargos.map(c => li(c, `${c.cargo < hoy ? "debía hacerse el" : "el"} ${fcorta(c.cargo)} · ${c.ocupadas} asistentes`)).join("")}</ul></div>`;
-  if (quorum.length) h += `<div class="alerta bad"><h3>Por debajo del quórum (próximos 60 días)</h3><ul>${quorum.map(c => li(c, `${c.ocupadas} de ${c.quorum_min} mínimos`)).join("")}</ul></div>`;
-  $("#alertas").innerHTML = h;
-}
-$("#alertas").addEventListener("click", e => { const a = e.target.closest("a[data-id]"); if (a) abrirCurso(a.dataset.id); });
-
-/* ---------- Detalle ---------- */
+/* ---------- detalle ---------- */
 let actual = null, inscritos = [];
 async function abrirCurso(id) {
-  actual = cursos.find(c => c.id === id);
-  $("#dc-titulo").textContent = `${TIPO[actual.tipo]} · ${actual.sede}`;
-  $("#dc-sub").textContent = textoFechas(actual.fechas) + (actual.notas ? ` · ${actual.notas}` : "");
+  actual = cursos.find(c => c.id === id); if (!actual) return;
+  $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
+  $("#dc-titulo").textContent = textoFechas(actual.fechas);
+  $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${i === 0 ? "10:00–18:30" : "9:00–17:15"}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
   $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado");
-  $("#dc-tb").innerHTML = `<tr><td colspan="8" class="muted">Cargando…</td></tr>`;
+  $("#dc-tb").innerHTML = `<tr><td colspan="8" class="vacio-t">Cargando…</td></tr>`;
   if (!$("#dlg-curso").open) $("#dlg-curso").showModal();
   await cargarInscritos();
 }
 async function cargarInscritos() {
   const { data, error } = await sb.from("inscripciones")
     .select("*, tecnicos(nombre,dni,telefono,email), centros(nombre)").eq("curso_id", actual.id).order("created_at");
-  if (error) return toast("Error cargando inscritos");
+  if (error) return toast("No se han podido cargar los inscritos");
   const orden = { confirmada: 0, lista_espera: 1, cancelada: 2 };
   inscritos = data.sort((a, b) => orden[a.estado] - orden[b.estado] || a.created_at.localeCompare(b.created_at));
   const conf = inscritos.filter(i => i.estado === "confirmada").length, esp = inscritos.filter(i => i.estado === "lista_espera").length;
-  $("#dc-resumen").innerHTML = `<div><span class="muted">Confirmados</span><b>${conf} / ${actual.cupo_max}</b></div>
-    <div><span class="muted">Lista de espera</span><b>${esp}</b></div>
-    <div><span class="muted">Quórum mínimo</span><b style="color:${conf < actual.quorum_min ? "var(--bad)" : "var(--ok)"}">${actual.quorum_min}</b></div>
-    <div><span class="muted">Cargo</span><b>${fcorta(actual.cargo)}</b></div>`;
+  const vista = { ...actual, ocupadas: conf };
+  const dCargo = diasHasta(actual.cargo);
+  $("#dc-resumen").innerHTML = `${disco(vista, 56)}
+    <div class="cifra"><b>${conf} / ${actual.cupo_max}</b><span>plazas confirmadas</span></div>
+    <div class="cifra"><b>${esp}</b><span>en lista de espera</span></div>
+    <div class="cifra ${conf < actual.quorum_min ? "alerta" : ""}"><b>${actual.quorum_min}</b><span>quórum mínimo${conf < actual.quorum_min ? `, faltan ${actual.quorum_min - conf}` : ", alcanzado"}</span></div>
+    <div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`;
   let n = 0;
   $("#dc-tb").innerHTML = inscritos.map(i => {
-    const t = i.tecnicos, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Cancelada</span>` }[i.estado];
+    const t = i.tecnicos, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
     return `<tr data-id="${i.id}" style="${i.estado === "cancelada" ? "opacity:.55" : ""}">
-      <td>${i.estado === "confirmada" ? ++n : ""}</td>
-      <td><b>${esc(t.nombre)}</b><div class="muted">${esc(t.email || "")}${t.telefono ? " · " + esc(t.telefono) : ""}</div></td>
+      <td class="gris">${i.estado === "confirmada" ? ++n : ""}</td>
+      <td><b>${esc(t.nombre)}</b><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
       <td>${esc(t.dni)}</td><td>${esc(i.centros?.nombre || "")}</td>
-      <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="muted">${esc(i.contacto_telefono || "")}</div></td>
-      <td>${est}</td>
-      <td><select class="mini" data-act="asistio"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
+      <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
+      <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
+      <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">
         ${i.dni_foto_path ? `<button class="btn sec mini" data-act="foto">DNI</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
-        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Baja</button>`}
+        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}
       </div></td></tr>`;
-  }).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:20px">Todavía no hay inscritos.</td></tr>`;
+  }).join("") || `<tr><td colspan="8" class="vacio-t">Todavía no hay inscritos. Comparte el formulario con los talleres o añade un asistente a mano.</td></tr>`;
 }
-
 $("#dc-tb").addEventListener("change", async e => {
   if (e.target.dataset.act !== "asistio") return;
   const id = e.target.closest("tr").dataset.id, v = e.target.value === "" ? null : e.target.value === "true";
   const { error } = await sb.from("inscripciones").update({ asistio: v }).eq("id", id);
-  toast(error ? "No se ha podido guardar" : "Asistencia guardada");
+  toast(error ? "No se ha podido guardar la asistencia" : "Asistencia guardada");
 });
+let moviendo = null;
 $("#dc-tb").addEventListener("click", async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const i = inscritos.find(x => x.id === b.closest("tr").dataset.id);
   if (b.dataset.act === "foto") {
     const { data, error } = await sb.storage.from("dni").createSignedUrl(i.dni_foto_path, 300);
-    if (error) return toast("No se encuentra la foto");
+    if (error) return toast("No se encuentra la foto del DNI");
     window.open(data.signedUrl, "_blank", "noopener");
   }
   if (b.dataset.act === "cancelar") {
-    if (!confirm(`¿Dar de baja a ${i.tecnicos.nombre}? Si tenía plaza, pasará automáticamente al primero de la lista de espera.`)) return;
+    if (!confirm(`¿Dar de baja a ${i.tecnicos.nombre}? Si tenía plaza, pasa automáticamente al primero de la lista de espera.`)) return;
     const { error } = await sb.from("inscripciones").update({ estado: "cancelada" }).eq("id", i.id);
     if (error) return toast("No se ha podido dar de baja");
     toast("Baja registrada"); await cargarInscritos(); cargarCursos();
   }
   if (b.dataset.act === "borrar") {
-    if (!confirm("¿Eliminar definitivamente este registro?")) return;
+    if (!confirm("¿Eliminar definitivamente este registro? No se puede deshacer.")) return;
     if (i.dni_foto_path) await sb.storage.from("dni").remove([i.dni_foto_path]);
     await sb.from("inscripciones").delete().eq("id", i.id);
-    await cargarInscritos(); cargarCursos();
+    toast("Registro eliminado"); await cargarInscritos(); cargarCursos();
   }
   if (b.dataset.act === "mover") {
     moviendo = i;
-    $("#fm-quien").innerHTML = `<b>${esc(i.tecnicos.nombre)}</b> pasará al curso elegido. Si no hay plaza, quedará en lista de espera.`;
+    $("#fm-quien").innerHTML = `<b>${esc(i.tecnicos.nombre)}</b> pasará al curso que elijas. Si no hay plaza, quedará en lista de espera y recibirá el correo correspondiente.`;
     $("#fm-sel").innerHTML = cursos.filter(c => c.id !== actual.id && c.estado !== "cancelado" && c.fecha_inicio > hoy)
-      .map(c => `<option value="${c.id}">${textoFechas(c.fechas)} · ${TIPO[c.tipo]} · ${c.sede} (${c.ocupadas}/${c.cupo_max})</option>`).join("");
+      .map(c => `<option value="${c.id}">${textoFechas(c.fechas)}, ${TIPO[c.tipo]}, ${c.sede} (${c.ocupadas}/${c.cupo_max})</option>`).join("");
     $("#fm-err").textContent = ""; $("#dlg-mover").showModal();
   }
 });
-let moviendo = null;
 $("#f-mover").addEventListener("submit", async e => {
   e.preventDefault();
   const { data, error } = await sb.rpc("mover_inscripcion", { p_ins: moviendo.id, p_curso: e.target.curso.value });
   if (error) { $("#fm-err").textContent = error.message; return; }
-  $("#dlg-mover").close(); toast(data.estado === "confirmada" ? "Movido con plaza confirmada" : "Movido a lista de espera");
+  $("#dlg-mover").close(); toast(data.estado === "confirmada" ? "Cambiado de curso con plaza confirmada" : "Cambiado de curso, en lista de espera");
   await cargarCursos(); await cargarInscritos();
 });
-
 $("#dc-csv").addEventListener("click", () => {
   csv(`inscritos_${actual.sede}_${actual.fecha_inicio}.csv`,
     ["Estado","Fecha inscripción","Centro técnico","Persona de contacto","Teléfono centro","Nombre y apellidos","DNI","Teléfono asistente","Correo asistente","Asistió"],
@@ -437,17 +635,42 @@ $("#dc-csv").addEventListener("click", () => {
 });
 $("#dc-mails").addEventListener("click", async () => {
   const m = inscritos.filter(i => i.estado === "confirmada" && i.tecnicos.email).map(i => i.tecnicos.email).join("; ");
-  await navigator.clipboard.writeText(m); toast("Correos copiados");
+  try { await navigator.clipboard.writeText(m); toast("Correos copiados"); } catch { prompt("Copia los correos:", m); }
 });
+$("#dc-firmas").addEventListener("click", () => hojaFirmas(actual.id));
 $("#dc-cancelar").addEventListener("click", async () => {
   if (!confirm("¿Cancelar este curso? Se enviará un correo de cancelación a todos los inscritos.")) return;
   const { error } = await sb.from("cursos").update({ estado: "cancelado" }).eq("id", actual.id);
-  if (error) return toast("No se ha podido cancelar");
+  if (error) return toast("No se ha podido cancelar el curso");
   toast("Curso cancelado"); $("#dlg-curso").close(); cargarCursos();
 });
 $("#dc-editar").addEventListener("click", () => abrirEdicion(actual));
 
-/* ---------- Añadir asistente ---------- */
+/* ---------- hoja de firmas ---------- */
+async function hojaFirmas(id) {
+  const c = cursos.find(x => x.id === id);
+  const { data, error } = await sb.from("inscripciones").select("created_at, tecnicos(nombre,dni), centros(nombre)").eq("curso_id", id).eq("estado", "confirmada").order("created_at");
+  if (error) return toast("No se ha podido preparar la hoja de firmas");
+  const base = location.href.replace(/[^/]*$/, "");
+  const filas = data.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.tecnicos.nombre)}</td><td>${esc(i.tecnicos.dni)}</td><td>${esc(i.centros?.nombre || "")}</td>${c.fechas.map(() => "<td></td>").join("")}</tr>`).join("");
+  const vacias = Array.from({ length: 3 }, (_, n) => `<tr><td>${data.length + n + 1}</td><td></td><td></td><td></td>${c.fechas.map(() => "<td></td>").join("")}</tr>`).join("");
+  const w = window.open("", "_blank");
+  if (!w) return toast("Permite las ventanas emergentes para imprimir");
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Hoja de firmas ${c.sede} ${c.fecha_inicio}</title>
+  <style>@page{size:A4 landscape;margin:14mm}body{font:12px/1.4 Arial,sans-serif;color:#111;margin:0}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #268c56;padding-bottom:10px;margin-bottom:14px}
+  header img{height:36px}h1{font-size:18px;margin:0}p{margin:2px 0;color:#444}
+  table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:6px 8px;text-align:left;height:30px}th{background:#e4f1e9;font-size:11px}
+  td:first-child,th:first-child{width:24px;text-align:center}.firma{width:150px}footer{margin-top:14px;color:#666;font-size:11px}</style></head><body>
+  <header><div><h1>Hoja de firmas · Adiestramiento de ${TIPO[c.tipo].toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${c.sede}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
+  <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th>${c.fechas.map((f, i) => `<th class="firma">Firma ${i + 1}ª jornada<br>${DIAS[D(f).getDay()]} ${D(f).getDate()}/${D(f).getMonth() + 1} · ${i === 0 ? "10:00–18:30" : "9:00–17:15"}</th>`).join("")}</tr></thead>
+  <tbody>${filas}${vacias}</tbody></table>
+  <footer>Formador: ______________________________ Firma: ____________________ · WORTACH Asistencia Técnica · asistencia@wortach.com · 954 360 572</footer>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ---------- añadir asistente ---------- */
 $("#dc-add").addEventListener("click", async () => {
   $("#f-add").reset(); $("#fa-err").textContent = "";
   const { data } = await sb.from("centros").select("nombre").order("nombre");
@@ -460,29 +683,29 @@ $("#f-add").addEventListener("submit", async e => {
   const { data, error } = await sb.rpc("inscribir", { p_curso: actual.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto,
     p_nombre: v.nombre, p_dni: v.dni, p_foto: null, p_telefono: v.telefono, p_email: v.email });
   if (error) { $("#fa-err").textContent = error.message; return; }
-  $("#dlg-add").close(); toast(data.estado === "confirmada" ? "Añadido con plaza" : "Añadido a lista de espera");
+  $("#dlg-add").close(); toast(data.estado === "confirmada" ? "Asistente añadido con plaza" : "Asistente añadido a la lista de espera");
   await cargarCursos(); actual = cursos.find(c => c.id === actual.id); await cargarInscritos();
 });
 
-/* ---------- Crear / editar curso ---------- */
+/* ---------- crear / editar curso ---------- */
 let editando = null;
 const fc = $("#f-curso");
 function pintarJornadas(fechas) {
-  $("#jornadas").innerHTML = fechas.map((f, i) => `<input type="date" value="${f}" data-j="${i}">`).join("") +
-    `<button type="button" class="btn sec mini" id="j-mas">+ jornada</button>` +
-    (fechas.length > 1 ? `<button type="button" class="btn sec mini" id="j-menos">− jornada</button>` : "");
+  $("#jornadas").innerHTML = fechas.map((f, i) => `<input type="date" value="${f}" aria-label="Jornada ${i + 1}">`).join("") +
+    `<button type="button" class="btn sec mini" id="j-mas">Añadir jornada</button>` +
+    (fechas.length > 1 ? `<button type="button" class="btn sec mini" id="j-menos">Quitar jornada</button>` : "");
   $("#j-mas").onclick = () => { const f = leerJornadas(); pintarJornadas([...f, addDias(f.at(-1), 1)]); };
   if ($("#j-menos")) $("#j-menos").onclick = () => pintarJornadas(leerJornadas().slice(0, -1));
 }
 const leerJornadas = () => $$("#jornadas input").map(i => i.value).filter(Boolean);
 function autoJornadas() {
   const ini = fc.inicio.value; if (!ini) return;
-  const n = fc.tipo.value === "iniciacion" ? 4 : 2;
-  pintarJornadas(Array.from({ length: n }, (_, i) => addDias(ini, i)));
+  const n = fc.tipo.value === "iniciacion" ? 4 : 2, out = [];
+  let d = ini; while (out.length < n) { if (![0, 6].includes(D(d).getDay())) out.push(d); d = addDias(d, 1); }
+  pintarJornadas(out);
 }
 fc.inicio.addEventListener("change", autoJornadas);
 fc.tipo.addEventListener("change", autoJornadas);
-
 function abrirEdicion(c) {
   editando = c || null;
   fc.reset(); $("#fe-err").textContent = "";
@@ -492,7 +715,7 @@ function abrirEdicion(c) {
     fc.tipo.value = c.tipo; fc.sede.value = c.sede; fc.inicio.value = c.fecha_inicio;
     fc.cupo_max.value = c.cupo_max; fc.quorum_min.value = c.quorum_min; fc.estado.value = c.estado; fc.notas.value = c.notas || "";
     pintarJornadas(c.fechas);
-  } else $("#jornadas").innerHTML = `<span class="muted">Elige la primera jornada</span>`;
+  } else $("#jornadas").innerHTML = `<span class="gris" style="font-size:14px">Elige la primera jornada y se completan las demás (sin fines de semana).</span>`;
   $("#dlg-edit").showModal();
 }
 $("#nuevo-curso").addEventListener("click", () => abrirEdicion(null));
@@ -502,42 +725,41 @@ fc.addEventListener("submit", async e => {
   if (!fechas.length) { $("#fe-err").textContent = "Indica al menos una jornada."; return; }
   const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null };
   if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm("Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;
-  const q = editando ? sb.from("cursos").update(row).eq("id", editando.id) : sb.from("cursos").insert(row);
-  const { error } = await q;
+  const { error } = editando ? await sb.from("cursos").update(row).eq("id", editando.id) : await sb.from("cursos").insert(row);
   if (error) { $("#fe-err").textContent = error.message; return; }
   $("#dlg-edit").close(); toast("Curso guardado");
   await cargarCursos();
   if (editando && $("#dlg-curso").open) abrirCurso(editando.id);
 });
 $("#fe-borrar").addEventListener("click", async () => {
-  if (editando.inscripciones.length) { $("#fe-err").textContent = "Este curso tiene inscripciones. Cáncelalo en lugar de eliminarlo."; return; }
+  if (editando.inscripciones.length) { $("#fe-err").textContent = "Este curso tiene inscripciones: cancélalo en lugar de eliminarlo."; return; }
   if (!confirm("¿Eliminar este curso?")) return;
   await sb.from("cursos").delete().eq("id", editando.id);
-  $("#dlg-edit").close(); $("#dlg-curso").close(); cargarCursos();
+  $("#dlg-edit").close(); $("#dlg-curso").close(); toast("Curso eliminado"); cargarCursos();
 });
 
-/* ---------- Técnicos ---------- */
+/* ---------- técnicos ---------- */
 let tecnicos = [], filtroSit = "";
-const SIT = { caducado: ["Caducado","b-bad"], vence_pronto: ["Vence pronto","b-warn"], al_dia: ["Al día","b-ok"], inscrito: ["Inscrito","b-act"], sin_formacion: ["Sin formación","b-gris"] };
+const SIT = { caducado: ["Caducado","b-bad"], vence_pronto: ["Vence pronto","b-warn"], al_dia: ["Al día","b-ok"], inscrito: ["Inscrito","b-azul"], sin_formacion: ["Sin formación","b-gris"] };
 async function cargarTecnicos() {
   const { data, error } = await sb.from("tecnicos_estado").select("*").order("nombre");
-  if (error) return toast("Error cargando técnicos");
+  if (error) return toast("No se han podido cargar los técnicos");
   tecnicos = data; pintarTecnicos();
 }
 function pintarTecnicos() {
   const cuenta = k => tecnicos.filter(t => t.situacion === k).length;
   $("#stats-tec").innerHTML = [["", "Todos", tecnicos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
-    .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b>${n}</button>`).join("");
-  const q = $("#buscar-tec").value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b><span>${n}</span></button>`).join("");
+  const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const q = norm($("#buscar-tec").value);
   const lista = tecnicos.filter(t => (!filtroSit || t.situacion === filtroSit) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
   $("#tb-tec").innerHTML = lista.map(t => `<tr>
     <td><b>${esc(t.nombre)}</b></td><td>${esc(t.dni)}</td><td>${esc(t.centro || "")}</td>
-    <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + " · " + fcorta(t.ultima_fecha) : "—"}${t.tiene_iniciacion ? "" : t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
-    <td>${t.proximo_curso ? `Próximo: ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
+    <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + ", " + fcorta(t.ultima_fecha) : "—"}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
+    <td>${t.proximo_curso ? `Inscrito el ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
     <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span></td>
-    <td class="hide-m muted">${esc(t.email || "")}<br>${esc(t.telefono || "")}</td></tr>`).join("")
-    || `<tr><td colspan="7" class="muted" style="text-align:center;padding:24px">Sin resultados.</td></tr>`;
+    <td class="hide-m gris" style="font-size:13px">${esc(t.email || "")}<br>${esc(t.telefono || "")}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="vacio-t">${tecnicos.length ? "Ningún técnico coincide con la búsqueda." : "Aún no hay técnicos. Aparecerán aquí con las inscripciones o al importar los años anteriores."}</td></tr>`;
 }
 $("#stats-tec").addEventListener("click", e => { const b = e.target.closest("[data-sit]"); if (b) { filtroSit = b.dataset.sit; pintarTecnicos(); } });
 $("#buscar-tec").addEventListener("input", pintarTecnicos);
@@ -545,30 +767,30 @@ $("#csv-tec").addEventListener("click", () => csv(`tecnicos_${hoy}.csv`,
   ["Nombre","DNI","Centro técnico","Último curso","Fecha último curso","Renovar antes de","Próximo curso","Situación","Correo","Teléfono"],
   tecnicos.map(t => [t.nombre, t.dni, t.centro, t.ultimo_tipo ? TIPO[t.ultimo_tipo] : "", t.ultima_fecha, t.renovar_antes, t.proximo_curso, SIT[t.situacion][0], t.email, t.telefono])));
 
-/* ---------- Correos ---------- */
-const TIPOCORREO = { confirmacion: "Confirmación", lista_espera: "Lista de espera", plaza_asignada: "Plaza asignada", recordatorio_7: "Recordatorio 7 días", recordatorio_1: "Recordatorio 1 día", cancelacion_curso: "Cancelación" };
-const ESTCORREO = { pendiente: "b-warn", enviado: "b-ok", error: "b-bad", descartado: "b-gris" };
+/* ---------- correos ---------- */
+const TIPOCORREO = { confirmacion: "Confirmación", lista_espera: "Lista de espera", plaza_asignada: "Plaza asignada", recordatorio_7: "Recordatorio, 7 días", recordatorio_1: "Recordatorio, 1 día", cancelacion_curso: "Cancelación" };
+const ESTCORREO = { pendiente: ["Pendiente","b-warn"], enviado: ["Enviado","b-ok"], error: ["Error","b-bad"], descartado: ["Descartado","b-gris"] };
 async function cargarCorreos() {
   const { data, error } = await sb.from("correos")
     .select("*, inscripciones(tecnicos(nombre,email), cursos(tipo,sede,fechas))").order("created_at", { ascending: false }).limit(300);
-  if (error) return toast("Error cargando correos");
+  if (error) return toast("No se han podido cargar los correos");
   const c = k => data.filter(x => x.estado === k).length;
-  $("#stats-correo").innerHTML = Object.keys(ESTCORREO).map(k => `<div class="stat" style="cursor:default"><b>${c(k)}</b>${k[0].toUpperCase() + k.slice(1)}</div>`).join("");
+  $("#stats-correo").innerHTML = Object.entries(ESTCORREO).map(([k, v]) => `<div class="stat" style="cursor:default"><b>${c(k)}</b><span>${v[0]}</span></div>`).join("");
   $("#tb-correos").innerHTML = data.map(x => {
     const t = x.inscripciones?.tecnicos, cu = x.inscripciones?.cursos;
     return `<tr><td>${new Date(x.created_at).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</td>
-      <td>${TIPOCORREO[x.tipo]}</td><td>${esc(t?.nombre)}<div class="muted">${esc(t?.email || "sin correo")}</div></td>
-      <td class="hide-m">${cu ? `${TIPO[cu.tipo]} · ${cu.sede} · ${textoFechas(cu.fechas)}` : ""}</td>
-      <td><span class="badge ${ESTCORREO[x.estado]}" title="${esc(x.error || "")}">${x.estado}</span></td></tr>`;
-  }).join("") || `<tr><td colspan="5" class="muted" style="text-align:center;padding:24px">Aún no hay correos.</td></tr>`;
+      <td>${TIPOCORREO[x.tipo]}</td><td>${esc(t?.nombre)}<div class="gris" style="font-size:13px">${esc(t?.email || "sin correo")}</div></td>
+      <td class="hide-m">${cu ? `${TIPO[cu.tipo]}, ${cu.sede}, ${textoFechas(cu.fechas)}` : ""}</td>
+      <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span></td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="vacio-t">Aún no se ha generado ningún correo.</td></tr>`;
 }
 $("#procesar").addEventListener("click", async e => {
   e.target.disabled = true;
   const { data, error } = await sb.functions.invoke("enviar-correos");
   e.target.disabled = false;
-  if (error) toast("Error al procesar la cola");
+  if (error) toast("No se ha podido procesar la cola");
   else if (data.ok === false) toast(data.motivo || data.error);
-  else toast(`Enviados: ${data.enviados} · Descartados: ${data.descartados} · Fallidos: ${data.fallidos}`);
+  else toast(`Enviados: ${data.enviados}. Descartados: ${data.descartados}. Fallidos: ${data.fallidos}.`);
   cargarCorreos();
 });
 
