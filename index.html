@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adiestramiento de tacógrafos · WORTACH</title>
 <meta name="description" content="Convocatorias e inscripción en los adiestramientos de tacógrafos de WORTACH para centros técnicos.">
-<meta name="theme-color" content="#0f3a24">
+<meta name="theme-color" content="#ffffff">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,14 +22,6 @@
   --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
-  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740;
-  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --ocupada:#2f3a34; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
-  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740;
-  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --ocupada:#2f3a34; color-scheme:dark}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--papel);color:var(--tinta);font:16px/1.55 var(--f)}
@@ -40,26 +32,26 @@ button,input{font:inherit;color:inherit}
 .envoltura{max-width:1080px;margin:0 auto;padding:0 16px}
 
 /* ---------- cabecera ---------- */
-.cab{background:var(--verde-noche);color:#e9f1ec;position:relative;overflow:hidden}
+.cab{background:linear-gradient(180deg,#fff 0%,#fff 62%,var(--papel) 100%);color:var(--tinta);position:relative;overflow:hidden;border-top:5px solid var(--verde)}
 .barra{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0}
 .barra img{height:38px;width:auto;display:block}
 .contacto{display:flex;gap:18px;font-size:14px;flex-wrap:wrap;justify-content:flex-end}
-.contacto a{color:#e9f1ec;text-decoration:none;opacity:.85}
-.contacto a:hover{opacity:1;text-decoration:underline}
+.contacto a{color:var(--gris);text-decoration:none}
+.contacto a:hover{color:var(--verde);text-decoration:underline}
 .heroe{display:grid;grid-template-columns:1.25fr 1fr;gap:40px;padding:34px 0 56px;position:relative;z-index:1}
 .heroe h1{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(32px,5.4vw,58px);line-height:1.02;letter-spacing:-.01em;margin:0 0 18px}
-.heroe h1 .anio{color:#5fd393;display:block}
-.heroe p{margin:0;max-width:46ch;font-size:17px;color:#c9dbd0}
-.que-curso{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:20px 22px;align-self:end}
+.heroe h1 .anio{color:var(--verde);display:block}
+.heroe p{margin:0;max-width:46ch;font-size:17px;color:var(--gris)}
+.que-curso{background:var(--verde-suave);border:1px solid #cfe5d8;border-radius:18px;padding:20px 22px;align-self:end}
 .que-curso h2{font-family:var(--f-tit);font-stretch:112%;font-size:17px;margin:0 0 12px;font-weight:700}
 .que-curso dl{margin:0;display:grid;gap:12px}
-.que-curso dt{font-weight:600;color:#fff;display:flex;gap:10px;align-items:baseline}
-.que-curso dt small{font-weight:500;color:#9fc4ae;font-size:13px}
-.que-curso dd{margin:2px 0 0;color:#c9dbd0;font-size:14.5px}
+.que-curso dt{font-weight:600;color:var(--tinta);display:flex;gap:10px;align-items:baseline}
+.que-curso dt small{font-weight:500;color:var(--verde-osc);font-size:13px}
+.que-curso dd{margin:2px 0 0;color:var(--gris);font-size:14.5px}
 body.compacto .heroe{display:none}
 body.compacto .pasos{margin-top:-6px}
 body.compacto .cab{padding-bottom:30px}
-.simbolo-fondo{position:absolute;right:-90px;top:-40px;width:520px;height:auto;opacity:.09;pointer-events:none}
+.simbolo-fondo{position:absolute;right:-90px;top:-40px;width:520px;height:auto;opacity:.07;pointer-events:none}
 
 /* ---------- pasos ---------- */
 .pasos{display:flex;gap:6px;margin:-24px 0 0;position:relative;z-index:2;list-style:none;padding:0}
@@ -74,9 +66,7 @@ body.compacto .cab{padding-bottom:30px}
 .filtros{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin:30px 0 8px}
 .segmento{display:inline-flex;background:var(--panel);border:1px solid var(--linea);border-radius:12px;padding:3px;gap:2px;flex-wrap:wrap}
 .segmento button{border:0;background:transparent;padding:8px 14px;border-radius:9px;cursor:pointer;font-size:15px;color:var(--gris);display:flex;gap:7px;align-items:center}
-.segmento button[aria-pressed=true]{background:var(--verde-noche);color:#fff}
-:root[data-theme="dark"] .segmento button[aria-pressed=true]{background:var(--verde);color:#062a15}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .segmento button[aria-pressed=true]{background:var(--verde);color:#062a15}}
+.segmento button[aria-pressed=true]{background:var(--verde);color:#fff}
 .segmento .cnt{font-size:12px;opacity:.7}
 .interruptor{display:flex;gap:9px;align-items:center;font-size:15px;cursor:pointer;color:var(--gris)}
 .interruptor input{width:18px;height:18px;accent-color:var(--verde)}
@@ -94,8 +84,6 @@ body.compacto .cab{padding-bottom:30px}
 .conv .tipo{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:999px;margin-bottom:4px}
 .t-act{background:var(--verde-suave);color:var(--verde-osc)}
 .t-ini{background:var(--ambar-suave);color:var(--ambar)}
-:root[data-theme="dark"] .t-act{color:var(--verde)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-act{color:var(--verde)}}
 .conv .dias{font-weight:600;font-size:16.5px;display:block}
 .conv .lugar{color:var(--gris);font-size:14.5px;display:flex;gap:6px;align-items:center;margin-top:2px}
 .plazas{display:flex;align-items:center;gap:12px;min-width:170px}
@@ -148,18 +136,16 @@ label.c input.mal{border-color:var(--rojo)}
 .btn:disabled{opacity:.6;cursor:progress}
 .btn.sec{background:transparent;color:var(--tinta);border:1.5px solid var(--linea-2)}
 .btn.sec:hover{border-color:var(--tinta)}
-:root[data-theme="dark"] .btn:not(.sec){color:#062a15}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn:not(.sec){color:#062a15}}
 
-.resumen{position:sticky;top:16px;background:var(--verde-noche);color:#e9f1ec;border-radius:18px;padding:22px;overflow:hidden}
-.resumen .tipo{background:rgba(255,255,255,.12);color:#fff}
+.resumen{position:sticky;top:16px;background:var(--panel);color:var(--tinta);border:1px solid var(--linea);border-top:5px solid var(--verde);border-radius:18px;padding:22px;overflow:hidden}
+.resumen .tipo{background:var(--verde-suave);color:var(--verde-osc)}
 .resumen h3{font-family:var(--f-tit);font-stretch:112%;font-size:22px;line-height:1.15;margin:8px 0 2px}
-.resumen .sede{color:#9fc4ae;font-size:15px}
-.jornadas{list-style:none;padding:0;margin:18px 0;border-top:1px solid rgba(255,255,255,.14)}
-.jornadas li{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.14);font-size:14.5px}
-.jornadas li span:last-child{color:#9fc4ae;font-variant-numeric:tabular-nums}
+.resumen .sede{color:var(--gris);font-size:15px}
+.jornadas{list-style:none;padding:0;margin:18px 0;border-top:1px solid var(--linea)}
+.jornadas li{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--linea);font-size:14.5px}
+.jornadas li span:last-child{color:var(--gris);font-variant-numeric:tabular-nums}
 .resumen .estado{display:flex;gap:12px;align-items:center;font-size:14.5px}
-.resumen .cargo{font-size:13.5px;color:#9fc4ae;margin-top:14px}
+.resumen .cargo{font-size:13.5px;color:var(--gris);margin-top:14px}
 .aviso-espera{background:var(--ambar-suave);color:var(--ambar);border-radius:12px;padding:12px 14px;margin-top:16px;font-size:14.5px}
 
 /* ---------- confirmación ---------- */
@@ -174,8 +160,6 @@ label.c input.mal{border-color:var(--rojo)}
 .pie{margin-top:60px;border-top:1px solid var(--linea);padding:26px 0 40px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;color:var(--gris);font-size:14px}
 .pie img{height:28px}
 .logo-osc{display:none}
-:root[data-theme="dark"] .logo-cla{display:none} :root[data-theme="dark"] .logo-osc{display:block}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-cla{display:none}:root:not([data-theme="light"]) .logo-osc{display:block}}
 
 @media (max-width:860px){
   .heroe{grid-template-columns:1fr;gap:24px;padding-bottom:50px}
@@ -206,12 +190,12 @@ label.c input.mal{border-color:var(--rojo)}
 <body>
 
 <header class="cab">
-  <svg class="simbolo-fondo" viewBox="0 0 223 247" aria-hidden="true" fill="none" stroke="#5fd393" stroke-width="16">
+  <svg class="simbolo-fondo" viewBox="0 0 223 247" aria-hidden="true" fill="none" stroke="#268c56" stroke-width="16">
     <path d="M8 8H112A103 103 0 0 1 215 111V239H8Z"/><circle cx="111.5" cy="127" r="96"/><path d="M111.5 8V239M8 127H215"/>
   </svg>
   <div class="envoltura">
     <div class="barra">
-      <img src="icons/logo-oscuro.png" alt="WORTACH, el mundo del tacógrafo" width="148" height="38">
+      <img src="icons/logo.png" alt="WORTACH, el mundo del tacógrafo" width="148" height="38">
       <nav class="contacto" aria-label="Contacto">
         <a href="tel:+34954360572">954 360 572</a>
         <a class="mail" href="mailto:asistencia@wortach.com">asistencia@wortach.com</a>
@@ -307,7 +291,6 @@ label.c input.mal{border-color:var(--rojo)}
 
   <footer class="pie">
     <img class="logo-cla" src="icons/logo.png" alt="WORTACH" width="109" height="28">
-    <img class="logo-osc" src="icons/logo-oscuro.png" alt="WORTACH" width="109" height="28">
     <span>Asistencia Técnica · <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · <a href="tel:+34954360572">954 360 572</a></span>
   </footer>
 </main>
@@ -437,7 +420,7 @@ function pintarResumen() {
   $("#resumen").innerHTML = `<span class="tipo" style="display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
     <h3>${frase(c.fechas)}</h3><div class="sede">${esc(c.sede)}, ${c.fechas.length} jornadas</div>
     <ul class="jornadas">${horarioJornadas(c)}</ul>
-    <div class="estado">${disco(c, 54, true)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
+    <div class="estado">${disco(c, 54)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
     <div class="cargo">Cargo al centro técnico: ${cargo.getDate()} de ${MESES[cargo.getMonth()]} de ${cargo.getFullYear()}.</div>`;
   $("#enviar").textContent = c.libres === 0 ? "Apuntarse a la lista de espera" : "Reservar plaza";
 }

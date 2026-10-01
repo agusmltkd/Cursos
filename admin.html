@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Gestión de adiestramientos · WORTACH</title>
-<meta name="theme-color" content="#0f3a24">
+<meta name="theme-color" content="#ffffff">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,14 +21,6 @@
   --f-tit:"Archivo","Arial Black",system-ui,sans-serif; --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
-  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740; --hover:#1d2620;
-  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --azul:#6b9cf0; --azul-suave:#18243a; --violeta:#a98be0; --violeta-suave:#261d36; --ocupada:#2f3a34; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --verde:#4cc27e; --verde-osc:#3aa86a; --verde-noche:#0b2618; --verde-suave:#16301f;
-  --papel:#101512; --panel:#18201b; --tinta:#e7ece9; --gris:#9aa8a0; --linea:#2a352f; --linea-2:#3a4740; --hover:#1d2620;
-  --ambar:#f0b04a; --ambar-suave:#33280f; --rojo:#ef6a5e; --rojo-suave:#3a1b18; --azul:#6b9cf0; --azul-suave:#18243a; --violeta:#a98be0; --violeta-suave:#261d36; --ocupada:#2f3a34; color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 var(--f);background:var(--papel);color:var(--tinta)}
 .hidden{display:none!important}
@@ -43,8 +35,6 @@ a{color:var(--verde)}
 .btn.peligro{background:var(--panel);color:var(--rojo);border:1px solid var(--rojo)}
 .btn.mini{padding:5px 10px;font-size:13px;font-weight:500;border-radius:8px}
 .btn:disabled{opacity:.6;cursor:progress}
-:root[data-theme="dark"] .btn:not(.sec):not(.peligro){color:#062a15}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn:not(.sec):not(.peligro){color:#062a15}}
 input,select,textarea{border:1px solid var(--linea-2);border-radius:10px;padding:8px 11px;background:var(--panel)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-suave)}
 label.c{font-size:13px;font-weight:500;display:block}
@@ -53,27 +43,28 @@ label.c>input,label.c>select,label.c>textarea{display:block;width:100%;margin-to
 
 /* login */
 #login{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
-.login-marca{background:var(--verde-noche);color:#e9f1ec;padding:40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.login-marca{background:var(--verde-suave);color:var(--tinta);border-top:5px solid var(--verde);padding:40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .login-marca img{height:40px;width:auto;align-self:flex-start;position:relative}
 .login-marca h1{font-family:var(--f-tit);font-stretch:112%;font-size:clamp(28px,4vw,44px);line-height:1.05;margin:0;position:relative}
-.login-marca p{color:#9fc4ae;margin:10px 0 0;position:relative}
-.login-marca svg{position:absolute;right:-80px;bottom:-60px;width:420px;opacity:.1}
+.login-marca p{color:var(--gris);margin:10px 0 0;position:relative}
+.login-marca svg{position:absolute;right:-80px;bottom:-60px;width:420px;height:460px;opacity:.12}
 .login-form{display:grid;place-items:center;padding:24px}
 .login-form form{width:100%;max-width:360px;display:grid;gap:14px}
 .login-form h2{margin:0;font-size:24px}
 .error{color:var(--rojo);font-size:14px;min-height:1.3em;font-weight:500}
 
 /* cabecera */
-.cab{background:var(--verde-noche);color:#e9f1ec;position:sticky;top:0;z-index:20}
+.cab{background:#fff;color:var(--tinta);position:sticky;top:0;z-index:20;border-top:4px solid var(--verde);border-bottom:1px solid var(--linea)}
 .cab .in{max-width:1280px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:22px;min-height:60px;flex-wrap:wrap}
-.marca{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
+.marca{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tinta)}
 .marca img{height:28px}
-.marca span{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:15px;border-left:1px solid rgba(255,255,255,.25);padding-left:12px}
+.marca span{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:15px;border-left:1px solid var(--linea-2);padding-left:12px}
 nav.tabs{display:flex;gap:2px;flex:1;overflow-x:auto}
-nav.tabs button{background:transparent;border:0;color:#b8d0c1;padding:19px 12px 17px;cursor:pointer;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
-nav.tabs button[aria-selected=true]{color:#fff;border-bottom-color:#5fd393}
-.usuario{display:flex;gap:10px;align-items:center;font-size:13px;color:#b8d0c1}
-.usuario button{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+nav.tabs button{background:transparent;border:0;color:var(--gris);padding:19px 12px 17px;cursor:pointer;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected=true]{color:var(--tinta);font-weight:600;border-bottom-color:var(--verde)}
+nav.tabs button:hover{color:var(--tinta)}
+.usuario{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--gris)}
+.usuario button{background:#fff;border:1px solid var(--linea-2);color:var(--tinta);border-radius:8px;padding:5px 10px;cursor:pointer}
 main{max-width:1280px;margin:0 auto;padding:22px 18px 70px}
 .caja{background:var(--panel);border:1px solid var(--linea);border-radius:16px}
 .caja.pad{padding:18px}
@@ -87,19 +78,16 @@ h2.sec-t small{font-family:var(--f);font-weight:400;font-size:14px;color:var(--g
 .cifra.alerta b{color:var(--rojo)}
 .cifras .anio-sel{margin-left:auto}
 .panel-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;margin-bottom:26px}
-.proximo{align-self:start;background:var(--verde-noche);color:#e9f1ec;border-radius:18px;padding:22px;position:relative;overflow:hidden}
-.proximo .et{font-size:13.5px;color:#9fc4ae}
+.proximo{align-self:start;background:var(--panel);color:var(--tinta);border:1px solid var(--linea);border-top:5px solid var(--verde);border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.proximo .et{font-size:13.5px;color:var(--verde-osc);font-weight:600}
 .proximo h3{font-family:var(--f-tit);font-stretch:112%;font-size:26px;line-height:1.1;margin:6px 0 4px}
-.proximo .meta{color:#c9dbd0}
+.proximo .meta{color:var(--gris)}
 .proximo .fila{display:flex;gap:18px;align-items:center;margin:18px 0;flex-wrap:wrap}
 .proximo .fila .txt{font-size:14.5px}
 .proximo .fila .txt b{font-size:17px;display:block}
 .proximo .cuenta{margin-left:auto;text-align:right}
 .proximo .cuenta b{font-family:var(--f-tit);font-stretch:112%;font-size:34px;line-height:1;display:block}
 .proximo .acc{display:flex;gap:8px;flex-wrap:wrap}
-.proximo .btn.sec{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
-.proximo .btn.sec:hover{border-color:#fff}
-.proximo .btn:not(.sec){background:#5fd393;color:#062a15}
 .avisos{display:grid;gap:10px;align-content:start}
 .aviso{border-radius:14px;padding:14px 16px;border:1px solid var(--linea);background:var(--panel)}
 .aviso h3{margin:0 0 6px;font-size:14.5px;display:flex;gap:8px;align-items:center}
@@ -138,8 +126,6 @@ tr.pasado td{color:var(--gris)}
 .badge{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
 .b-act{background:var(--verde-suave);color:var(--verde-osc)} .b-ini{background:var(--ambar-suave);color:var(--ambar)}
 .b-ok{background:var(--verde-suave);color:var(--verde-osc)} .b-warn{background:var(--ambar-suave);color:var(--ambar)} .b-bad{background:var(--rojo-suave);color:var(--rojo)} .b-gris{background:var(--hover);color:var(--gris);border:1px solid var(--linea)} .b-azul{background:var(--azul-suave);color:var(--azul)}
-:root[data-theme="dark"] .b-act,:root[data-theme="dark"] .b-ok{color:var(--verde)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-act,:root:not([data-theme="light"]) .b-ok{color:var(--verde)}}
 .sede{display:inline-flex;align-items:center;gap:7px}
 .sede i{width:9px;height:9px;border-radius:3px;background:var(--c)}
 .ocup{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
@@ -166,7 +152,7 @@ dialog::backdrop{background:rgba(8,22,14,.55)}
 .jornadas input{width:160px}
 .resumen-c{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .resumen-c .cifra b{font-size:24px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--verde-noche);color:#fff;padding:11px 18px;border-radius:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
 .acc{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end}
 select.mini{padding:4px 8px;font-size:13px}
 .vacio-t{text-align:center;padding:28px;color:var(--gris)}
@@ -193,9 +179,9 @@ select.mini{padding:4px 8px;font-size:13px}
 
 <section id="login" class="hidden">
   <div class="login-marca">
-    <img src="icons/logo-oscuro.png" alt="WORTACH, el mundo del tacógrafo" width="156" height="40">
+    <img src="icons/logo.png" alt="WORTACH, el mundo del tacógrafo" width="156" height="40">
     <div><h1>Gestión de adiestramientos</h1><p>Convocatorias, inscritos y renovaciones de los técnicos.</p></div>
-    <svg style="color:#5fd393"><use href="#simbolo"/></svg>
+    <svg style="color:var(--verde)"><use href="#simbolo"/></svg>
   </div>
   <div class="login-form">
     <form id="loginf">
@@ -210,7 +196,7 @@ select.mini{padding:4px 8px;font-size:13px}
 
 <div id="app" class="hidden">
   <header class="cab"><div class="in">
-    <a class="marca" href="./admin.html"><img src="icons/logo-oscuro.png" alt="WORTACH" width="109" height="28"><span>Adiestramientos</span></a>
+    <a class="marca" href="./admin.html"><img src="icons/logo.png" alt="WORTACH" width="109" height="28"><span>Adiestramientos</span></a>
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="panel" aria-selected="true">Panel</button>
       <button role="tab" data-tab="cursos" aria-selected="false">Cursos</button>
@@ -483,11 +469,11 @@ function pintarPanel(anios) {
   if (prox) {
     const d = diasHasta(prox.fecha_inicio), enCurso = d <= 0;
     const q = prox.ocupadas >= prox.quorum_min;
-    $("#proximo").innerHTML = `<svg style="position:absolute;right:-50px;top:-30px;width:220px;height:240px;color:#5fd393;opacity:.08"><use href="#simbolo"/></svg>
+    $("#proximo").innerHTML = `<svg style="position:absolute;right:-50px;top:-30px;width:220px;height:240px;color:var(--verde);opacity:.07"><use href="#simbolo"/></svg>
       <div class="et">${enCurso ? "En curso ahora" : "Próxima convocatoria"}</div>
       <h3>${textoFechas(prox.fechas)}</h3>
       <div class="meta">${TIPO[prox.tipo]} en ${esc(prox.sede)}, ${prox.fechas.length} jornadas</div>
-      <div class="fila">${disco(prox, 64, true)}
+      <div class="fila">${disco(prox, 64)}
         <div class="txt"><b>${prox.ocupadas} de ${prox.cupo_max} plazas</b>${prox.espera ? `${prox.espera} en espera. ` : ""}${q ? "Quórum alcanzado" : `Faltan ${prox.quorum_min - prox.ocupadas} para el quórum`}</div>
         <div class="cuenta">${enCurso ? `<b>Hoy</b>` : `<b>${d}</b>día${d === 1 ? "" : "s"}`}</div></div>
       <div class="acc"><button class="btn" data-ver="${prox.id}">Ver inscritos</button><button class="btn sec" data-firmas="${prox.id}">Hoja de firmas</button></div>`;
