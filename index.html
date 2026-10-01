@@ -119,6 +119,10 @@ label.c{display:block;font-size:14px;font-weight:500}
 label.c input{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1.5px solid var(--linea-2);border-radius:11px;background:var(--panel);font-size:16px}
 label.c input:focus{border-color:var(--verde);outline:none;box-shadow:0 0 0 3px var(--verde-suave)}
 label.c input.mal{border-color:var(--rojo)}
+label.c input.bien{border-color:var(--verde)}
+.dni-estado{display:block;font-size:13px;font-weight:400;color:var(--gris);margin-top:6px}
+.dni-estado.ok{color:var(--verde-osc);font-weight:600}
+.dni-estado.mal{color:var(--rojo);font-weight:600}
 .ayuda{font-size:13px;color:var(--gris);font-weight:400}
 .acepto{display:flex;gap:12px;align-items:flex-start;margin-top:22px;font-size:14px;color:var(--gris);cursor:pointer}
 .acepto input{width:20px;height:20px;margin-top:1px;accent-color:var(--verde);flex:none}
@@ -258,7 +262,7 @@ label.c input.mal{border-color:var(--rojo)}
           <legend>Técnico que asiste</legend>
           <div class="campos">
             <label class="c ancho">Nombre y apellidos<input name="nombre" autocomplete="off"></label>
-            <label class="c">DNI o NIE <span class="ayuda">con letra</span><input name="dni" placeholder="12345678Z" autocapitalize="characters" autocomplete="off"></label>
+            <label class="c">DNI o NIE <span class="ayuda">con su letra</span><input name="dni" placeholder="12345678Z o X1234567L" autocapitalize="characters" autocomplete="off" maxlength="12" aria-describedby="dni-estado"><span class="dni-estado" id="dni-estado">Con el DNI comprobamos que el técnico tiene sus adiestramientos al día.</span></label>
             <label class="c">Teléfono<input name="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
             <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibirá la confirmación y los recordatorios</span><input name="email" type="email" inputmode="email" autocomplete="off"></label>
           </div>
@@ -277,7 +281,7 @@ label.c input.mal{border-color:var(--rojo)}
 
   <footer class="pie">
     <img class="logo-cla" src="icons/logo.png" alt="WORTACH" width="109" height="28">
-    <span>Asistencia Técnica · <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · <a href="tel:+34954360572">954 360 572</a></span>
+    <span><a href="docs/guia-inscripcion-wortach.pdf" target="_blank" rel="noopener">Guía de inscripción (PDF)</a> · Asistencia Técnica · <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · <a href="tel:+34954360572">954 360 572</a></span>
   </footer>
 </main>
 
@@ -425,7 +429,17 @@ function dniValido(v) {
   else return false;
   return "TRWAGMYFPDXBNJZSQVHLCKE"[parseInt(n, 10) % 23] === d[8];
 }
-$("input[name=dni]").addEventListener("blur", e => { const v = e.target.value.trim(); e.target.classList.toggle("mal", !!v && !dniValido(v)); });
+function estadoDni(final) {
+  const i = $("input[name=dni]"), v = i.value.toUpperCase().replace(/[\s.\-]/g, ""), e = $("#dni-estado");
+  i.classList.remove("mal", "bien"); e.className = "dni-estado";
+  if (!v) { e.textContent = "Con el DNI comprobamos que el técnico tiene sus adiestramientos al día."; return; }
+  if (dniValido(v)) { i.classList.add("bien"); e.classList.add("ok"); e.textContent = `DNI válido: ${v}`; return; }
+  if (!final && v.length < 9) { e.textContent = "8 números y una letra (DNI), o X/Y/Z, 7 números y una letra (NIE)."; return; }
+  i.classList.add("mal"); e.classList.add("mal");
+  e.textContent = /^\d{8}$/.test(v) ? "Falta la letra del DNI." : /^\d{7}[A-Z]$/.test(v) ? "Si es un NIE, empieza por X, Y o Z." : "Este DNI o NIE no es válido: revisa el número y la letra.";
+}
+$("input[name=dni]").addEventListener("input", () => estadoDni(false));
+$("input[name=dni]").addEventListener("blur", () => estadoDni(true));
 
 $("#f").addEventListener("submit", async e => {
   e.preventDefault();
@@ -433,7 +447,7 @@ $("#f").addEventListener("submit", async e => {
   const err = (m, campo) => { $("#err").textContent = m; if (campo) f[campo].focus(); };
   const nombres = { centro: "el nombre del centro técnico", contacto: "la persona de contacto", tel_contacto: "el teléfono del centro", email_centro: "el correo del centro técnico", nombre: "el nombre del técnico", dni: "el DNI o NIE", telefono: "el teléfono del técnico", email: "el correo del técnico" };
   for (const k of Object.keys(nombres)) if (!String(v[k] || "").trim()) return err(`Falta ${nombres[k]}.`, k);
-  if (!dniValido(v.dni)) return err("El DNI o NIE no es válido: revisa el número y la letra.", "dni");
+  if (!dniValido(v.dni)) { estadoDni(true); return err("El DNI o NIE no es válido: revisa el número y la letra. Es el dato con el que comprobamos los cursos del técnico.", "dni"); }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email_centro.trim())) return err("El correo del centro técnico no es válido.", "email_centro");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return err("El correo del técnico no es válido.", "email");
   if (!f.acepto.checked) return err("Marca la casilla de conformidad para continuar.");
@@ -476,7 +490,7 @@ function mostrarFinal(r, v) {
     </div>`;
   irPaso(3);
   if (!espera) $("#ics").onclick = () => descargarIcs(c, v);
-  const limpiar = () => { const f = $("#f"); ["nombre","dni","telefono","email"].forEach(k => { f[k].value = ""; f[k].classList.remove("mal"); }); f.acepto.checked = false; };
+  const limpiar = () => { const f = $("#f"); ["nombre","dni","telefono","email"].forEach(k => { f[k].value = ""; f[k].classList.remove("mal","bien"); }); f.acepto.checked = false; estadoDni(false); };
   $("#otro").onclick = () => { limpiar(); irPaso(2); };
   $("#otra").onclick = () => { limpiar(); sel = null; irPaso(1); };
 }

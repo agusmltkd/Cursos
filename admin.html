@@ -347,6 +347,18 @@ select.mini{padding:4px 8px;font-size:13px}
 </dialog>
 <datalist id="dl-centros"></datalist>
 
+<!-- Corregir DNI -->
+<dialog id="dlg-dni" class="peq">
+  <form id="f-dni">
+    <div class="dh"><h2>Corregir DNI</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db"><p id="cd-quien" style="margin-top:0"></p><div id="cd-sug"></div>
+      <label class="c" style="margin-top:14px">DNI o NIE correcto<input name="dni" required autocapitalize="characters" placeholder="Y1234567X"></label>
+      <p class="gris" style="font-size:13px;margin:8px 0 0">Si ya hay otro técnico con ese DNI, se unen los dos y sus cursos quedan en una sola ficha.</p>
+      <div class="error" id="cd-err"></div></div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Guardar DNI</button></div>
+  </form>
+</dialog>
+
 <!-- Importar Excel -->
 <dialog id="dlg-imp">
   <div class="dh"><div><h2>Importar inscripciones desde Excel</h2><div class="gris">Las columnas del antiguo formulario de Google, en el mismo orden.</div></div><button class="x" data-close aria-label="Cerrar">×</button></div>
@@ -357,7 +369,7 @@ select.mini{padding:4px 8px;font-size:13px}
         <span class="gris">Marca temporal, centro técnico, persona de contacto, teléfono del centro, asistente, DNI, foto DNI (se ignora), teléfono, correo, lugar, fecha Online, fecha Sevilla, fecha Zaragoza y correo del centro.</span>
         <input type="file" id="imp-file" accept=".xlsx,.xls,.csv">
       </label>
-      <p class="gris" style="font-size:14px;margin:14px 0 0">No se envía ningún correo a los importados. Los cursos que no existan se crean solos, y si alguien ya está apuntado a ese curso se salta. Puedes importar el mismo archivo dos veces sin duplicar nada.</p>
+      <p class="gris" style="font-size:14px;margin:14px 0 0">No se envía ningún correo a los importados. Los cursos que no existan se crean solos, y si alguien ya está apuntado a ese curso se salta. Puedes importar el mismo archivo dos veces sin duplicar nada. Las filas con un DNI o NIE no válido no se importan: te dirá cuáles son para que las corrijas.</p>
     </div>
     <div id="imp-paso2" class="hidden">
       <div class="resumen-c" id="imp-cifras"></div>
@@ -757,13 +769,15 @@ async function cargarTecnicos() {
 }
 function pintarTecnicos() {
   const cuenta = k => tecnicos.filter(t => t.situacion === k).length;
+  const malos = tecnicos.filter(t => !t.dni_ok).length;
   $("#stats-tec").innerHTML = [["", "Todos", tecnicos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
-    .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b><span>${n}</span></button>`).join("");
+    .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b><span>${n}</span></button>`).join("")
+    + (malos || filtroSit === "dni" ? `<button class="stat" data-sit="dni" aria-pressed="${filtroSit === "dni"}" style="border-color:var(--rojo)"><b style="color:var(--rojo)">${malos}</b><span>DNI por revisar</span></button>` : "");
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const q = norm($("#buscar-tec").value);
-  const lista = tecnicos.filter(t => (!filtroSit || t.situacion === filtroSit) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
+  const lista = tecnicos.filter(t => (!filtroSit || (filtroSit === "dni" ? !t.dni_ok : t.situacion === filtroSit)) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
   $("#tb-tec").innerHTML = lista.map(t => `<tr>
-    <td><b>${esc(t.nombre)}</b></td><td>${esc(t.dni)}</td><td>${esc(t.centro || "")}</td>
+    <td><b>${esc(t.nombre)}</b></td><td>${t.dni_ok ? esc(t.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(t.dni)}</span><br><button class="btn peligro mini" data-corregir="${t.id}">Corregir DNI</button>`}</td><td>${esc(t.centro || "")}</td>
     <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + ", " + fcorta(t.ultima_fecha) : "—"}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
     <td>${t.proximo_curso ? `Inscrito el ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
     <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span></td>
@@ -772,6 +786,36 @@ function pintarTecnicos() {
 }
 $("#stats-tec").addEventListener("click", e => { const b = e.target.closest("[data-sit]"); if (b) { filtroSit = b.dataset.sit; pintarTecnicos(); } });
 $("#buscar-tec").addEventListener("input", pintarTecnicos);
+function sugerenciasDni(d) {
+  d = String(d).toUpperCase().replace(/[\s.\-]/g, "");
+  const sin0 = d.replace(/^0+/, "");
+  return [...new Set(["Y" + d, "Z" + d, "X" + d, "0" + d, sin0, "Y" + sin0, "Z" + sin0, "X" + sin0].filter(dniValido))];
+}
+let corrigiendo = null;
+$("#tb-tec").addEventListener("click", e => {
+  const b = e.target.closest("[data-corregir]"); if (!b) return;
+  corrigiendo = tecnicos.find(t => t.id === b.dataset.corregir);
+  const sug = sugerenciasDni(corrigiendo.dni);
+  $("#cd-quien").innerHTML = `<b>${esc(corrigiendo.nombre)}</b>${corrigiendo.centro ? `, ${esc(corrigiendo.centro)}` : ""}<br>DNI guardado: <b style="color:var(--rojo)">${esc(corrigiendo.dni)}</b>, que no es válido.`;
+  $("#cd-sug").innerHTML = sug.length
+    ? `<p class="gris" style="margin:12px 0 6px;font-size:14px">Posibles DNI correctos (a muchos NIE les falta la X, Y o Z del principio). Compruébalo con el técnico o con su documento:</p>${sug.map(x => `<button type="button" class="btn sec mini" data-sug="${x}">${x}</button>`).join(" ")}`
+    : `<p class="gris" style="margin:12px 0 0;font-size:14px">No se puede deducir el correcto. Pídeselo al centro técnico.</p>`;
+  $("#f-dni").dni.value = ""; $("#cd-err").textContent = "";
+  $("#dlg-dni").showModal();
+});
+$("#cd-sug").addEventListener("click", e => { const b = e.target.closest("[data-sug]"); if (b) $("#f-dni").dni.value = b.dataset.sug; });
+$("#f-dni").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = e.target.dni.value;
+  if (!dniValido(v)) { $("#cd-err").textContent = "Ese DNI o NIE tampoco es válido: revisa el número y la letra."; return; }
+  const { data, error } = await sb.rpc("corregir_dni", { p_tecnico: corrigiendo.id, p_dni: v });
+  if (error) { $("#cd-err").textContent = error.message; return; }
+  if (data.accion === "unido") {
+    await sb.from("tecnicos").delete().eq("id", data.sobrante);
+    toast("Ya existía un técnico con ese DNI: se han unido sus cursos");
+  } else toast("DNI corregido");
+  $("#dlg-dni").close(); cargarTecnicos();
+});
 $("#csv-tec").addEventListener("click", () => csv(`tecnicos_${hoy}.csv`,
   ["Nombre","DNI","Centro técnico","Último curso","Fecha último curso","Renovar antes de","Próximo curso","Situación","Correo","Teléfono"],
   tecnicos.map(t => [t.nombre, t.dni, t.centro, t.ultimo_tipo ? TIPO[t.ultimo_tipo] : "", t.ultima_fecha, t.renovar_antes, t.proximo_curso, SIT[t.situacion][0], t.email, t.telefono])));
@@ -881,7 +925,7 @@ $("#imp-file").addEventListener("change", async e => {
       if (!fc) { problemas.push(`Fila ${nfila}: no se entiende la fecha “${txt}”.`); return; }
       if (!val("nombre") || !val("dni")) { problemas.push(`Fila ${nfila}: falta el nombre o el DNI.`); return; }
       if (!val("centro")) { problemas.push(`Fila ${nfila}: falta el centro técnico.`); return; }
-      if (!dniValido(val("dni"))) avisos.push(`Fila ${nfila}: el DNI “${val("dni")}” no tiene una letra válida (se importa igualmente).`);
+      if (!dniValido(val("dni"))) { const s = sugerenciasDni(val("dni")); problemas.push(`Fila ${nfila}: el DNI “${val("dni")}” no es válido${s.length ? ` (¿quizá ${s.join(" o ")}?)` : ""}. Corrígelo en el Excel y vuelve a importarlo.`); return; }
       importables.push({ fila: nfila, marca: marca ? marca.toISOString() : null, centro: val("centro"), contacto: val("contacto"), tel_centro: val("tel_centro"),
         email_centro: val("email_centro"), nombre: val("nombre"), dni: val("dni"), telefono: val("telefono"), email: val("email"), sede, tipo: fc.tipo, fechas: fc.fechas });
     });
