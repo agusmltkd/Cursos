@@ -119,6 +119,23 @@ label.c{display:block;font-size:14px;font-weight:500}
 label.c input{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1.5px solid var(--linea-2);border-radius:11px;background:var(--panel);font-size:16px}
 label.c input:focus{border-color:var(--verde);outline:none;box-shadow:0 0 0 3px var(--verde-suave)}
 label.c input.mal{border-color:var(--rojo)}
+label.c select{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1.5px solid var(--linea-2);border-radius:11px;background:var(--panel);font-size:16px;font-family:inherit;color:inherit}
+label.c select:focus{border-color:var(--verde);outline:none;box-shadow:0 0 0 3px var(--verde-suave)}
+.tec{border:1.5px solid var(--linea);border-radius:16px;padding:14px 16px 16px;margin-bottom:12px;background:var(--panel)}
+.tec+.tec{margin-top:0}
+.tec-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.tec-cab b{font-size:14px;color:var(--verde-osc)}
+.tec-cab button{border:0;background:none;color:var(--gris);font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:4px}
+.tec-cab button:hover{color:var(--rojo)}
+.tec .err-tec{color:var(--rojo);font-size:14px;font-weight:600;margin-top:10px}
+.mas-tec{width:100%;border:1.5px dashed var(--linea-2);background:transparent;border-radius:14px;padding:13px;font-weight:600;font-size:15px;color:var(--verde-osc);cursor:pointer}
+.mas-tec:hover{border-color:var(--verde);background:var(--verde-suave)}
+.mas-tec span{font-size:18px;margin-right:4px}
+.aviso-plazas{margin-top:12px;background:var(--ambar-suave);color:#6e4700;border-radius:12px;padding:10px 14px;font-size:14px}
+.lista-final{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lista-final li{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.est{font-size:13px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.est.ok{background:var(--verde-suave);color:var(--verde-osc)} .est.esp{background:var(--ambar-suave);color:var(--ambar)} .est.mal{background:var(--rojo-suave);color:var(--rojo)}
 label.c input.bien{border-color:var(--verde)}
 .dni-estado{display:block;font-size:13px;font-weight:400;color:var(--gris);margin-top:6px}
 .dni-estado.ok{color:var(--verde-osc);font-weight:600}
@@ -256,17 +273,15 @@ input.mayus{text-transform:uppercase}
             <label class="c ancho">Nombre del centro técnico<input name="centro" class="mayus" autocomplete="organization"></label>
             <label class="c">Persona de contacto<input name="contacto" class="mayus" autocomplete="name"></label>
             <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" autocomplete="tel" inputmode="tel"></label>
-            <label class="c ancho">Correo del centro técnico <span class="ayuda">recibirá copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
+            <label class="c">Provincia del centro<select name="provincia" id="provincia"><option value="">Elige la provincia</option></select></label>
+            <label class="c">Correo del centro técnico <span class="ayuda">recibe copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
           </div>
         </fieldset>
         <fieldset>
-          <legend>Técnico que asiste</legend>
-          <div class="campos">
-            <label class="c ancho">Nombre y apellidos<input name="nombre" class="mayus" autocomplete="off"></label>
-            <label class="c">DNI o NIE <span class="ayuda">con su letra</span><input name="dni" placeholder="12345678Z o X1234567L" autocapitalize="characters" autocomplete="off" maxlength="12" aria-describedby="dni-estado"><span class="dni-estado" id="dni-estado">Con el DNI comprobamos que el técnico tiene sus adiestramientos al día.</span></label>
-            <label class="c">Teléfono<input name="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
-            <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibirá la confirmación y los recordatorios</span><input name="email" type="email" inputmode="email" autocomplete="off"></label>
-          </div>
+          <legend>Técnicos que asisten <span class="ayuda" id="n-tec"></span></legend>
+          <div id="tecnicos"></div>
+          <button type="button" class="mas-tec" id="mas-tec"><span aria-hidden="true">+</span> Añadir otro técnico</button>
+          <div class="aviso-plazas hidden" id="aviso-plazas"></div>
         </fieldset>
         <label class="acepto"><input type="checkbox" name="acepto">
           <span>Los datos son correctos, el centro técnico acepta el cargo del adiestramiento 45 días antes y el técnico consiente que WORTACH trate sus datos para gestionarlo.</span></label>
@@ -420,13 +435,14 @@ function pintarResumen() {
     <ul class="jornadas">${horarioJornadas(c)}</ul>
     <div class="estado">${disco(c, 54)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
     <div class="cargo">Cargo al centro técnico: ${cargo.getDate()} de ${MESES[cargo.getMonth()]} de ${cargo.getFullYear()}.</div>`;
-  $("#enviar").textContent = c.libres === 0 ? "Apuntarse a la lista de espera" : "Reservar plaza";
+  actualizarAviso();
 }
 function prepararForm() {
   const f = $("#f"), cen = leer("wortach_centro");
-  if (cen && !f.centro.value) { f.centro.value = (cen.centro || "").toLocaleUpperCase("es-ES"); f.contacto.value = (cen.contacto || "").toLocaleUpperCase("es-ES"); f.tel_contacto.value = cen.tel_contacto || ""; f.email_centro.value = cen.email_centro || ""; }
+  if (cen && !f.centro.value) { f.centro.value = (cen.centro || "").toLocaleUpperCase("es-ES"); f.contacto.value = (cen.contacto || "").toLocaleUpperCase("es-ES"); f.tel_contacto.value = cen.tel_contacto || ""; f.email_centro.value = cen.email_centro || ""; f.provincia.value = cen.provincia || provinciaPorTelefono(cen.tel_contacto) || ""; }
   $("#recordado").classList.toggle("hidden", !(cen && f.centro.value === String(cen.centro || "").toLocaleUpperCase("es-ES")));
   $("#err").textContent = "";
+  actualizarAviso();
 }
 
 function dniValido(v) {
@@ -437,68 +453,148 @@ function dniValido(v) {
   else return false;
   return "TRWAGMYFPDXBNJZSQVHLCKE"[parseInt(n, 10) % 23] === d[8];
 }
-function estadoDni(final) {
-  const i = $("input[name=dni]"), v = i.value.toUpperCase().replace(/[\s.\-]/g, ""), e = $("#dni-estado");
+/* ---------- provincias ---------- */
+const PROVINCIAS = ["A Coruña","Álava","Albacete","Alicante","Almería","Asturias","Ávila","Badajoz","Baleares","Barcelona","Bizkaia","Burgos","Cáceres","Cádiz","Cantabria","Castellón","Ceuta","Ciudad Real","Córdoba","Cuenca","Gipuzkoa","Girona","Granada","Guadalajara","Huelva","Huesca","Jaén","La Rioja","Las Palmas","León","Lleida","Lugo","Madrid","Málaga","Melilla","Murcia","Navarra","Ourense","Palencia","Pontevedra","Salamanca","Santa Cruz de Tenerife","Segovia","Sevilla","Soria","Tarragona","Teruel","Toledo","Valencia","Valladolid","Zamora","Zaragoza"];
+const PREFIJOS = {920:"Ávila",921:"Segovia",922:"Santa Cruz de Tenerife",923:"Salamanca",924:"Badajoz",925:"Toledo",926:"Ciudad Real",927:"Cáceres",928:"Las Palmas",941:"La Rioja",942:"Cantabria",943:"Gipuzkoa",944:"Bizkaia",945:"Álava",946:"Bizkaia",947:"Burgos",948:"Navarra",949:"Guadalajara",950:"Almería",951:"Málaga",952:"Málaga",953:"Jaén",954:"Sevilla",955:"Sevilla",956:"Cádiz",957:"Córdoba",958:"Granada",959:"Huelva",960:"Valencia",961:"Valencia",962:"Valencia",963:"Valencia",964:"Castellón",965:"Alicante",966:"Alicante",967:"Albacete",968:"Murcia",969:"Cuenca",971:"Baleares",972:"Girona",973:"Lleida",974:"Huesca",975:"Soria",976:"Zaragoza",977:"Tarragona",978:"Teruel",979:"Palencia",980:"Zamora",981:"A Coruña",982:"Lugo",983:"Valladolid",984:"Asturias",985:"Asturias",986:"Pontevedra",987:"León",988:"Ourense"};
+function provinciaPorTelefono(t) {
+  let d = String(t || "").replace(/\D/g, "");
+  if (d.length > 9 && d.startsWith("0034")) d = d.slice(4); else if (d.length > 9 && d.startsWith("34")) d = d.slice(2);
+  if (d.length !== 9 || !/^[89]/.test(d)) return "";
+  if (/^[89]1/.test(d)) return "Madrid"; if (/^[89]3/.test(d)) return "Barcelona";
+  return PREFIJOS["9" + d.slice(1, 3)] || "";
+}
+$("#provincia").innerHTML += PROVINCIAS.map(p => `<option>${p}</option>`).join("");
+$("input[name=tel_contacto]").addEventListener("input", e => { const p = provinciaPorTelefono(e.target.value); if (p && !$("#provincia").value) $("#provincia").value = p; });
+
+/* ---------- técnicos (uno o varios) ---------- */
+const MSG_DNI = "Con el DNI comprobamos que el técnico tiene sus adiestramientos al día.";
+function bloqueTec(v = {}) {
+  const b = document.createElement("div");
+  b.className = "tec";
+  b.innerHTML = `<div class="tec-cab"><b></b><button type="button" class="quitar">Quitar</button></div>
+    <div class="campos">
+      <label class="c ancho">Nombre y apellidos<input data-k="nombre" class="mayus" autocomplete="off"></label>
+      <label class="c">DNI o NIE <span class="ayuda">con su letra</span><input data-k="dni" placeholder="12345678Z o X1234567L" autocapitalize="characters" autocomplete="off" maxlength="12"><span class="dni-estado">${MSG_DNI}</span></label>
+      <label class="c">Teléfono<input data-k="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
+      <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibe la confirmación y los recordatorios</span><input data-k="email" type="email" inputmode="email" autocomplete="off"></label>
+    </div><div class="err-tec hidden"></div>`;
+  for (const k of ["nombre","dni","telefono","email"]) if (v[k]) b.querySelector(`[data-k=${k}]`).value = v[k];
+  const dni = b.querySelector("[data-k=dni]");
+  dni.addEventListener("input", () => estadoDni(b, false));
+  dni.addEventListener("blur", () => estadoDni(b, true));
+  b.querySelector(".quitar").addEventListener("click", () => { b.remove(); renumerar(); });
+  $("#tecnicos").append(b);
+  if (v.dni) estadoDni(b, true);
+  renumerar();
+  return b;
+}
+const bloques = () => [...document.querySelectorAll("#tecnicos .tec")];
+const datosTec = b => Object.fromEntries(["nombre","dni","telefono","email"].map(k => [k, b.querySelector(`[data-k=${k}]`).value.trim()]));
+function renumerar() {
+  const bs = bloques();
+  bs.forEach((b, i) => { b.querySelector(".tec-cab b").textContent = `Técnico ${i + 1}`; b.querySelector(".quitar").classList.toggle("hidden", bs.length === 1); });
+  $("#n-tec").textContent = bs.length > 1 ? `${bs.length} técnicos` : "puedes añadir varios";
+  actualizarAviso();
+}
+function actualizarAviso() {
+  const n = bloques().length, a = $("#aviso-plazas");
+  if (!sel) return;
+  const libres = sel.libres ?? (sel.cupo_max - (sel.ocupadas || 0));
+  a.classList.toggle("hidden", n <= libres || n < 2);
+  a.textContent = libres <= 0 ? `El curso está completo: los ${n} técnicos quedarán en lista de espera, por este orden.`
+    : `Quedan ${libres} plaza${libres > 1 ? "s" : ""}: ${libres === 1 ? "el primero tendrá plaza" : `los ${libres} primeros tendrán plaza`} y el resto quedará en lista de espera, por el orden de la lista.`;
+  $("#enviar").textContent = libres <= 0 ? (n > 1 ? `Apuntar a los ${n} a la lista de espera` : "Apuntarse a la lista de espera") : (n > 1 ? `Reservar ${n} plazas` : "Reservar plaza");
+}
+$("#mas-tec").addEventListener("click", () => { const b = bloqueTec(); b.querySelector("[data-k=nombre]").focus(); });
+function reiniciarTecnicos(lista = [{}]) { $("#tecnicos").innerHTML = ""; lista.forEach(v => bloqueTec(v)); }
+reiniciarTecnicos();
+
+function estadoDni(b, final) {
+  const i = b.querySelector("[data-k=dni]"), v = i.value.toUpperCase().replace(/[\s.\-]/g, ""), e = b.querySelector(".dni-estado");
   i.classList.remove("mal", "bien"); e.className = "dni-estado";
-  if (!v) { e.textContent = "Con el DNI comprobamos que el técnico tiene sus adiestramientos al día."; return; }
+  if (!v) { e.textContent = MSG_DNI; return; }
   if (dniValido(v)) { i.classList.add("bien"); e.classList.add("ok"); e.textContent = `DNI válido: ${v}`; return; }
   if (!final && v.length < 9) { e.textContent = "8 números y una letra (DNI), o X/Y/Z, 7 números y una letra (NIE)."; return; }
   i.classList.add("mal"); e.classList.add("mal");
   e.textContent = /^\d{8}$/.test(v) ? "Falta la letra del DNI." : /^\d{7}[A-Z]$/.test(v) ? "Si es un NIE, empieza por X, Y o Z." : "Este DNI o NIE no es válido: revisa el número y la letra.";
 }
-$("input[name=dni]").addEventListener("input", () => estadoDni(false));
-$("input[name=dni]").addEventListener("blur", () => estadoDni(true));
 
 $("#f").addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target, v = Object.fromEntries(new FormData(f));
-  const err = (m, campo) => { $("#err").textContent = m; if (campo) f[campo].focus(); };
-  const nombres = { centro: "el nombre del centro técnico", contacto: "la persona de contacto", tel_contacto: "el teléfono del centro", email_centro: "el correo del centro técnico", nombre: "el nombre del técnico", dni: "el DNI o NIE", telefono: "el teléfono del técnico", email: "el correo del técnico" };
-  for (const k of Object.keys(nombres)) if (!String(v[k] || "").trim()) return err(`Falta ${nombres[k]}.`, k);
-  if (!dniValido(v.dni)) { estadoDni(true); return err("El DNI o NIE no es válido: revisa el número y la letra. Es el dato con el que comprobamos los cursos del técnico.", "dni"); }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email_centro.trim())) return err("El correo del centro técnico no es válido.", "email_centro");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim())) return err("El correo del técnico no es válido.", "email");
+  const err = (m, el) => { $("#err").textContent = m; if (el) el.focus(); };
+  bloques().forEach(b => b.querySelector(".err-tec").classList.add("hidden"));
+  const nombres = { centro: "el nombre del centro técnico", contacto: "la persona de contacto", tel_contacto: "el teléfono del centro", provincia: "la provincia del centro", email_centro: "el correo del centro técnico" };
+  for (const k of Object.keys(nombres)) if (!String(v[k] || "").trim()) return err(`Falta ${nombres[k]}.`, f[k]);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email_centro.trim())) return err("El correo del centro técnico no es válido.", f.email_centro);
+  const bs = bloques(), vistos = new Set();
+  for (const [n, b] of bs.entries()) {
+    const t = datosTec(b), q = s => b.querySelector(`[data-k=${s}]`), quien = bs.length > 1 ? ` del técnico ${n + 1}` : " del técnico";
+    for (const [k, txt] of [["nombre","el nombre"],["dni","el DNI o NIE"],["telefono","el teléfono"],["email","el correo"]]) if (!t[k]) return err(`Falta ${txt}${quien}.`, q(k));
+    if (!dniValido(t.dni)) { estadoDni(b, true); return err(`El DNI o NIE${quien} no es válido: revisa el número y la letra. Es el dato con el que comprobamos sus cursos.`, q("dni")); }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t.email)) return err(`El correo${quien} no es válido.`, q("email"));
+    const d = t.dni.toUpperCase().replace(/[\s.\-]/g, "");
+    if (vistos.has(d)) return err(`El técnico ${n + 1} tiene el mismo DNI que otro de la lista.`, q("dni"));
+    vistos.add(d);
+  }
   if (!f.acepto.checked) return err("Marca la casilla de conformidad para continuar.");
   err("");
-  const btn = $("#enviar"), txt = btn.textContent; btn.disabled = true; btn.textContent = "Enviando…";
+  const btn = $("#enviar"), txt = btn.textContent; btn.disabled = true;
+  const res = [];
   try {
-    const { data, error } = await sb.rpc("inscribirse", {
-      p_curso: sel.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto, p_email_centro: v.email_centro,
-      p_nombre: v.nombre, p_dni: v.dni, p_telefono: v.telefono, p_email: v.email
-    });
-    if (error) throw new Error(error.code === "P0001" ? error.message + "." : "No se ha podido completar la inscripción. Inténtalo de nuevo en unos minutos.");
-    guardar("wortach_centro", { centro: v.centro.trim(), contacto: v.contacto.trim(), tel_contacto: v.tel_contacto.trim(), email_centro: v.email_centro.trim() });
-    mostrarFinal(data, v);
-    cargar();
-  } catch (ex) { err(ex.message); }
-  finally { btn.disabled = false; btn.textContent = txt; }
+    for (const [n, b] of bs.entries()) {
+      const t = datosTec(b);
+      btn.textContent = bs.length > 1 ? `Enviando ${n + 1} de ${bs.length}…` : "Enviando…";
+      const { data, error } = await sb.rpc("inscribirse", {
+        p_curso: sel.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto, p_email_centro: v.email_centro,
+        p_nombre: t.nombre, p_dni: t.dni, p_telefono: t.telefono, p_email: t.email, p_provincia: v.provincia
+      });
+      res.push({ t, b, data, error: error ? (error.code === "P0001" ? error.message + "." : "No se ha podido completar. Inténtalo de nuevo en unos minutos.") : null });
+    }
+  } catch { res.push(...bs.slice(res.length).map(b => ({ t: datosTec(b), b, error: "No se ha podido completar. Revisa la conexión." }))); }
+  btn.disabled = false; btn.textContent = txt;
+  const bien = res.filter(r => r.data);
+  if (!bien.length) {
+    res.forEach(r => { const x = r.b.querySelector(".err-tec"); x.textContent = r.error; x.classList.remove("hidden"); });
+    return err(bs.length > 1 ? "No se ha podido inscribir a ninguno. Revisa los avisos de cada técnico." : res[0].error);
+  }
+  guardar("wortach_centro", { centro: v.centro.trim(), contacto: v.contacto.trim(), tel_contacto: v.tel_contacto.trim(), email_centro: v.email_centro.trim(), provincia: v.provincia });
+  mostrarFinal(res, v);
+  cargar();
 });
 
 /* ---------- paso 3 ---------- */
-function mostrarFinal(r, v) {
-  const espera = r.estado === "lista_espera", c = sel;
+function mostrarFinal(res, v) {
+  const c = sel, bien = res.filter(r => r.data), plaza = bien.filter(r => r.data.estado !== "lista_espera"), espera = bien.filter(r => r.data.estado === "lista_espera"), fallos = res.filter(r => !r.data);
+  const uno = res.length === 1, soloEspera = !plaza.length;
+  const titulo = uno ? (soloEspera ? `En lista de espera, posición ${espera[0].data.posicion}` : "Plaza reservada")
+    : [plaza.length ? `${plaza.length} plaza${plaza.length > 1 ? "s" : ""} reservada${plaza.length > 1 ? "s" : ""}` : "", espera.length ? `${espera.length} en lista de espera` : ""].filter(Boolean).join(" · ");
+  const texto = uno ? (soloEspera ? `Si se libera una plaza se asigna por orden y ${esc(res[0].t.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(res[0].t.email)}. También recibirá un recordatorio una semana antes y el día anterior.`)
+    : `Cada técnico recibe la confirmación en su correo y el centro una copia. ${espera.length ? "Si se libera una plaza, se asigna por orden de la lista de espera y se avisa por correo." : "También reciben un recordatorio una semana antes y el día anterior."}`;
+  const col = soloEspera ? "var(--ambar)" : "var(--verde)";
   $("#final").innerHTML = `
     <svg class="sello" viewBox="0 0 84 84" aria-hidden="true">
-      <circle cx="42" cy="42" r="38" fill="none" stroke="${espera ? "var(--ambar)" : "var(--verde)"}" stroke-width="6"/>
-      ${espera ? `<path d="M42 22v21l13 8" fill="none" stroke="var(--ambar)" stroke-width="6" stroke-linecap="round"/>`
+      <circle cx="42" cy="42" r="38" fill="none" stroke="${col}" stroke-width="6"/>
+      ${soloEspera ? `<path d="M42 22v21l13 8" fill="none" stroke="var(--ambar)" stroke-width="6" stroke-linecap="round"/>`
                : `<path d="M26 43l11 11 21-23" fill="none" stroke="var(--verde)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`}
     </svg>
-    <h2>${espera ? `En lista de espera, posición ${r.posicion}` : "Plaza reservada"}</h2>
-    <p>${espera ? `Si se libera una plaza se asigna por orden y ${esc(v.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(v.email)}. También recibirá un recordatorio una semana antes y el día anterior.`}</p>
+    <h2>${titulo}</h2>
+    <p>${texto}</p>
     <div class="ficha">
-      <b>${esc(v.nombre)}</b>
-      <span>${TIPO[c.tipo]} en ${esc(c.sede)}</span>
-      <span>${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
-      <span style="color:var(--gris)">${esc(v.centro)}</span>
+      <span><b>${TIPO[c.tipo]} en ${esc(c.sede)}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
+      <span style="color:var(--gris);margin-bottom:6px">${esc(v.centro)}</span>
+      <ul class="lista-final">${res.map(r => `<li><span>${esc(r.t.nombre)}</span>${r.data ? (r.data.estado === "lista_espera" ? `<span class="est esp">Lista de espera, puesto ${r.data.posicion}</span>` : `<span class="est ok">Plaza reservada</span>`) : `<span class="est mal">No inscrito</span>`}</li>${r.data ? "" : `<li style="font-size:13.5px;color:var(--rojo);margin-top:-4px">${esc(r.error)}</li>`}`).join("")}</ul>
     </div>
     <div class="acciones">
-      ${espera ? "" : `<button class="btn sec" id="ics">Añadir al calendario</button>`}
-      <button class="btn" id="otro">Inscribir a otro técnico</button>
+      ${fallos.length ? `<button class="btn" id="corregir">Corregir ${fallos.length > 1 ? `los ${fallos.length} que faltan` : "el que falta"}</button>` : ""}
+      ${plaza.length ? `<button class="btn sec" id="ics">Añadir al calendario</button>` : ""}
+      <button class="btn ${fallos.length ? "sec" : ""}" id="otro">Inscribir a más técnicos</button>
       <button class="btn sec" id="otra">Ver otras convocatorias</button>
     </div>`;
   irPaso(3);
-  if (!espera) $("#ics").onclick = () => descargarIcs(c, v);
-  const limpiar = () => { const f = $("#f"); ["nombre","dni","telefono","email"].forEach(k => { f[k].value = ""; f[k].classList.remove("mal","bien"); }); f.acepto.checked = false; estadoDni(false); };
+  if (plaza.length) $("#ics").onclick = () => descargarIcs(c, { nombre: plaza.map(r => r.t.nombre).join(", ") });
+  const limpiar = (lista) => { reiniciarTecnicos(lista); $("#f").acepto.checked = false; };
+  if (fallos.length) $("#corregir").onclick = () => { limpiar(fallos.map(r => r.t)); irPaso(2); setTimeout(() => bloques().forEach((b, i) => { const x = b.querySelector(".err-tec"); x.textContent = fallos[i].error; x.classList.remove("hidden"); }), 0); };
   $("#otro").onclick = () => { limpiar(); irPaso(2); };
   $("#otra").onclick = () => { limpiar(); sel = null; irPaso(1); };
 }
@@ -525,7 +621,7 @@ function descargarIcs(c, v) {
   if (t && /^[0-9a-f-]{36}$/i.test(t)) {
     try {
       const { data } = await sb.rpc("taller_publico", { p_token: t });
-      if (data) guardar("wortach_centro", { centro: data.nombre || "", contacto: data.contacto || "", tel_contacto: data.telefono || "", email_centro: data.email || "" });
+      if (data) guardar("wortach_centro", { centro: data.nombre || "", contacto: data.contacto || "", tel_contacto: data.telefono || "", email_centro: data.email || "", provincia: data.provincia || "" });
     } catch {}
   }
   cargar();

@@ -210,6 +210,16 @@ a.enlace:hover{color:var(--verde)}
 .filtro-chip{display:inline-flex;gap:6px;align-items:center;background:var(--verde-suave);color:var(--verde-osc);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600}
 .filtro-chip button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;line-height:1}
 .enlace-taller{background:var(--hover)}
+.mapa-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:8px}
+.mapa svg{display:block;width:100%;max-width:520px;height:auto;margin:0 auto}
+.mapa path.prov{stroke:#fff;stroke-width:.7;transition:opacity .15s}
+.mapa path.prov:hover{stroke:var(--tinta);stroke-width:1.4}
+.mapa .ley{display:flex;gap:2px;align-items:center;font-size:12px;color:var(--gris);margin-top:6px;flex-wrap:wrap}
+.mapa .ley i{display:inline-block;width:26px;height:10px;border-radius:2px}
+.mapa .ley span{margin:0 6px}
+@media (max-width:900px){.mapa-grid{grid-template-columns:1fr}}
+.cp-aviso{color:var(--ambar);font-size:12.5px;font-weight:600}
+.cp-ya{color:var(--gris);font-size:12.5px}
 [data-solo-m]{display:none}
 @media (max-width:640px){[data-solo-m]{display:block}}
 </style>
@@ -275,6 +285,7 @@ a.enlace:hover{color:var(--verde)}
         <label style="display:flex;gap:7px;align-items:center;font-size:14px"><input type="checkbox" id="f-pasados" style="accent-color:var(--verde)"> Mostrar celebrados</label>
         <span class="esp"></span>
         <a class="btn sec" id="ver-publico" href="./" target="_blank" rel="noopener">Ver formulario público</a>
+        <button class="btn sec" id="copiar-cal">Copiar calendario</button>
         <button class="btn sec" id="importar">Importar Excel</button>
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
@@ -323,6 +334,18 @@ a.enlace:hover{color:var(--verde)}
       <div class="es-grid">
         <div class="caja pad"><h3 class="es-t">Plazas confirmadas por año</h3><p class="gris es-s">Inscripciones con plaza en cursos no cancelados. El año en curso incluye los cursos que aún no se han celebrado.</p><div id="es-anios" class="graf"></div></div>
         <div class="caja pad"><h3 class="es-t">Ocupación por mes <span id="es-anio-t"></span></h3><p class="gris es-s">Plazas ocupadas sobre el cupo de las convocatorias de cada mes.</p><div id="es-meses" class="graf"></div></div>
+      </div>
+      <div class="caja pad" style="margin-bottom:22px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+          <div><h3 class="es-t">De dónde vienen <span id="es-mapa-anio"></span></h3><p class="gris es-s">Plazas confirmadas según la provincia del taller.</p></div>
+          <button class="btn sec mini hidden" id="es-sinprov"></button>
+        </div>
+        <div class="mapa-grid">
+          <div id="es-mapa" class="mapa"></div>
+          <div><div class="caja scroll" style="max-height:380px"><table>
+            <thead><tr><th>Provincia</th><th>Plazas</th><th>Talleres</th><th class="hide-m" style="width:34%"></th></tr></thead>
+            <tbody id="es-prov"></tbody></table></div></div>
+        </div>
       </div>
       <div class="es-grid">
         <div><h3 class="es-t" style="margin:0 0 8px">Por sede</h3><div class="caja scroll"><table>
@@ -540,7 +563,8 @@ a.enlace:hover{color:var(--verde)}
         <label class="c" style="grid-column:1/-1">Nombre del taller<input name="nombre" class="mayus" required></label>
         <label class="c">Persona de contacto<input name="contacto" class="mayus"></label>
         <label class="c">Teléfono<input name="telefono"></label>
-        <label class="c" style="grid-column:1/-1">Correo del taller<input name="email" type="email"></label>
+        <label class="c">Provincia<select name="provincia" class="sel-prov"></select></label>
+        <label class="c">Correo del taller<input name="email" type="email"></label>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn sec mini" type="submit">Guardar cambios</button>
@@ -586,6 +610,42 @@ a.enlace:hover{color:var(--verde)}
     </div>
     <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Inscribir</button></div>
   </form>
+</dialog>
+
+<!-- Copiar calendario -->
+<dialog id="dlg-copiar">
+  <form id="f-copiar">
+    <div class="dh"><div><h2>Copiar calendario al año siguiente</h2><div class="gris">Crea las convocatorias del año que viene a partir de las de este, el mismo día de la semana. Revisa las fechas antes de crear.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db" style="display:grid;gap:14px">
+      <div class="grid2">
+        <label class="c">Copiar desde<select id="cp-origen"></select></label>
+        <label class="c">Las nuevas se crean<select id="cp-estado"><option value="cerrado">Cerradas: no salen en el formulario hasta que las abras</option><option value="abierto">Abiertas: salen ya en el formulario</option></select></label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <b id="cp-cuenta"></b>
+        <span><button type="button" class="btn sec mini" id="cp-todos">Marcar todas</button> <button type="button" class="btn sec mini" id="cp-ninguno">Ninguna</button></span>
+      </div>
+      <div class="caja scroll" style="max-height:420px"><table>
+        <thead><tr><th></th><th>Curso</th><th class="hide-m">Fechas de origen</th><th>Primera jornada nueva</th><th>Nuevas fechas</th></tr></thead>
+        <tbody id="cp-lista"></tbody>
+      </table></div>
+      <p class="gris" style="font-size:13px;margin:0">Se copian tipo, sede, cupo, quórum, docente y horas. Los inscritos no se copian. Si una fecha cae en festivo nacional te lo marca para que la cambies.</p>
+      <div class="error" id="cp-err"></div>
+    </div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit" id="cp-ok">Crear convocatorias</button></div>
+  </form>
+</dialog>
+
+<!-- Completar provincias -->
+<dialog id="dlg-prov">
+  <div class="dh"><div><h2>Talleres sin provincia</h2><div class="gris">Elige la provincia de cada uno; se guarda al momento. Los que tienen teléfono fijo ya se rellenaron solos.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db">
+    <div class="caja scroll" style="max-height:60vh"><table>
+      <thead><tr><th>Taller</th><th class="hide-m">Contacto</th><th>Provincia</th></tr></thead>
+      <tbody id="pv-lista"></tbody>
+    </table></div>
+  </div>
+  <div class="df"><button class="btn" type="button" data-close>Hecho</button></div>
 </dialog>
 
 <!-- Corregir DNI -->
@@ -1450,13 +1510,13 @@ function pintarTalleres() {
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const q = norm($("#buscar-tall").value);
   let lista = talleres.filter(t => (!filtroTall || (filtroTall === "renovar" ? t.n_caducados + t.n_vence > 0 : !t.email))
-    && (!q || norm([t.nombre, t.contacto, t.telefono, t.email].join(" ")).includes(q)));
+    && (!q || norm([t.nombre, t.contacto, t.telefono, t.email, t.provincia].join(" ")).includes(q)));
   const o = $("#orden-tall").value;
   if (o === "tecnicos") lista.sort((a, b) => b.n_tecnicos - a.n_tecnicos);
   if (o === "caducados") lista.sort((a, b) => (b.n_caducados + b.n_vence) - (a.n_caducados + a.n_vence));
   if (o === "reciente") lista.sort((a, b) => String(b.ultimo_curso || "").localeCompare(String(a.ultimo_curso || "")));
   $("#tb-tall").innerHTML = lista.map(t => `<tr class="click" data-ficha-taller="${t.id}" tabindex="0">
-    <td><b>${esc(t.nombre)}</b>${t.email ? `<div class="gris" style="font-size:13px">${esc(t.email)}</div>` : ""}</td>
+    <td><b>${esc(t.nombre)}</b>${t.provincia || t.email ? `<div class="gris" style="font-size:13px">${esc([t.provincia, t.email].filter(Boolean).join(" · "))}</div>` : ""}</td>
     <td class="hide-m">${esc(t.contacto || "")}<div class="gris" style="font-size:13px">${esc(t.telefono || "")}</div></td>
     <td>${t.n_tecnicos}</td>
     <td>${t.n_caducados ? `<span class="badge b-bad">${t.n_caducados} caducado${t.n_caducados > 1 ? "s" : ""}</span> ` : ""}${t.n_vence ? `<span class="badge b-warn">${t.n_vence} vence pronto</span>` : ""}${!t.n_caducados && !t.n_vence ? `<span class="gris">—</span>` : ""}</td>
@@ -1467,8 +1527,8 @@ $("#stats-tall").addEventListener("click", e => { const b = e.target.closest("[d
 $("#buscar-tall").addEventListener("input", pintarTalleres);
 $("#orden-tall").addEventListener("change", pintarTalleres);
 $("#csv-tall").addEventListener("click", () => csv(`talleres_${hoy}.csv`,
-  ["Taller","Persona de contacto","Teléfono","Correo","Técnicos","Caducados","Vence pronto","Inscripciones","Último curso"],
-  talleres.map(t => [t.nombre, t.contacto, t.telefono, t.email, t.n_tecnicos, t.n_caducados, t.n_vence, t.n_inscripciones, t.ultimo_curso])));
+  ["Taller","Provincia","Persona de contacto","Teléfono","Correo","Técnicos","Caducados","Vence pronto","Inscripciones","Último curso"],
+  talleres.map(t => [t.nombre, t.provincia, t.contacto, t.telefono, t.email, t.n_tecnicos, t.n_caducados, t.n_vence, t.n_inscripciones, t.ultimo_curso])));
 
 async function abrirTaller(id) {
   const [res, tecs, ins] = await Promise.all([
@@ -1480,14 +1540,14 @@ async function abrirTaller(id) {
   fichaTall = res.data; fichaTallTecs = tecs.data || [];
   const t = fichaTall, f = $("#f-tall");
   $("#fl-nombre").textContent = t.nombre;
-  $("#fl-sub").textContent = [t.contacto, t.telefono, t.email].filter(Boolean).join(" · ") || "Sin datos de contacto";
+  $("#fl-sub").textContent = [t.provincia, t.contacto, t.telefono, t.email].filter(Boolean).join(" · ") || "Sin datos de contacto";
   $("#fl-cifras").innerHTML = `
     <div class="cifra"><b>${fichaTallTecs.length}</b><span>técnicos</span></div>
     <div class="cifra"><b>${t.n_inscripciones}</b><span>plazas confirmadas</span></div>
     <div class="cifra ${t.n_caducados ? "alerta" : ""}"><b>${t.n_caducados}</b><span>caducados</span></div>
     <div class="cifra"><b>${t.n_vence}</b><span>vencen pronto</span></div>
     <div class="cifra"><b style="font-size:20px">${t.ultimo_curso ? fcorta(t.ultimo_curso) : "—"}</b><span>último curso</span></div>`;
-  f.nombre.value = t.nombre || ""; f.contacto.value = t.contacto || ""; f.telefono.value = t.telefono || ""; f.email.value = t.email || "";
+  f.nombre.value = t.nombre || ""; f.contacto.value = t.contacto || ""; f.telefono.value = t.telefono || ""; f.email.value = t.email || ""; f.provincia.value = t.provincia || "";
   $("#fl-err").textContent = ""; $("#fl-unir-zona").classList.add("hidden"); $("#fl-destino").value = "";
   $("#fl-unir").classList.toggle("hidden", !!miSede);
   $("#fl-ntec").textContent = `(${fichaTallTecs.length})`;
@@ -1514,7 +1574,7 @@ $("#f-tall").addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
   if (f.email.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.value.trim())) { $("#fl-err").textContent = "El correo no es válido."; return; }
-  const { error } = await sb.from("centros").update({ nombre: f.nombre.value, contacto: f.contacto.value || null, telefono: f.telefono.value.trim() || null, email: f.email.value.trim().toLowerCase() || null }).eq("id", fichaTall.id);
+  const { error } = await sb.from("centros").update({ nombre: f.nombre.value, contacto: f.contacto.value || null, telefono: f.telefono.value.trim() || null, email: f.email.value.trim().toLowerCase() || null, provincia: f.provincia.value || null }).eq("id", fichaTall.id);
   if (error) { $("#fl-err").textContent = /duplicate|unique/i.test(error.message) ? "Ya hay otro taller con ese nombre. Si es el mismo, usa «Unir con otro taller»." : error.message; return; }
   toast("Datos del taller guardados"); await cargarTalleres(); abrirTaller(fichaTall.id);
 });
@@ -1629,7 +1689,8 @@ let insStats = null;
 async function cargarEstadisticas() {
   if (!cursos.length) await cargarCursos();
   try {
-    insStats = await todas(() => sb.from("inscripciones").select("tecnico_id,centro_id,curso_id,estado,asistio,centros(nombre)"));
+    insStats = await todas(() => sb.from("inscripciones").select("tecnico_id,centro_id,curso_id,estado,asistio,centros(nombre,provincia)"));
+    cargarMapa().then(() => pintarEstadisticas()).catch(() => {}); botonSinProv();
   } catch { return toast("No se han podido cargar las estadísticas"); }
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0, 4)))].sort().reverse();
   const sa = $("#es-anio"), prev = sa.value || (anios.includes(hoy.slice(0, 4)) ? hoy.slice(0, 4) : anios[0]);
@@ -1722,6 +1783,7 @@ function pintarEstadisticas() {
   $("#es-top").innerHTML = top.map(([id, o]) => `<tr class="click" data-ficha-taller="${id}" tabindex="0"><td><b>${esc(o.nombre || "")}</b></td><td>${o.n}</td><td class="hide-m">${o.t.size}</td>
     <td class="hide-m" style="width:30%"><div style="height:8px;border-radius:4px;background:var(--verde);width:${Math.max(4, o.n / maxN * 100)}%"></div></td></tr>`).join("")
     || `<tr><td colspan="4" class="vacio-t">Sin inscripciones.</td></tr>`;
+  pintarMapa(anio, r);
 }
 $("#es-anio").addEventListener("change", pintarEstadisticas);
 addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (!$("[data-panel=estadisticas]").classList.contains("hidden")) pintarEstadisticas(); }, 200); });
@@ -1892,6 +1954,144 @@ function verHistorial(tipo, id, nombre) {
 }
 $("#ft-hist").addEventListener("click", () => verHistorial("tec", fichaTec.id, fichaTec.nombre));
 $("#fl-hist").addEventListener("click", () => verHistorial("cen", fichaTall.id, fichaTall.nombre));
+
+/* ---------- provincias ---------- */
+const PROV_COD = {"Álava":"01","Albacete":"02","Alicante":"03","Almería":"04","Ávila":"05","Badajoz":"06","Baleares":"07","Barcelona":"08","Burgos":"09","Cáceres":"10","Cádiz":"11","Castellón":"12","Ciudad Real":"13","Córdoba":"14","A Coruña":"15","Cuenca":"16","Girona":"17","Granada":"18","Guadalajara":"19","Gipuzkoa":"20","Huelva":"21","Huesca":"22","Jaén":"23","León":"24","Lleida":"25","La Rioja":"26","Lugo":"27","Madrid":"28","Málaga":"29","Murcia":"30","Navarra":"31","Ourense":"32","Asturias":"33","Palencia":"34","Las Palmas":"35","Pontevedra":"36","Salamanca":"37","Santa Cruz de Tenerife":"38","Cantabria":"39","Segovia":"40","Sevilla":"41","Soria":"42","Tarragona":"43","Teruel":"44","Toledo":"45","Valencia":"46","Valladolid":"47","Bizkaia":"48","Zamora":"49","Zaragoza":"50","Ceuta":"51","Melilla":"52"};
+const PROVINCIAS = Object.keys(PROV_COD).sort((a, b) => a.localeCompare(b, "es"));
+const opcionesProv = (v = "") => `<option value="">Sin provincia</option>` + PROVINCIAS.map(p => `<option ${p === v ? "selected" : ""}>${p}</option>`).join("");
+$$(".sel-prov").forEach(s => s.innerHTML = opcionesProv());
+CAMPOS.provincia = "provincia";
+
+function cargarMapa() {
+  if (window.MAPA_PROVINCIAS) return Promise.resolve();
+  return new Promise((ok, mal) => { const s = document.createElement("script"); s.src = "provincias.js"; s.onload = ok; s.onerror = mal; document.head.append(s); });
+}
+const ESCALA = ["#d6ecdf", "#a3d3b4", "#6db88a", "#379765", "#1c6b42"];
+function pintarMapa(anio, r) {
+  const M = window.MAPA_PROVINCIAS; if (!M) return;
+  const por = new Map(), sinProv = { n: 0, t: new Set() };
+  for (const i of r.conf) {
+    const p = i.centros?.provincia;
+    if (!p) { sinProv.n++; if (i.centro_id) sinProv.t.add(i.centro_id); continue; }
+    const o = por.get(p) || { n: 0, t: new Set() }; o.n++; if (i.centro_id) o.t.add(i.centro_id); por.set(p, o);
+  }
+  const max = Math.max(1, ...[...por.values()].map(o => o.n));
+  // cortes en raíz cuadrada para que una provincia grande no apague al resto
+  const cortes = [1, 2, 3, 4].map(k => Math.max(1, Math.round(max * (k / 5) ** 2)));
+  const nivel = n => n <= 0 ? -1 : cortes.filter(c => n > c).length;
+  const nom = Object.fromEntries(Object.entries(PROV_COD).map(([n, c]) => [c, n]));
+  let svg = `<svg viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="Mapa de plazas por provincia">`;
+  for (const [cod, d] of Object.entries(M.p)) {
+    const n = nom[cod], o = por.get(n), v = o?.n || 0, l = nivel(v);
+    svg += `<path class="prov" d="${d}" fill="${l < 0 ? "#e9edea" : ESCALA[l]}" data-tip="${n ? `<b>${esc(n)}</b><br>${v ? `${v} plaza${v > 1 ? "s" : ""} · ${o.t.size} taller${o.t.size > 1 ? "es" : ""}` : "Sin plazas"}` : ""}"/>`;
+  }
+  svg += `<path d="${M.marco}" fill="none" stroke="var(--linea-2)" stroke-width="1"/></svg>`;
+  const rangos = ESCALA.map((c, k) => { const a = k === 0 ? 1 : cortes[k - 1] + 1, b = k < 4 ? cortes[k] : max; return a > b ? null : `<i style="background:${c}" title="${a === b ? a : a + "–" + b}"></i>`; }).filter(Boolean).join("");
+  $("#es-mapa").innerHTML = svg + `<div class="ley"><span>Menos</span>${rangos}<span>Más</span><span style="margin-left:12px"><i style="background:#e9edea"></i> sin plazas</span></div>`;
+  const filas = [...por.entries()].sort((a, b) => b[1].n - a[1].n);
+  $("#es-prov").innerHTML = filas.map(([p, o]) => `<tr><td>${esc(p)}</td><td>${o.n}</td><td>${o.t.size}</td>
+    <td class="hide-m"><div style="height:8px;border-radius:4px;background:var(--verde);width:${Math.max(3, o.n / max * 100)}%"></div></td></tr>`).join("")
+    + (sinProv.n ? `<tr><td class="gris">Sin provincia</td><td class="gris">${sinProv.n}</td><td class="gris">${sinProv.t.size}</td><td class="hide-m"></td></tr>` : "")
+    || `<tr><td colspan="4" class="vacio-t">Sin plazas en ${anio}.</td></tr>`;
+  $("#es-mapa-anio").textContent = anio;
+}
+async function botonSinProv() {
+  if (!talleres.length) await cargarTalleres();
+  const n = talleres.filter(t => !t.provincia).length, b = $("#es-sinprov");
+  b.textContent = `Completar provincias (${n} talleres sin ella)`; b.classList.toggle("hidden", !n);
+}
+$("#es-sinprov").addEventListener("click", async () => {
+  if (!talleres.length) await cargarTalleres();
+  const sin = talleres.filter(t => !t.provincia).sort((a, b) => b.n_inscripciones - a.n_inscripciones);
+  $("#pv-lista").innerHTML = sin.map(t => `<tr><td><b>${esc(t.nombre)}</b><div class="gris" style="font-size:12.5px">${t.n_inscripciones} plaza${t.n_inscripciones === 1 ? "" : "s"}</div></td>
+    <td class="hide-m gris" style="font-size:13px">${esc([t.telefono, t.email].filter(Boolean).join(" · "))}</td>
+    <td><select class="mini" data-prov="${t.id}" style="min-width:150px">${opcionesProv()}</select></td></tr>`).join("") || `<tr><td colspan="3" class="vacio-t">Todos los talleres tienen provincia.</td></tr>`;
+  $("#dlg-prov").showModal();
+});
+$("#pv-lista").addEventListener("change", async e => {
+  const s = e.target.closest("[data-prov]"); if (!s) return;
+  const { error } = await sb.from("centros").update({ provincia: s.value || null }).eq("id", s.dataset.prov);
+  if (error) return toast(error.message);
+  const t = talleres.find(x => x.id === s.dataset.prov); if (t) t.provincia = s.value || null;
+  s.closest("tr").style.background = "var(--verde-suave)"; toast("Provincia guardada");
+});
+$("#dlg-prov").addEventListener("close", async () => {
+  insStats = null; await cargarEstadisticas();
+});
+
+/* ---------- copiar calendario ---------- */
+function festivosNacionales(anio) {
+  // Domingo de Pascua (algoritmo de Meeus) → Jueves y Viernes Santo
+  const a = anio % 19, b = Math.floor(anio / 100), c = anio % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+    h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  const pascua = `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  const f0 = { "01-01": "Año Nuevo", "01-06": "Reyes", "05-01": "Día del Trabajo", "08-15": "Asunción", "10-12": "Fiesta Nacional", "11-01": "Todos los Santos", "12-06": "Constitución", "12-08": "Inmaculada", "12-25": "Navidad" };
+  const r = Object.fromEntries(Object.entries(f0).map(([md, n]) => [`${anio}-${md}`, n]));
+  r[addDias(pascua, -3)] = "Jueves Santo"; r[addDias(pascua, -2)] = "Viernes Santo";
+  return r;
+}
+let copiaFilas = [];
+function abrirCopia() {
+  const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0, 4)))].sort().reverse();
+  if (!anios.length) return toast("No hay cursos que copiar");
+  const def = anios.includes(hoy.slice(0, 4)) ? hoy.slice(0, 4) : anios[0];
+  $("#cp-origen").innerHTML = anios.map(a => `<option value="${a}" ${a === def ? "selected" : ""}>${a} → ${+a + 1}</option>`).join("");
+  $("#cp-err").textContent = ""; prepararCopia(); $("#dlg-copiar").showModal();
+}
+function prepararCopia() {
+  const a = $("#cp-origen").value, destino = String(+a + 1);
+  const existentes = new Set(cursos.filter(c => c.fecha_inicio.startsWith(destino)).map(c => `${c.tipo}|${c.sede}|${c.fecha_inicio}`));
+  copiaFilas = cursos.filter(c => c.fecha_inicio.startsWith(a) && c.estado !== "cancelado").map(c => {
+    const offs = c.fechas.map(f => Math.round((D(f) - D(c.fechas[0])) / 864e5));
+    return { c, offs, inicio: addDias(c.fechas[0], 364), marcado: true, existentes };
+  });
+  pintarCopia();
+}
+function fechasCopia(f) { return f.offs.map(o => addDias(f.inicio, o)); }
+function pintarCopia() {
+  const destino = String(+$("#cp-origen").value + 1), fest = { ...festivosNacionales(+destino), ...festivosNacionales(+destino + 1) };
+  $("#cp-lista").innerHTML = copiaFilas.map((f, k) => {
+    const nf = fechasCopia(f), ya = f.existentes.has(`${f.c.tipo}|${f.c.sede}|${nf[0]}`);
+    const avisos = nf.flatMap(x => { const dw = D(x).getDay(), out = []; if (fest[x]) out.push(`${fcorta(x)}: ${fest[x]}`); if (dw === 0 || dw === 6) out.push(`${fcorta(x)}: fin de semana`); return out; });
+    if (ya) f.marcado = false;
+    return `<tr><td><input type="checkbox" data-cp="${k}" ${f.marcado ? "checked" : ""} ${ya ? "disabled" : ""} style="accent-color:var(--verde);width:18px;height:18px"></td>
+      <td>${tipoBadge(f.c.tipo)} ${sedeTag(f.c.sede)}</td>
+      <td class="hide-m gris" style="font-size:13.5px">${textoFechas(f.c.fechas)}</td>
+      <td><input type="date" data-cp-ini="${k}" value="${f.inicio}" style="padding:5px 8px" ${ya ? "disabled" : ""}></td>
+      <td style="font-size:13.5px">${textoFechas(nf)}${ya ? `<div class="cp-ya">Ya existe en ${destino}</div>` : ""}${avisos.map(x => `<div class="cp-aviso">⚠ ${esc(x)}</div>`).join("")}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="vacio-t">No hay convocatorias en ${$("#cp-origen").value}.</td></tr>`;
+  const n = copiaFilas.filter(f => f.marcado).length;
+  $("#cp-cuenta").textContent = `${n} de ${copiaFilas.length} convocatorias para ${destino}`;
+  $("#cp-ok").textContent = n ? `Crear ${n} convocatoria${n > 1 ? "s" : ""} en ${destino}` : "Crear convocatorias";
+  $("#cp-ok").disabled = !n;
+}
+$("#copiar-cal").addEventListener("click", abrirCopia);
+$("#cp-origen").addEventListener("change", prepararCopia);
+$("#cp-lista").addEventListener("change", e => {
+  const c = e.target.closest("[data-cp]"), d = e.target.closest("[data-cp-ini]");
+  if (c) copiaFilas[+c.dataset.cp].marcado = c.checked;
+  if (d && d.value) copiaFilas[+d.dataset.cpIni].inicio = d.value;
+  pintarCopia();
+});
+$("#cp-todos").addEventListener("click", () => { copiaFilas.forEach(f => f.marcado = true); pintarCopia(); });
+$("#cp-ninguno").addEventListener("click", () => { copiaFilas.forEach(f => f.marcado = false); pintarCopia(); });
+$("#f-copiar").addEventListener("submit", async e => {
+  e.preventDefault();
+  const sel = copiaFilas.filter(f => f.marcado);
+  if (!sel.length) return;
+  const estado = $("#cp-estado").value;
+  const rows = sel.map(f => ({ tipo: f.c.tipo, sede: f.c.sede, fechas: fechasCopia(f), cupo_max: f.c.cupo_max, quorum_min: f.c.quorum_min, estado,
+    docente_id: f.c.docente_id || null, horas: f.c.horas || null, notas: null }));
+  const b = $("#cp-ok"); b.disabled = true; b.textContent = "Creando…";
+  const { error } = await sb.from("cursos").insert(rows);
+  b.disabled = false;
+  if (error) { $("#cp-err").textContent = error.message; pintarCopia(); return; }
+  const destino = String(+$("#cp-origen").value + 1);
+  $("#dlg-copiar").close();
+  toast(`${rows.length} convocatorias creadas en ${destino}${estado === "cerrado" ? " (cerradas)" : ""}`);
+  $("#f-anio").value = destino; await cargarCursos(); $("#f-anio").value = destino; pintarCursos();
+});
 
 iniciar();
 
