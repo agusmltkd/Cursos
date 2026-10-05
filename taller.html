@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Estado de tus técnicos · WORTACH</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --verde:#268c56; --verde-osc:#1f7448; --verde-suave:#e4f1e9;
+  --papel:#f2f4f1; --panel:#fff; --tinta:#16201b; --gris:#5a6660; --linea:#d9dfdb; --linea-2:#c3ccc7;
+  --ambar:#a86b00; --ambar-suave:#fbf0d9; --rojo:#b8372d; --rojo-suave:#fbe7e4; --azul:#2f6fde; --azul-suave:#e5eefc;
+  --f-tit:"Archivo","Arial Black",system-ui,sans-serif; --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font:16px/1.55 var(--f)}
+a{color:var(--verde)}
+.hidden{display:none!important}
+.env{max-width:1000px;margin:0 auto;padding:0 16px}
+.cab{background:#fff;border-top:5px solid var(--verde);border-bottom:1px solid var(--linea);position:relative;overflow:hidden}
+.barra{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}
+.barra img{height:36px;width:auto;display:block}
+.barra a{font-size:14px;color:var(--gris);text-decoration:none}
+.tit{padding:18px 0 26px}
+.tit .et{font-size:14px;color:var(--verde-osc);font-weight:600}
+.tit h1{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(26px,4.6vw,42px);line-height:1.05;margin:4px 0 6px;letter-spacing:-.01em}
+.tit p{margin:0;color:var(--gris)}
+.simb{position:absolute;right:-70px;top:-30px;width:360px;opacity:.07;pointer-events:none}
+main.env{padding:22px 16px 60px}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.cifra{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:12px 16px;border-top:4px solid var(--c,var(--linea-2))}
+.cifra b{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:30px;line-height:1.1;display:block}
+.cifra span{font-size:14px;color:var(--gris)}
+.cta{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--verde-suave);border:1px solid #cfe5d8;border-radius:16px;padding:16px 18px;margin-bottom:24px}
+.cta p{margin:0;max-width:60ch}
+.btn{border:0;border-radius:10px;padding:11px 18px;font-weight:600;cursor:pointer;background:var(--verde);color:#fff;text-decoration:none;display:inline-flex;gap:8px;align-items:center;white-space:nowrap;font-size:15px}
+.btn:hover{background:var(--verde-osc)}
+.btn.sec{background:#fff;color:var(--tinta);border:1px solid var(--linea-2)}
+h2{font-family:var(--f-tit);font-stretch:112%;font-size:19px;margin:0 0 10px}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:16px;overflow:hidden;margin-bottom:26px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12.5px;color:var(--gris);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--linea)}
+td{padding:11px 14px;border-bottom:1px solid var(--linea);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+.badge{display:inline-block;font-size:12.5px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.b-ok{background:var(--verde-suave);color:var(--verde-osc)} .b-warn{background:var(--ambar-suave);color:var(--ambar)} .b-bad{background:var(--rojo-suave);color:var(--rojo)} .b-gris{background:#f6f8f6;color:var(--gris);border:1px solid var(--linea)} .b-azul{background:var(--azul-suave);color:var(--azul)}
+.gris{color:var(--gris)} .peq{font-size:13px}
+.vacio{padding:26px;text-align:center;color:var(--gris)}
+.aviso{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:30px;text-align:center;margin-top:30px}
+.pie{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--gris);font-size:14px;border-top:1px solid var(--linea);padding-top:18px}
+.pie img{height:24px}
+@media (max-width:640px){th,td{padding:9px 10px}.hide-m{display:none}.barra a{display:none}}
+@media print{.cta,.barra a,.pie,.no-imp{display:none!important}body{background:#fff}.caja,.cifra{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="cab">
+  <svg class="simb" viewBox="0 0 223 247" aria-hidden="true" fill="none" stroke="#268c56" stroke-width="16"><path d="M8 8H112A103 103 0 0 1 215 111V239H8Z"/><circle cx="111.5" cy="127" r="96"/><path d="M111.5 8V239M8 127H215"/></svg>
+  <div class="env">
+    <div class="barra"><img src="icons/logo.png" alt="WORTACH, el mundo del tacógrafo" width="140" height="36"><a href="tel:+34954360572">Asistencia Técnica · 954 360 572</a></div>
+    <div class="tit"><div class="et">Adiestramiento de tacógrafos</div><h1 id="nombre">Cargando…</h1><p id="sub"></p></div>
+  </div>
+</header>
+
+<main class="env">
+  <div id="contenido" class="hidden">
+    <div class="cifras" id="cifras"></div>
+    <div class="cta">
+      <p><b>¿Hay que renovar a alguien?</b> Inscríbelo en el próximo curso. Los datos del taller ya van rellenos.</p>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec no-imp" id="imprimir" type="button">Imprimir</button><a class="btn" id="inscribir" href="./">Inscribir a un técnico</a></span>
+    </div>
+    <section id="sec-prox" class="hidden">
+      <h2>Próximos cursos</h2>
+      <div class="caja" style="overflow-x:auto"><table>
+        <thead><tr><th>Fechas</th><th>Curso</th><th class="hide-m">Sede</th><th>Técnico</th><th>Plaza</th></tr></thead>
+        <tbody id="prox"></tbody>
+      </table></div>
+    </section>
+    <h2>Tus técnicos</h2>
+    <div class="caja" style="overflow-x:auto"><table>
+      <thead><tr><th>Técnico</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th></tr></thead>
+      <tbody id="tecs"></tbody>
+    </table></div>
+    <p class="gris peq">El adiestramiento se renueva cada año: la fecha límite es un año después del primer día del último curso realizado. Si ves algún dato que no cuadra, escríbenos a <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a>.</p>
+  </div>
+  <div id="error" class="aviso hidden">
+    <h2>Este enlace no funciona</h2>
+    <p class="gris" style="margin:0">Puede que haya caducado o esté incompleto. Pide a WORTACH un enlace nuevo en <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> o en el <a href="tel:+34954360572">954 360 572</a>.</p>
+  </div>
+  <footer class="pie" style="margin-top:30px"><img src="icons/logo.png" alt="WORTACH" width="94" height="24"><span>Asistencia Técnica · <a href="mailto:asistencia@wortach.com">asistencia@wortach.com</a> · <a href="tel:+34954360572">954 360 572</a></span></footer>
+</main>
+
+<script>
+const sb = supabase.createClient("https://ylnwqtgyfeqihggjneba.supabase.co", "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD", { auth: { persistSession: false } });
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const D = s => new Date(s + "T12:00:00");
+const fecha = s => s ? `${D(s).getDate()} ${MESES[D(s).getMonth()].slice(0,3)} ${D(s).getFullYear()}` : "—";
+const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
+const SIT = { caducado: ["Caducado","b-bad"], vence_pronto: ["Vence pronto","b-warn"], al_dia: ["Al día","b-ok"], inscrito: ["Inscrito","b-azul"], sin_formacion: ["Sin formación","b-gris"] };
+function textoFechas(f) {
+  const d = f.map(D);
+  if (d.every(x => x.getMonth() === d[0].getMonth())) { const n = d.map(x => x.getDate()); return (n.length > 1 ? n.slice(0,-1).join(", ") + " y " + n.at(-1) : n[0]) + ` de ${MESES[d[0].getMonth()]}`; }
+  return d.map(x => `${x.getDate()} ${MESES[x.getMonth()].slice(0,3)}`).join(", ");
+}
+const token = new URLSearchParams(location.search).get("t") || "";
+function fallo() { $("#nombre").textContent = "Enlace no válido"; $("#error").classList.remove("hidden"); }
+(async () => {
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return fallo();
+  const { data, error } = await sb.rpc("taller_publico", { p_token: token });
+  if (error || !data) return fallo();
+  document.title = `${data.nombre} · Adiestramientos WORTACH`;
+  $("#nombre").textContent = data.nombre;
+  $("#sub").textContent = [data.contacto, data.telefono, data.email].filter(Boolean).join(" · ");
+  $("#inscribir").href = `./?t=${encodeURIComponent(token)}`;
+  const T = data.tecnicos || [], n = k => T.filter(t => t.situacion === k).length;
+  $("#cifras").innerHTML = [
+    ["Técnicos", T.length, "var(--linea-2)"], ["Al día", n("al_dia"), "var(--verde)"], ["Ya inscritos", n("inscrito"), "var(--azul)"],
+    ["Vencen en 2 meses", n("vence_pronto"), "var(--ambar)"], ["Caducados", n("caducado") + n("sin_formacion"), "var(--rojo)"]
+  ].map(([t, v, c]) => `<div class="cifra" style="--c:${c}"><b>${v}</b><span>${t}</span></div>`).join("");
+  const orden = { caducado: 0, sin_formacion: 1, vence_pronto: 2, inscrito: 3, al_dia: 4 };
+  T.sort((a, b) => orden[a.situacion] - orden[b.situacion] || String(a.renovar_antes || "").localeCompare(String(b.renovar_antes || "")));
+  $("#tecs").innerHTML = T.map(t => `<tr>
+    <td><b>${esc(t.nombre)}</b><div class="gris peq">DNI ${esc(t.dni)}</div></td>
+    <td class="hide-m">${t.ultimo_tipo ? `${TIPO[t.ultimo_tipo]}<div class="gris peq">${fecha(t.ultima_fecha)}</div>` : "—"}</td>
+    <td>${t.proximo_curso ? `<span class="gris">Inscrito el</span> ${fecha(t.proximo_curso)}` : fecha(t.renovar_antes)}</td>
+    <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span></td></tr>`).join("")
+    || `<tr><td colspan="4" class="vacio">Todavía no hay técnicos registrados.</td></tr>`;
+  const P = data.proximos || [];
+  $("#sec-prox").classList.toggle("hidden", !P.length);
+  $("#prox").innerHTML = P.map(p => `<tr><td><b>${textoFechas(p.fechas)}</b><div class="gris peq">${D(p.fecha_inicio).getFullYear()}</div></td>
+    <td>${TIPO[p.tipo]}</td><td class="hide-m">${esc(p.sede)}</td><td>${esc(p.tecnico)}</td>
+    <td>${p.estado === "confirmada" ? `<span class="badge b-ok">Confirmada</span>` : `<span class="badge b-warn">Lista de espera</span>`}</td></tr>`).join("");
+  $("#contenido").classList.remove("hidden");
+})();
+$("#imprimir").addEventListener("click", () => print());
+</script>
+</body>
+</html>

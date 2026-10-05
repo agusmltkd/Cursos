@@ -519,7 +519,17 @@ function descargarIcs(c, v) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-cargar();
+/* enlace personal del taller: ?t=… rellena los datos del centro */
+(async () => {
+  const t = new URLSearchParams(location.search).get("t");
+  if (t && /^[0-9a-f-]{36}$/i.test(t)) {
+    try {
+      const { data } = await sb.rpc("taller_publico", { p_token: t });
+      if (data) guardar("wortach_centro", { centro: data.nombre || "", contacto: data.contacto || "", tel_contacto: data.telefono || "", email_centro: data.email || "" });
+    } catch {}
+  }
+  cargar();
+})();
 setInterval(cargar, 60000);
 
 /* nombres siempre en mayúsculas */

@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="certificados.js" defer></script>
+<script src="informes.js" defer></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -179,6 +180,38 @@ select.mini{padding:4px 8px;font-size:13px}
 input.mayus{text-transform:uppercase}
 a.enlace{color:inherit;cursor:pointer;text-decoration:underline;text-decoration-color:var(--linea-2);text-underline-offset:3px}
 a.enlace:hover{color:var(--verde)}
+
+/* estadísticas */
+.es-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px;margin-bottom:22px}
+.es-t{margin:0;font-size:15px}
+.es-s{font-size:13px;margin:2px 0 10px}
+.graf svg{display:block;width:100%;height:auto;overflow:visible}
+.graf text{font:12px var(--f);fill:var(--gris)}
+.graf .val{fill:var(--tinta);font-weight:600}
+.graf [data-tip]{cursor:default}
+.graf [data-tip]:hover .barra{filter:brightness(.9)}
+.tip{position:fixed;z-index:120;background:var(--tinta);color:#fff;font-size:13px;padding:7px 10px;border-radius:8px;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.2);max-width:260px;line-height:1.35}
+.cifra small{display:block;font-size:12.5px;color:var(--gris)}
+.cifra .delta{font-size:12.5px;font-weight:600}
+/* duplicados */
+.dup-lista{display:grid;gap:10px}
+.dup{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px 14px;align-items:center}
+.dup .lado{min-width:0}
+.dup .lado b{display:block;overflow-wrap:anywhere}
+.dup .lado span{font-size:13px;color:var(--gris)}
+.dup .lado.der{text-align:right}
+.dup .medio{text-align:center;font-size:12.5px;color:var(--gris)}
+.dup .acc-d{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;border-top:1px solid var(--linea);padding-top:10px}
+.cuenta-tab{background:var(--ambar-suave);color:var(--ambar);border-radius:999px;font-size:11.5px;padding:0 7px;font-weight:600;margin-left:3px}
+@media (max-width:640px){.dup{grid-template-columns:1fr}.dup .lado.der{text-align:left}.dup .medio{text-align:left}}
+/* historial */
+.hi-det{font-size:13px;color:var(--gris)}
+.hi-det b{color:var(--tinta);font-weight:500}
+.filtro-chip{display:inline-flex;gap:6px;align-items:center;background:var(--verde-suave);color:var(--verde-osc);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600}
+.filtro-chip button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;line-height:1}
+.enlace-taller{background:var(--hover)}
+[data-solo-m]{display:none}
+@media (max-width:640px){[data-solo-m]{display:block}}
 </style>
 </head>
 <body>
@@ -212,6 +245,9 @@ a.enlace:hover{color:var(--verde)}
       <button role="tab" data-tab="cursos" aria-selected="false">Cursos</button>
       <button role="tab" data-tab="tecnicos" aria-selected="false">Técnicos</button>
       <button role="tab" data-tab="talleres" aria-selected="false">Talleres</button>
+      <button role="tab" data-tab="estadisticas" aria-selected="false">Estadísticas</button>
+      <button role="tab" data-tab="duplicados" aria-selected="false" class="hidden" id="tab-dup">Duplicados <span class="cuenta-tab hidden" id="n-dup"></span></button>
+      <button role="tab" data-tab="historial" aria-selected="false" class="hidden" id="tab-hist">Historial</button>
       <button role="tab" data-tab="correos" aria-selected="false">Correos</button>
     </nav>
     <div class="usuario"><span class="em" id="yo"></span><button id="salir">Salir</button></div>
@@ -273,6 +309,53 @@ a.enlace:hover{color:var(--verde)}
         <thead><tr><th>Taller</th><th class="hide-m">Contacto</th><th>Técnicos</th><th>Por renovar</th><th class="hide-m">Último curso</th></tr></thead>
         <tbody id="tb-tall"></tbody>
       </table></div>
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section data-panel="estadisticas" class="hidden">
+      <div class="toolbar">
+        <select id="es-anio" aria-label="Año"></select>
+        <select id="es-sede" aria-label="Sede"><option value="">Todas las sedes</option><option>Sevilla</option><option>Zaragoza</option><option>Online</option></select>
+        <span class="esp"></span>
+        <button class="btn sec" id="es-csv">Exportar resumen</button>
+      </div>
+      <div class="cifras" id="es-cifras"></div>
+      <div class="es-grid">
+        <div class="caja pad"><h3 class="es-t">Plazas confirmadas por año</h3><p class="gris es-s">Inscripciones con plaza en cursos no cancelados. El año en curso incluye los cursos que aún no se han celebrado.</p><div id="es-anios" class="graf"></div></div>
+        <div class="caja pad"><h3 class="es-t">Ocupación por mes <span id="es-anio-t"></span></h3><p class="gris es-s">Plazas ocupadas sobre el cupo de las convocatorias de cada mes.</p><div id="es-meses" class="graf"></div></div>
+      </div>
+      <div class="es-grid">
+        <div><h3 class="es-t" style="margin:0 0 8px">Por sede</h3><div class="caja scroll"><table>
+          <thead><tr><th>Sede</th><th>Cursos</th><th>Plazas</th><th>Ocupación</th><th>Técnicos formados</th><th>Talleres</th></tr></thead>
+          <tbody id="es-sedes"></tbody></table></div></div>
+        <div><h3 class="es-t" style="margin:0 0 8px">Talleres con más plazas <span class="gris" style="font-weight:400" id="es-top-anio"></span></h3><div class="caja scroll"><table>
+          <thead><tr><th>Taller</th><th>Plazas</th><th class="hide-m">Técnicos</th><th class="hide-m"></th></tr></thead>
+          <tbody id="es-top"></tbody></table></div></div>
+      </div>
+    </section>
+
+    <!-- DUPLICADOS -->
+    <section data-panel="duplicados" class="hidden">
+      <p class="gris" style="margin-top:0">Posibles registros repetidos por nombres casi iguales, el mismo correo, el mismo teléfono o un DNI con un dígito distinto. Al unir, todo pasa a la ficha que eliges conservar y la otra desaparece. Si no son el mismo, márcalo y no vuelve a salir.</p>
+      <h2 class="sec-t">Talleres <small id="dup-nt"></small></h2>
+      <div id="dup-talleres" class="dup-lista"></div>
+      <h2 class="sec-t" style="margin-top:26px">Técnicos <small id="dup-nc"></small></h2>
+      <div id="dup-tecnicos" class="dup-lista"></div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section data-panel="historial" class="hidden">
+      <div class="toolbar">
+        <select id="hi-tabla" aria-label="Qué"><option value="">Todos los cambios</option><option value="inscripciones">Inscripciones</option><option value="cursos">Cursos</option><option value="tecnicos">Técnicos</option><option value="centros">Talleres</option><option value="firmantes">Firmantes</option></select>
+        <select id="hi-usuario" aria-label="Quién"><option value="">Todas las personas</option></select>
+        <input id="hi-buscar" type="search" placeholder="Buscar en el historial" style="min-width:220px;flex:1">
+        <span id="hi-filtro" class="hidden"></span>
+      </div>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th class="hide-m">Detalle</th></tr></thead>
+        <tbody id="tb-hist"></tbody>
+      </table></div>
+      <div style="text-align:center;margin-top:14px"><button class="btn sec hidden" id="hi-mas">Cargar más</button></div>
     </section>
 
     <!-- CORREOS -->
@@ -420,7 +503,10 @@ a.enlace:hover{color:var(--verde)}
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sec mini" type="submit">Guardar cambios</button><span class="error" id="ft-err" style="min-height:0"></span></div>
     </form>
     <div>
-      <h3 style="margin:0 0 8px;font-size:15px">Cursos</h3>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <h3 style="margin:0;font-size:15px">Cursos</h3>
+        <span><button class="btn sec mini solo-hist hidden" type="button" id="ft-hist">Historial de cambios</button> <button class="btn mini" type="button" id="ft-inscribir">Inscribir en un curso</button></span>
+      </div>
       <div class="caja scroll"><table>
         <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th class="hide-m">Taller</th><th>Estado</th><th></th></tr></thead>
         <tbody id="ft-cursos"></tbody>
@@ -434,6 +520,20 @@ a.enlace:hover{color:var(--verde)}
   <div class="dh"><div><h2 id="fl-nombre"></h2><div class="gris" id="fl-sub"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="db" style="display:grid;gap:18px">
     <div class="resumen-c" id="fl-cifras"></div>
+    <div class="caja pad enlace-taller">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div><b>Enlace del taller</b><div class="gris" style="font-size:13.5px">Página propia donde el taller ve cuándo caduca cada técnico y puede inscribirlos con sus datos ya rellenos. No necesita contraseña: compártelo solo con el taller.</div></div>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn mini" type="button" id="fl-copiar">Copiar enlace</button>
+          <a class="btn sec mini" id="fl-abrir" target="_blank" rel="noopener">Abrir</a>
+          <button class="btn sec mini" type="button" id="fl-regen" title="El enlace anterior deja de funcionar">Cambiar enlace</button>
+        </span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--linea)">
+        <button class="btn sec mini" type="button" id="fl-informe">Informe en PDF</button>
+        <button class="btn sec mini solo-hist hidden" type="button" id="fl-hist">Historial de cambios</button>
+      </div>
+    </div>
     <form id="f-tall" class="caja pad" style="display:grid;gap:12px">
       <b>Datos del taller</b>
       <div class="grid2">
@@ -472,6 +572,21 @@ a.enlace:hover{color:var(--verde)}
   </div>
 </dialog>
 <datalist id="dl-talleres"></datalist>
+
+<!-- Inscribir técnico existente -->
+<dialog id="dlg-insc" class="peq">
+  <form id="f-insc">
+    <div class="dh"><div><h2>Inscribir en un curso</h2><div class="gris" id="fi-quien"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db" style="display:grid;gap:14px">
+      <label class="c">Curso<select name="curso" id="fi-curso" required></select></label>
+      <label class="c">Va con el taller<input name="taller" id="fi-taller" list="dl-talleres" required autocomplete="off" class="mayus"></label>
+      <label style="display:flex;gap:9px;align-items:flex-start;font-size:14px;cursor:pointer"><input type="checkbox" name="forzar" style="accent-color:var(--verde);width:18px;height:18px;margin-top:2px"> <span>Darle plaza aunque el curso esté completo <span class="gris">(si no, entra en lista de espera)</span></span></label>
+      <p class="gris" style="font-size:13px;margin:0">Se le envía el correo de confirmación como si se hubiera apuntado por el formulario. Si va con un taller que aún no existe, usa «Añadir asistente» desde la ficha del curso.</p>
+      <div class="error" id="fi-err"></div>
+    </div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Inscribir</button></div>
+  </form>
+</dialog>
 
 <!-- Corregir DNI -->
 <dialog id="dlg-dni" class="peq">
@@ -590,6 +705,9 @@ async function iniciar() {
   $("#yo").textContent = session.user.email;
   const { data: sede } = await sb.rpc("admin_sede");
   if (sede) aplicarSede(sede);
+  else { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
+  const { data: ph } = await sb.rpc("puede_historial");
+  puedeHist = !!ph; $("#tab-hist").classList.toggle("hidden", !puedeHist); $$(".solo-hist").forEach(b => b.classList.toggle("hidden", !puedeHist));
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
 }
@@ -612,6 +730,9 @@ function abrirTab(t) {
   $$("[data-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.panel !== t));
   if (t === "tecnicos") cargarTecnicos();
   if (t === "talleres") cargarTalleres();
+  if (t === "estadisticas") cargarEstadisticas();
+  if (t === "duplicados") cargarDuplicados();
+  if (t === "historial") cargarHistorial();
   if (t === "correos") cargarCorreos();
   if (t === "cursos" || t === "panel") cargarCursos();
 }
@@ -1386,6 +1507,7 @@ async function abrirTaller(id) {
     return `<tr><td>${textoFechas(c.fechas)}</td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}">${esc(i.tecnicos?.nombre || "")}</a></td><td>${est}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Sin inscripciones.</td></tr>`;
+  cargarToken(id);
   if (!$("#dlg-tall").open) $("#dlg-tall").showModal();
 }
 $("#f-tall").addEventListener("submit", async e => {
@@ -1416,6 +1538,360 @@ $("#fl-mails").addEventListener("click", async () => {
   if (!m) return toast("No hay correos guardados");
   try { await navigator.clipboard.writeText(m); toast("Correos copiados"); } catch { prompt("Copia los correos:", m); }
 });
+
+/* ---------- utilidades comunes ---------- */
+async function todas(mk) {
+  const out = [];
+  for (let d = 0; ; d += 1000) {
+    const { data, error } = await mk().range(d, d + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) return out;
+  }
+}
+const etiquetaCurso = c => c ? `${TIPO[c.tipo] || ""} ${c.sede || ""} · ${c.fechas?.length ? textoFechas(c.fechas) : fcorta(c.fecha_inicio)}` : "un curso";
+const tip = (() => {
+  let el = null;
+  document.addEventListener("mouseover", e => {
+    const t = e.target.closest?.("[data-tip]");
+    if (!t) { el?.remove(); el = null; return; }
+    if (!el) { el = document.createElement("div"); el.className = "tip"; document.body.append(el); }
+    el.innerHTML = t.dataset.tip;
+  });
+  document.addEventListener("mousemove", e => { if (el) { el.style.left = Math.min(e.clientX + 14, innerWidth - el.offsetWidth - 8) + "px"; el.style.top = (e.clientY + 14) + "px"; } });
+})();
+
+/* ---------- inscribir un técnico existente ---------- */
+$("#ft-inscribir").addEventListener("click", async () => {
+  if (!talleres.length) await cargarTalleres();
+  if (!cursos.length) await cargarCursos();
+  const ya = new Set(fichaTecIns.filter(i => i.estado !== "cancelada").map(i => i.cursos.id));
+  const futuros = cursos.filter(c => c.fecha_inicio >= hoy && c.estado !== "cancelado" && !ya.has(c.id));
+  if (!futuros.length) return toast("No hay cursos próximos en los que pueda inscribirse");
+  const s = $("#fi-curso");
+  s.innerHTML = futuros.map(c => {
+    const libres = c.cupo_max - c.ocupadas;
+    return `<option value="${c.id}">${esc(etiquetaCurso(c))} — ${libres > 0 ? `${libres} libre${libres > 1 ? "s" : ""}` : "completo"}${c.estado === "cerrado" ? " (cerrado al público)" : ""}</option>`;
+  }).join("");
+  const pref = futuros.find(c => c.tipo === (fichaTec.tiene_iniciacion ? "actualizacion" : "iniciacion") && c.ocupadas < c.cupo_max);
+  if (pref) s.value = pref.id;
+  $("#fi-quien").textContent = `${fichaTec.nombre} · ${fichaTec.dni}`;
+  $("#fi-taller").value = fichaTec.centro || "";
+  $("#f-insc").forzar.checked = false; $("#fi-err").textContent = "";
+  $("#dlg-insc").showModal();
+});
+$("#f-insc").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, err = m => $("#fi-err").textContent = m;
+  const nom = f.taller.value.trim();
+  const ta = talleres.find(t => t.nombre === nom) || talleres.find(t => t.nombre.toLocaleUpperCase("es-ES") === nom.toLocaleUpperCase("es-ES"));
+  if (!ta) return err("Elige el taller de la lista. Si es un taller nuevo, añádelo desde la ficha del curso.");
+  const b = f.querySelector("[type=submit]"); b.disabled = true;
+  const { data, error } = await sb.rpc("admin_inscribir", { p_tecnico: fichaTec.id, p_curso: f.curso.value, p_centro: ta.id, p_plaza: f.forzar.checked });
+  b.disabled = false;
+  if (error) return err(error.message);
+  $("#dlg-insc").close();
+  toast(data.estado === "confirmada" ? (data.extra > 0 ? `Inscrito con plaza extra (${data.extra} por encima del cupo)` : "Inscrito con plaza") : `En lista de espera, puesto ${data.posicion}`);
+  await cargarCursos(); abrirTecnico(fichaTec.id);
+});
+
+/* ---------- enlace e informe del taller ---------- */
+let tokenTall = null;
+const urlTaller = () => new URL(`taller.html?t=${tokenTall}`, location.href).href;
+async function cargarToken(id) {
+  tokenTall = null; $("#fl-abrir").removeAttribute("href");
+  const { data } = await sb.from("centros").select("token").eq("id", id).maybeSingle();
+  if (data?.token && fichaTall?.id === id) { tokenTall = data.token; $("#fl-abrir").href = urlTaller(); }
+}
+$("#fl-copiar").addEventListener("click", async () => {
+  if (!tokenTall) return toast("Aún se está cargando el enlace");
+  try { await navigator.clipboard.writeText(urlTaller()); toast("Enlace copiado"); } catch { prompt("Copia el enlace:", urlTaller()); }
+});
+$("#fl-regen").addEventListener("click", async () => {
+  if (!confirm("Se creará un enlace nuevo y el anterior dejará de funcionar. ¿Seguimos?")) return;
+  const { data, error } = await sb.rpc("regenerar_enlace", { p_centro: fichaTall.id });
+  if (error) return toast(error.message);
+  tokenTall = data; $("#fl-abrir").href = urlTaller(); toast("Enlace nuevo creado: el anterior ya no funciona");
+});
+$("#fl-informe").addEventListener("click", async e => {
+  const b = e.currentTarget; b.disabled = true; b.textContent = "Generando…";
+  try {
+    const { data } = await sb.from("inscripciones").select("id,estado,asistio,tecnicos(nombre),cursos(tipo,sede,fechas,fecha_inicio,fecha_fin,estado)").eq("centro_id", fichaTall.id);
+    const { blob, nombre } = await Informes.taller({ taller: fichaTall, tecnicos: fichaTallTecs, inscripciones: (data || []).filter(i => i.cursos), hoy });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast("Informe descargado");
+  } catch (ex) { toast(ex.message || "No se ha podido generar el informe"); }
+  finally { b.disabled = false; b.textContent = "Informe en PDF"; }
+});
+
+/* ---------- estadísticas ---------- */
+let insStats = null;
+async function cargarEstadisticas() {
+  if (!cursos.length) await cargarCursos();
+  try {
+    insStats = await todas(() => sb.from("inscripciones").select("tecnico_id,centro_id,curso_id,estado,asistio,centros(nombre)"));
+  } catch { return toast("No se han podido cargar las estadísticas"); }
+  const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0, 4)))].sort().reverse();
+  const sa = $("#es-anio"), prev = sa.value || (anios.includes(hoy.slice(0, 4)) ? hoy.slice(0, 4) : anios[0]);
+  sa.innerHTML = anios.map(a => `<option ${a === prev ? "selected" : ""}>${a}</option>`).join("");
+  if (miSede) { $("#es-sede").innerHTML = `<option>${miSede}</option>`; $("#es-sede").classList.add("hidden"); }
+  pintarEstadisticas();
+}
+function calcular(anio, sede) {
+  const porId = new Map(cursos.map(c => [c.id, c]));
+  const cs = cursos.filter(c => c.fecha_inicio.startsWith(anio) && (!sede || c.sede === sede));
+  const vivos = cs.filter(c => c.estado !== "cancelado"), ids = new Set(vivos.map(c => c.id));
+  const conf = insStats.filter(i => i.estado === "confirmada" && ids.has(i.curso_id));
+  const hechos = conf.filter(i => i.asistio !== false && porId.get(i.curso_id).fecha_fin < hoy);
+  const formados = new Set(hechos.map(i => i.tecnico_id));
+  const iniciacion = new Set(hechos.filter(i => porId.get(i.curso_id).tipo === "iniciacion").map(i => i.tecnico_id));
+  const talleresSet = new Set(conf.map(i => i.centro_id).filter(Boolean));
+  // primer año de cada taller (con el mismo filtro de sede)
+  const primero = new Map();
+  for (const i of insStats) {
+    const c = porId.get(i.curso_id);
+    if (i.estado !== "confirmada" || !c || c.estado === "cancelado" || !i.centro_id || (sede && c.sede !== sede)) continue;
+    const y = c.fecha_inicio.slice(0, 4);
+    if (!primero.has(i.centro_id) || y < primero.get(i.centro_id)) primero.set(i.centro_id, y);
+  }
+  const nuevos = [...talleresSet].filter(t => primero.get(t) === anio).length;
+  // renovación: formados el año anterior que vuelven este año
+  const ant = String(+anio - 1);
+  const idsAnt = new Set(cursos.filter(c => c.fecha_inicio.startsWith(ant) && c.estado !== "cancelado" && (!sede || c.sede === sede)).map(c => c.id));
+  const formAnt = new Set(insStats.filter(i => i.estado === "confirmada" && i.asistio !== false && idsAnt.has(i.curso_id)).map(i => i.tecnico_id));
+  const esteAnio = new Set(insStats.filter(i => { const c = porId.get(i.curso_id); return i.estado === "confirmada" && c && c.estado !== "cancelado" && c.fecha_inicio.startsWith(anio); }).map(i => i.tecnico_id));
+  const renuevan = [...formAnt].filter(t => esteAnio.has(t)).length;
+  const plazas = vivos.reduce((s, c) => s + c.cupo_max, 0), ocupadas = conf.length;
+  return { cs, vivos, conf, formados, iniciacion, talleresSet, nuevos, formAnt, renuevan, plazas, ocupadas,
+    celebrados: vivos.filter(c => c.fecha_fin < hoy).length, cancelados: cs.length - vivos.length,
+    espera: vivos.reduce((s, c) => s + c.espera, 0) };
+}
+function barras(datos, { alto = 210, max, ancho = 560 } = {}) {
+  // datos: [{l, v, f (fondo/cupo), tip, tenue}]
+  const W = Math.max(280, ancho), H = alto, pl = 8, pb = 26, pt = 22, n = datos.length;
+  const tope = max || Math.max(1, ...datos.map(d => Math.max(d.v, d.f || 0)));
+  const paso = (W - pl * 2) / n, bw = Math.min(46, paso * 0.62), y = v => pt + (H - pt - pb) * (1 - v / tope);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img"><line x1="0" x2="${W}" y1="${H - pb}" y2="${H - pb}" stroke="var(--linea-2)"/>`;
+  datos.forEach((d, i) => {
+    const x = pl + paso * i + (paso - bw) / 2, base = H - pb;
+    s += `<g data-tip="${esc(d.tip)}"><rect x="${pl + paso * i}" y="${pt - 4}" width="${paso}" height="${H - pt - pb + 4}" fill="transparent"/>`;
+    if (d.f) s += `<path d="M${x} ${base}V${y(d.f) + 4}q0 -4 4 -4h${bw - 8}q4 0 4 4V${base}Z" fill="var(--ocupada)" opacity=".55"/>`;
+    if (d.v > 0) { const h = base - y(d.v), r = Math.min(4, h); s += `<path class="barra" d="M${x} ${base}V${y(d.v) + r}q0 -${r} ${r} -${r}h${bw - 2 * r}q${r} 0 ${r} ${r}V${base}Z" fill="${d.color || "var(--verde)"}" opacity="${d.tenue ? .45 : 1}"/>`; }
+    if (d.etq != null) s += `<text class="val" x="${x + bw / 2}" y="${y(Math.max(d.v, d.f || 0)) - 6}" text-anchor="middle">${d.etq}</text>`;
+    s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(d.l)}</text></g>`;
+  });
+  return s + "</svg>";
+}
+function pintarEstadisticas() {
+  if (!insStats) return;
+  const anio = $("#es-anio").value, sede = miSede || $("#es-sede").value, r = calcular(anio, sede);
+  const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
+  const ra = r.formAnt.size ? `<div class="cifra"><b>${pct(r.renuevan, r.formAnt.size)}</b><span>renuevan</span><small>${r.renuevan} de los ${r.formAnt.size} formados en ${+anio - 1}</small></div>` : "";
+  $("#es-cifras").innerHTML = `
+    <div class="cifra"><b>${r.vivos.length}</b><span>convocatorias</span><small>${r.celebrados} celebradas${r.cancelados ? ` · ${r.cancelados} canceladas` : ""}</small></div>
+    <div class="cifra"><b>${r.ocupadas}</b><span>plazas confirmadas</span><small>de ${r.plazas} ofertadas</small></div>
+    <div class="cifra"><b>${pct(r.ocupadas, r.plazas)}</b><span>ocupación media</span><small>${r.espera ? `${r.espera} en lista de espera ahora` : "sin lista de espera"}</small></div>
+    <div class="cifra"><b>${r.formados.size}</b><span>técnicos formados</span><small>${r.iniciacion.size} en iniciación</small></div>
+    <div class="cifra"><b>${r.talleresSet.size}</b><span>talleres</span><small>${r.nuevos} nuevo${r.nuevos === 1 ? "" : "s"} · ${r.talleresSet.size - r.nuevos} repiten</small></div>${ra}`;
+  // por año
+  const anios = [...$("#es-anio").options].map(o => o.value).sort();
+  const anchoG = sel => Math.round($(sel).clientWidth || 560);
+  $("#es-anios").innerHTML = barras(anios.map(a => {
+    const x = calcular(a, sede);
+    return { l: a, v: x.ocupadas, etq: x.ocupadas, color: a === anio ? "var(--verde)" : "var(--verde)", tenue: a !== anio,
+      tip: `<b>${a}</b><br>${x.ocupadas} plazas confirmadas<br>${x.vivos.length} convocatorias · ${x.formados.size} técnicos formados` };
+  }), { ancho: anchoG("#es-anios") });
+  // por mes
+  $("#es-anio-t").textContent = anio;
+  const meses = MESES.map((m, k) => {
+    const cm = r.vivos.filter(c => +c.fecha_inicio.slice(5, 7) === k + 1);
+    const oc = cm.reduce((s, c) => s + c.ocupadas, 0), cu = cm.reduce((s, c) => s + c.cupo_max, 0);
+    return { l: m.slice(0, 3), v: oc, f: cu, etq: cu ? oc : null,
+      tip: cu ? `<b>${m[0].toUpperCase() + m.slice(1)} ${anio}</b><br>${oc} de ${cu} plazas (${Math.round(oc / cu * 100)} %)<br>${cm.length} convocatoria${cm.length > 1 ? "s" : ""}` : `<b>${m}</b><br>Sin convocatorias` };
+  });
+  $("#es-meses").innerHTML = barras(meses, { ancho: anchoG("#es-meses") }) + `<div class="leyenda" style="margin:8px 0 0"><span><i style="background:var(--verde)"></i>Plazas ocupadas</span><span><i style="background:var(--ocupada)"></i>Cupo</span></div>`;
+  // por sede
+  const sedes = sede ? [sede] : ["Sevilla", "Zaragoza", "Online"];
+  $("#es-sedes").innerHTML = sedes.map(s => { const x = calcular(anio, s); return x.cs.length ? `<tr><td>${sedeTag(s)}</td><td>${x.vivos.length}</td><td>${x.ocupadas} / ${x.plazas}</td><td>${pct(x.ocupadas, x.plazas)}</td><td>${x.formados.size}</td><td>${x.talleresSet.size}</td></tr>` : ""; }).join("")
+    || `<tr><td colspan="6" class="vacio-t">Sin convocatorias en ${anio}.</td></tr>`;
+  // top talleres
+  $("#es-top-anio").textContent = `en ${anio}`;
+  const cuenta = new Map();
+  for (const i of r.conf) { if (!i.centro_id) continue; const o = cuenta.get(i.centro_id) || { n: 0, t: new Set(), nombre: i.centros?.nombre }; o.n++; o.t.add(i.tecnico_id); cuenta.set(i.centro_id, o); }
+  const top = [...cuenta.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10), maxN = top[0]?.[1].n || 1;
+  $("#es-top").innerHTML = top.map(([id, o]) => `<tr class="click" data-ficha-taller="${id}" tabindex="0"><td><b>${esc(o.nombre || "")}</b></td><td>${o.n}</td><td class="hide-m">${o.t.size}</td>
+    <td class="hide-m" style="width:30%"><div style="height:8px;border-radius:4px;background:var(--verde);width:${Math.max(4, o.n / maxN * 100)}%"></div></td></tr>`).join("")
+    || `<tr><td colspan="4" class="vacio-t">Sin inscripciones.</td></tr>`;
+}
+$("#es-anio").addEventListener("change", pintarEstadisticas);
+addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (!$("[data-panel=estadisticas]").classList.contains("hidden")) pintarEstadisticas(); }, 200); });
+$("#es-sede").addEventListener("change", pintarEstadisticas);
+$("#es-csv").addEventListener("click", () => {
+  const sede = miSede || $("#es-sede").value;
+  const anios = [...$("#es-anio").options].map(o => o.value).sort();
+  csv(`estadisticas${sede ? "_" + sede : ""}_${hoy}.csv`, ["Año","Convocatorias","Canceladas","Plazas ofertadas","Plazas confirmadas","Ocupación %","Técnicos formados","En iniciación","Talleres","Talleres nuevos","Renuevan del año anterior %"],
+    anios.map(a => { const x = calcular(a, sede); return [a, x.vivos.length, x.cancelados, x.plazas, x.ocupadas, x.plazas ? Math.round(x.ocupadas / x.plazas * 100) : "", x.formados.size, x.iniciacion.size, x.talleresSet.size, x.nuevos, x.formAnt.size ? Math.round(x.renuevan / x.formAnt.size * 100) : ""]; }));
+});
+
+/* ---------- duplicados ---------- */
+let dupT = [], dupC = [];
+async function cargarDuplicados(soloContar = false) {
+  const [a, b] = await Promise.all([sb.rpc("duplicados_talleres"), sb.rpc("duplicados_tecnicos")]);
+  if (a.error || b.error) return soloContar || toast("No se han podido buscar duplicados");
+  dupT = a.data || []; dupC = b.data || [];
+  const n = dupT.length + dupC.length;
+  $("#n-dup").textContent = n; $("#n-dup").classList.toggle("hidden", !n);
+  if (!soloContar) pintarDuplicados();
+}
+function pintarDuplicados() {
+  $("#dup-nt").textContent = dupT.length ? `${dupT.length} posible${dupT.length > 1 ? "s" : ""}` : "";
+  $("#dup-nc").textContent = dupC.length ? `${dupC.length} posible${dupC.length > 1 ? "s" : ""}` : "";
+  const pl = (n, s) => `${n} ${s}${n === 1 ? "" : "s"}`;
+  $("#dup-talleres").innerHTML = dupT.map((d, k) => {
+    const mejorA = d.a_ins + d.a_tecnicos >= d.b_ins + d.b_tecnicos;
+    return `<div class="dup">
+      <div class="lado"><a class="enlace" data-ficha-taller="${d.a}"><b>${esc(d.a_nombre)}</b></a><span>${pl(d.a_tecnicos, "técnico")} · ${pl(d.a_ins, "inscripción")}</span></div>
+      <div class="medio"><span class="badge b-warn">${esc(d.motivo)}</span></div>
+      <div class="lado der"><a class="enlace" data-ficha-taller="${d.b}"><b>${esc(d.b_nombre)}</b></a><span>${pl(d.b_tecnicos, "técnico")} · ${pl(d.b_ins, "inscripción")}</span></div>
+      <div class="acc-d"><button class="btn mini ${mejorA ? "" : "sec"}" data-unir-t="${k}" data-quedar="a">Quedarse con el de la izquierda</button><button class="btn mini ${mejorA ? "sec" : ""}" data-unir-t="${k}" data-quedar="b">Quedarse con el de la derecha</button><button class="btn sec mini" data-ign-t="${k}">No son el mismo</button></div></div>`;
+  }).join("") || `<div class="caja vacio-t">No hay talleres repetidos.</div>`;
+  $("#dup-tecnicos").innerHTML = dupC.map((d, k) => {
+    const okA = dniValido(d.a_dni), okB = dniValido(d.b_dni), mejorA = okA !== okB ? okA : d.a_ins >= d.b_ins;
+    const dni = (v, ok) => ok ? esc(v) : `<span style="color:var(--rojo);font-weight:600">${esc(v)} (no válido)</span>`;
+    return `<div class="dup">
+      <div class="lado"><a class="enlace" data-ficha-tec="${d.a}"><b>${esc(d.a_nombre)}</b></a><span>${dni(d.a_dni, okA)} · ${esc(d.a_centro || "sin taller")} · ${pl(d.a_ins, "curso")}</span></div>
+      <div class="medio"><span class="badge b-warn">${esc(d.motivo)}</span></div>
+      <div class="lado der"><a class="enlace" data-ficha-tec="${d.b}"><b>${esc(d.b_nombre)}</b></a><span>${dni(d.b_dni, okB)} · ${esc(d.b_centro || "sin taller")} · ${pl(d.b_ins, "curso")}</span></div>
+      <div class="acc-d"><button class="btn mini ${mejorA ? "" : "sec"}" data-unir-c="${k}" data-quedar="a">Quedarse con el de la izquierda</button><button class="btn mini ${mejorA ? "sec" : ""}" data-unir-c="${k}" data-quedar="b">Quedarse con el de la derecha</button><button class="btn sec mini" data-ign-c="${k}">No son el mismo</button></div></div>`;
+  }).join("") || `<div class="caja vacio-t">No hay técnicos repetidos.</div>`;
+}
+$("[data-panel=duplicados]").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const esT = "unirT" in b.dataset || "ignT" in b.dataset, k = +(b.dataset.unirT ?? b.dataset.unirC ?? b.dataset.ignT ?? b.dataset.ignC);
+  const d = (esT ? dupT : dupC)[k]; if (!d) return;
+  if ("ignT" in b.dataset || "ignC" in b.dataset) {
+    const { error } = await sb.from("duplicados_ignorados").insert({ tipo: esT ? "taller" : "tecnico", a: d.a, b: d.b });
+    if (error) return toast(error.message);
+    toast("Marcados como distintos"); return cargarDuplicados();
+  }
+  const [keep, drop] = b.dataset.quedar === "a" ? [d.a, d.b] : [d.b, d.a];
+  const [nk, nd] = b.dataset.quedar === "a" ? [d.a_nombre, d.b_nombre] : [d.b_nombre, d.a_nombre];
+  if (!confirm(`Se conserva «${nk}» y «${nd}» desaparece: todos sus cursos pasan a la ficha que conservas. ¿Unir?`)) return;
+  b.disabled = true;
+  if (esT) {
+    const { error } = await sb.rpc("unir_centros", { p_origen: drop, p_destino: keep });
+    if (error) { b.disabled = false; return toast(error.message); }
+    await sb.from("centros").delete().eq("id", drop);
+    talleres = [];
+  } else {
+    const { error } = await sb.rpc("unir_tecnicos", { p_origen: drop, p_destino: keep });
+    if (error) { b.disabled = false; return toast(error.message); }
+    await sb.from("tecnicos").delete().eq("id", drop);
+  }
+  toast("Unidos"); cargarDuplicados();
+});
+
+/* ---------- historial ---------- */
+let puedeHist = false, hist = [], histFin = false, histFiltro = null, nombres = { tec: new Map(), cen: new Map(), cur: new Map(), fir: new Map() };
+const CAMPOS = { estado: "estado", asistio: "asistencia", centro_id: "taller", tecnico_id: "técnico", curso_id: "curso", nombre: "nombre", dni: "DNI", telefono: "teléfono", email: "correo",
+  contacto: "persona de contacto", contacto_nombre: "contacto", contacto_telefono: "teléfono del contacto", cupo_max: "cupo", quorum_min: "quórum", fechas: "fechas", fecha_inicio: "inicio",
+  fecha_fin: "fin", tipo: "tipo", sede: "sede", notas: "notas", docente_id: "docente", horas: "horas", token: "enlace del taller", origen: "origen", firma: "firma", cargo: "cargo", activo: "activo", rol: "rol", dni_foto_path: "foto del DNI" };
+const VAL_ESTADO = { confirmada: "con plaza", lista_espera: "lista de espera", cancelada: "baja", abierto: "abierto", cerrado: "cerrado", cancelado: "cancelado" };
+async function cargarNombres() {
+  const [t, c, f] = await Promise.all([todas(() => sb.from("tecnicos").select("id,nombre")), todas(() => sb.from("centros").select("id,nombre")), sb.from("firmantes").select("id,nombre")]);
+  nombres.tec = new Map(t.map(x => [x.id, x.nombre])); nombres.cen = new Map(c.map(x => [x.id, x.nombre]));
+  nombres.fir = new Map((f.data || []).map(x => [x.id, x.nombre]));
+  nombres.cur = new Map(cursos.map(x => [x.id, x]));
+}
+function valor(k, v) {
+  if (v === null || v === undefined || v === "") return "vacío";
+  if (k === "asistio") return v ? "sí" : "no";
+  if (k === "tecnico_id") return nombres.tec.get(v) || "técnico eliminado";
+  if (k === "centro_id") return nombres.cen.get(v) || "taller eliminado";
+  if (k === "curso_id") return nombres.cur.has(v) ? etiquetaCurso(nombres.cur.get(v)) : "curso eliminado";
+  if (k === "docente_id") return nombres.fir.get(v) || "—";
+  if (k === "fechas" && Array.isArray(v)) return textoFechas(v);
+  if (k === "tipo") return TIPO[v] || v;
+  if (k === "estado") return VAL_ESTADO[v] || v;
+  if (/^\d{4}-\d\d-\d\d$/.test(v)) return fcorta(v);
+  return String(v);
+}
+function frase(h) {
+  const x = h.contexto || {}, r = h.despues || h.antes || {};
+  const tec = `<b>${esc(nombres.tec.get(x.tecnico_id) || r.nombre || x.nombre || "un técnico")}</b>`;
+  const cur = x.curso_id ? (nombres.cur.has(x.curso_id) ? esc(etiquetaCurso(nombres.cur.get(x.curso_id))) : "un curso eliminado") : "";
+  const nom = `<b>${esc(x.nombre || r.nombre || "")}</b>`;
+  const d = h.despues || {}, a = h.antes || {};
+  switch (h.tabla) {
+    case "inscripciones":
+      if (h.accion === "alta") return `Inscribió a ${tec} en ${cur}${d.estado === "lista_espera" ? " (lista de espera)" : ""}`;
+      if (h.accion === "borrado") return `Quitó a ${tec} de ${cur}`;
+      if ("curso_id" in d) return `Cambió a ${tec} de curso: ahora en ${esc(valor("curso_id", d.curso_id))}`;
+      if ("tecnico_id" in d) return `Pasó una inscripción de ${cur} a ${tec} (unión de duplicados)`;
+      if (d.estado === "confirmada" && a.estado === "lista_espera") return `Dio plaza a ${tec} en ${cur}`;
+      if (d.estado === "cancelada") return `Dio de baja a ${tec} en ${cur}`;
+      if (d.estado === "confirmada") return `Reactivó a ${tec} en ${cur}`;
+      if ("asistio" in d) return `Marcó la asistencia de ${tec} en ${cur}: ${valor("asistio", d.asistio)}`;
+      return `Modificó la inscripción de ${tec} en ${cur}`;
+    case "cursos": {
+      const c = esc(etiquetaCurso({ tipo: x.tipo, sede: x.sede, fechas: x.fechas }));
+      if (h.accion === "alta") return `Creó el curso ${c}`;
+      if (h.accion === "borrado") return `Eliminó el curso ${c}`;
+      if (d.estado === "cancelado") return `Canceló el curso ${c}`;
+      return `Modificó el curso ${c}`;
+    }
+    case "tecnicos": return h.accion === "alta" ? `Registró al técnico ${nom}` : h.accion === "borrado" ? `Eliminó la ficha del técnico ${nom}` : `Modificó los datos del técnico ${nom}`;
+    case "centros": return h.accion === "alta" ? `Registró el taller ${nom}` : h.accion === "borrado" ? `Eliminó el taller ${nom}` : ("token" in d ? `Cambió el enlace del taller ${nom}` : `Modificó los datos del taller ${nom}`);
+    case "firmantes": return h.accion === "alta" ? `Añadió al firmante ${nom}` : `Modificó al firmante ${nom}`;
+  }
+  return `${h.accion} en ${h.tabla}`;
+}
+function detalle(h) {
+  if (h.accion !== "cambio") return "";
+  return Object.keys(h.despues || {}).filter(k => !["fecha_inicio", "fecha_fin"].includes(k) || !("fechas" in h.despues)).map(k =>
+    `${CAMPOS[k] || k}: ${esc(valor(k, h.antes?.[k]))} → <b>${esc(valor(k, h.despues[k]))}</b>`).join("<br>");
+}
+async function cargarHistorial(mas = false) {
+  if (!mas) { hist = []; histFin = false; if (!nombres.tec.size) await cargarNombres(); }
+  let q = sb.from("auditoria").select("*").order("id", { ascending: false });
+  const t = $("#hi-tabla").value, u = $("#hi-usuario").value;
+  if (t) q = q.eq("tabla", t);
+  if (u) q = q.eq("usuario", u);
+  if (histFiltro) q = q.or(histFiltro.tipo === "tec" ? `registro.eq.${histFiltro.id},contexto->>tecnico_id.eq.${histFiltro.id},contexto->>tecnico_antes.eq.${histFiltro.id}` : `registro.eq.${histFiltro.id},contexto->>centro_id.eq.${histFiltro.id}`);
+  const { data, error } = await q.range(hist.length, hist.length + 299);
+  if (error) return toast("No se ha podido cargar el historial");
+  hist.push(...data); histFin = data.length < 300;
+  const us = $("#hi-usuario"), prev = us.value, todos = new Set([...[...us.options].map(o => o.value).filter(Boolean), ...hist.map(h => h.usuario).filter(Boolean)]);
+  us.innerHTML = `<option value="">Todas las personas</option>` + [...todos].sort().map(x => `<option ${x === prev ? "selected" : ""}>${esc(x)}</option>`).join("");
+  pintarHistorial();
+}
+function pintarHistorial() {
+  const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/<[^>]+>/g, "");
+  const q = norm($("#hi-buscar").value);
+  const filas = hist.map(h => ({ h, f: frase(h), d: detalle(h) })).filter(x => !q || norm(x.f + " " + x.d + " " + x.h.usuario).includes(q));
+  const quien = u => u === "formulario web" ? `<span class="badge b-gris">Formulario web</span>` : u === "sistema" ? `<span class="badge b-gris">Automático</span>` : esc(String(u || "").split("@")[0]);
+  $("#tb-hist").innerHTML = filas.map(({ h, f, d }) => {
+    const dt = new Date(h.fecha);
+    return `<tr><td style="white-space:nowrap">${dt.getDate()} ${MESES[dt.getMonth()].slice(0, 3)} ${dt.getFullYear()}<div class="gris" style="font-size:12.5px">${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}</div></td>
+      <td>${quien(h.usuario)}</td><td>${f}${d ? `<div class="hi-det" style="margin-top:3px" data-solo-m>${d}</div>` : ""}</td><td class="hide-m hi-det">${d}</td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="vacio-t">${hist.length ? "Nada coincide con la búsqueda." : "Todavía no hay cambios registrados. Desde ahora, cada alta, cambio o baja queda apuntada aquí."}</td></tr>`;
+  $("#hi-mas").classList.toggle("hidden", histFin);
+  $("#hi-filtro").classList.toggle("hidden", !histFiltro);
+  $("#hi-filtro").innerHTML = histFiltro ? `<span class="filtro-chip">Solo ${esc(histFiltro.nombre)} <button type="button" aria-label="Quitar filtro" id="hi-quitar">×</button></span>` : "";
+}
+$("#hi-tabla").addEventListener("change", () => cargarHistorial());
+$("#hi-usuario").addEventListener("change", () => cargarHistorial());
+$("#hi-buscar").addEventListener("input", pintarHistorial);
+$("#hi-mas").addEventListener("click", () => cargarHistorial(true));
+$("#hi-filtro").addEventListener("click", e => { if (e.target.id === "hi-quitar") { histFiltro = null; cargarHistorial(); } });
+function verHistorial(tipo, id, nombre) {
+  histFiltro = { tipo, id, nombre };
+  $$("dialog[open]").forEach(d => d.close());
+  $("#hi-tabla").value = ""; $("#hi-usuario").value = ""; $("#hi-buscar").value = "";
+  abrirTab("historial");
+}
+$("#ft-hist").addEventListener("click", () => verHistorial("tec", fichaTec.id, fichaTec.nombre));
+$("#fl-hist").addEventListener("click", () => verHistorial("cen", fichaTall.id, fichaTall.nombre));
 
 iniciar();
 
