@@ -151,6 +151,7 @@ dialog::backdrop{background:rgba(8,22,14,.55)}
 .grid2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .jornadas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
 .jornadas input{width:160px}
+#dlg-tec .db,#dlg-tall .db{grid-template-columns:minmax(0,1fr)}
 .resumen-c{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .resumen-c .cifra b{font-size:24px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
@@ -176,6 +177,8 @@ select.mini{padding:4px 8px;font-size:13px}
   .cifras .anio-sel{margin-left:0}
 }
 input.mayus{text-transform:uppercase}
+a.enlace{color:inherit;cursor:pointer;text-decoration:underline;text-decoration-color:var(--linea-2);text-underline-offset:3px}
+a.enlace:hover{color:var(--verde)}
 </style>
 </head>
 <body>
@@ -207,7 +210,8 @@ input.mayus{text-transform:uppercase}
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="panel" aria-selected="true">Panel</button>
       <button role="tab" data-tab="cursos" aria-selected="false">Cursos</button>
-      <button role="tab" data-tab="tecnicos" aria-selected="false">Técnicos y renovaciones</button>
+      <button role="tab" data-tab="tecnicos" aria-selected="false">Técnicos</button>
+      <button role="tab" data-tab="talleres" aria-selected="false">Talleres</button>
       <button role="tab" data-tab="correos" aria-selected="false">Correos</button>
     </nav>
     <div class="usuario"><span class="em" id="yo"></span><button id="salir">Salir</button></div>
@@ -254,6 +258,20 @@ input.mayus{text-transform:uppercase}
       <div class="caja scroll"><table>
         <thead><tr><th>Técnico</th><th>DNI</th><th>Centro técnico</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th><th class="hide-m">Contacto</th></tr></thead>
         <tbody id="tb-tec"></tbody>
+      </table></div>
+    </section>
+
+    <!-- TALLERES -->
+    <section data-panel="talleres" class="hidden">
+      <div class="stats" id="stats-tall"></div>
+      <div class="toolbar">
+        <input id="buscar-tall" type="search" placeholder="Buscar taller por nombre, contacto, teléfono o correo" style="min-width:260px;flex:1">
+        <select id="orden-tall" aria-label="Ordenar"><option value="nombre">Orden alfabético</option><option value="tecnicos">Más técnicos</option><option value="caducados">Más técnicos por renovar</option><option value="reciente">Último curso más reciente</option></select>
+        <button class="btn sec" id="csv-tall">Exportar a Excel</button>
+      </div>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Taller</th><th class="hide-m">Contacto</th><th>Técnicos</th><th>Por renovar</th><th class="hide-m">Último curso</th></tr></thead>
+        <tbody id="tb-tall"></tbody>
       </table></div>
     </section>
 
@@ -385,6 +403,75 @@ input.mayus{text-transform:uppercase}
     <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit" id="ce-ok">Descargar certificados</button></div>
   </form>
 </dialog>
+
+<!-- Ficha del técnico -->
+<dialog id="dlg-tec">
+  <div class="dh"><div><div id="ft-badges"></div><h2 id="ft-nombre" style="margin-top:6px"></h2><div class="gris" id="ft-sub"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:18px">
+    <div class="resumen-c" id="ft-cifras"></div>
+    <form id="f-tec" class="caja pad" style="display:grid;gap:12px">
+      <b>Datos del técnico</b>
+      <div class="grid2">
+        <label class="c">Nombre y apellidos<input name="nombre" class="mayus" required></label>
+        <label class="c">DNI / NIE<input name="dni" required autocapitalize="characters"></label>
+        <label class="c">Teléfono<input name="telefono"></label>
+        <label class="c">Correo<input name="email" type="email"></label>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn sec mini" type="submit">Guardar cambios</button><span class="error" id="ft-err" style="min-height:0"></span></div>
+    </form>
+    <div>
+      <h3 style="margin:0 0 8px;font-size:15px">Cursos</h3>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th class="hide-m">Taller</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="ft-cursos"></tbody>
+      </table></div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Ficha del taller -->
+<dialog id="dlg-tall">
+  <div class="dh"><div><h2 id="fl-nombre"></h2><div class="gris" id="fl-sub"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:18px">
+    <div class="resumen-c" id="fl-cifras"></div>
+    <form id="f-tall" class="caja pad" style="display:grid;gap:12px">
+      <b>Datos del taller</b>
+      <div class="grid2">
+        <label class="c" style="grid-column:1/-1">Nombre del taller<input name="nombre" class="mayus" required></label>
+        <label class="c">Persona de contacto<input name="contacto" class="mayus"></label>
+        <label class="c">Teléfono<input name="telefono"></label>
+        <label class="c" style="grid-column:1/-1">Correo del taller<input name="email" type="email"></label>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn sec mini" type="submit">Guardar cambios</button>
+        <button class="btn sec mini" type="button" id="fl-unir">Unir con otro taller…</button>
+        <span class="error" id="fl-err" style="min-height:0"></span>
+      </div>
+      <div id="fl-unir-zona" class="hidden" style="display:grid;gap:8px;border-top:1px solid var(--linea);padding-top:12px">
+        <span style="font-size:14px">Si este taller está repetido con otro nombre, elige el bueno. Todos sus técnicos y cursos pasarán a ese taller y este desaparecerá.</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="fl-destino" list="dl-talleres" placeholder="Escribe el nombre del taller correcto" style="flex:1;min-width:240px"><button class="btn peligro mini" type="button" id="fl-unir-ok">Unir</button></div>
+      </div>
+    </form>
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <h3 style="margin:0;font-size:15px">Técnicos <span class="gris" style="font-weight:400" id="fl-ntec"></span></h3>
+        <span><button class="btn sec mini" type="button" id="fl-csv">Exportar a Excel</button> <button class="btn sec mini" type="button" id="fl-mails">Copiar correos</button></span>
+      </div>
+      <div class="caja scroll"><table>
+        <thead><tr><th>Técnico</th><th>DNI</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th></tr></thead>
+        <tbody id="fl-tecs"></tbody>
+      </table></div>
+    </div>
+    <div>
+      <h3 style="margin:0 0 8px;font-size:15px">Inscripciones del taller</h3>
+      <div class="caja scroll" style="max-height:320px"><table>
+        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Técnico</th><th>Estado</th></tr></thead>
+        <tbody id="fl-ins"></tbody>
+      </table></div>
+    </div>
+  </div>
+</dialog>
+<datalist id="dl-talleres"></datalist>
 
 <!-- Corregir DNI -->
 <dialog id="dlg-dni" class="peq">
@@ -524,6 +611,7 @@ function abrirTab(t) {
   $$("nav.tabs button").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === t));
   $$("[data-panel]").forEach(p => p.classList.toggle("hidden", p.dataset.panel !== t));
   if (t === "tecnicos") cargarTecnicos();
+  if (t === "talleres") cargarTalleres();
   if (t === "correos") cargarCorreos();
   if (t === "cursos" || t === "panel") cargarCursos();
 }
@@ -655,8 +743,8 @@ async function cargarInscritos() {
     const t = i.tecnicos, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
     return `<tr data-id="${i.id}" style="${i.estado === "cancelada" ? "opacity:.55" : ""}">
       <td class="gris">${i.estado === "confirmada" ? ++n : ""}</td>
-      <td><b>${esc(t.nombre)}</b><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
-      <td>${esc(t.dni)}</td><td>${esc(i.centros?.nombre || "")}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
+      <td><a class="enlace" data-ficha-tec="${i.tecnico_id}"><b>${esc(t.nombre)}</b></a><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
+      <td>${esc(t.dni)}</td><td>${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
       <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
@@ -938,8 +1026,8 @@ function pintarTecnicos() {
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const q = norm($("#buscar-tec").value);
   const lista = tecnicos.filter(t => (!filtroSit || (filtroSit === "dni" ? !t.dni_ok : t.situacion === filtroSit)) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
-  $("#tb-tec").innerHTML = lista.map(t => `<tr>
-    <td><b>${esc(t.nombre)}</b></td><td>${t.dni_ok ? esc(t.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(t.dni)}</span><br><button class="btn peligro mini" data-corregir="${t.id}">Corregir DNI</button>`}</td><td>${esc(t.centro || "")}</td>
+  $("#tb-tec").innerHTML = lista.map(t => `<tr class="click" data-ficha-tec="${t.id}" tabindex="0">
+    <td><b>${esc(t.nombre)}</b></td><td>${t.dni_ok ? esc(t.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(t.dni)}</span><br><button class="btn peligro mini" data-corregir="${t.id}">Corregir DNI</button>`}</td><td>${t.centro_id ? `<a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}</td>
     <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + ", " + fcorta(t.ultima_fecha) : "—"}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
     <td>${t.proximo_curso ? `Inscrito el ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
     <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span></td>
@@ -1140,6 +1228,194 @@ function dniValido(v) {
   else return false;
   return "TRWAGMYFPDXBNJZSQVHLCKE"[parseInt(n, 10) % 23] === d[8];
 }
+
+/* ---------- ficha del técnico ---------- */
+const ESTINS = { confirmada: ["Realizado","b-ok"], lista_espera: ["En espera","b-warn"], cancelada: ["Baja","b-gris"] };
+let fichaTec = null, fichaTecIns = [];
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-corregir]")) return;
+  const t = e.target.closest("[data-ficha-tec]"); if (t) { e.preventDefault(); abrirTecnico(t.dataset.fichaTec); return; }
+  const l = e.target.closest("[data-ficha-taller]"); if (l) { e.preventDefault(); e.stopPropagation(); abrirTaller(l.dataset.fichaTaller); }
+}, true);
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const t = e.target.closest?.("tr[data-ficha-tec]"); if (t) abrirTecnico(t.dataset.fichaTec);
+  const l = e.target.closest?.("tr[data-ficha-taller]"); if (l) abrirTaller(l.dataset.fichaTaller);
+});
+async function abrirTecnico(id) {
+  const [est, ins] = await Promise.all([
+    sb.from("tecnicos_estado").select("*").eq("id", id).maybeSingle(),
+    sb.from("inscripciones").select("id,estado,asistio,created_at,centro_id,centros(nombre),cursos(id,tipo,sede,fechas,fecha_inicio,fecha_fin,estado,docente_id,horas)").eq("tecnico_id", id)
+  ]);
+  if (est.error || !est.data) return toast("No se ha podido abrir la ficha del técnico");
+  fichaTec = est.data;
+  fichaTecIns = (ins.data || []).filter(i => i.cursos).sort((a, b) => b.cursos.fecha_inicio.localeCompare(a.cursos.fecha_inicio));
+  const t = fichaTec, f = $("#f-tec");
+  $("#ft-badges").innerHTML = `<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.dni_ok ? "" : ` <span class="badge b-bad">DNI no válido</span>`}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn">sin iniciación</span>` : ""}`;
+  $("#ft-nombre").textContent = t.nombre;
+  $("#ft-sub").innerHTML = `${esc(t.dni)}${t.centro_id ? ` · <a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}`;
+  const hechos = fichaTecIns.filter(i => i.estado === "confirmada" && i.asistio !== false && i.cursos.fecha_fin < hoy && i.cursos.estado !== "cancelado");
+  $("#ft-cifras").innerHTML = `
+    <div class="cifra"><b>${hechos.length}</b><span>cursos realizados</span></div>
+    <div class="cifra"><b style="font-size:20px">${t.ultima_fecha ? fcorta(t.ultima_fecha) : "—"}</b><span>${t.ultimo_tipo ? "último: " + TIPO[t.ultimo_tipo].toLowerCase() : "sin cursos realizados"}</span></div>
+    <div class="cifra ${t.situacion === "caducado" ? "alerta" : ""}"><b style="font-size:20px">${t.renovar_antes ? fcorta(t.renovar_antes) : "—"}</b><span>renovar antes de</span></div>
+    <div class="cifra"><b style="font-size:20px">${t.proximo_curso ? fcorta(t.proximo_curso) : "—"}</b><span>próximo curso</span></div>`;
+  f.nombre.value = t.nombre || ""; f.dni.value = t.dni || ""; f.telefono.value = t.telefono || ""; f.email.value = t.email || "";
+  $("#ft-err").textContent = "";
+  $("#ft-cursos").innerHTML = fichaTecIns.map(i => {
+    const c = i.cursos, celebrado = c.fecha_fin < hoy;
+    const est = c.estado === "cancelado" ? `<span class="badge b-bad">Curso cancelado</span>`
+      : i.estado === "confirmada" ? (celebrado ? (i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : `<span class="badge b-ok">Realizado</span>`) : `<span class="badge b-azul">Inscrito</span>`)
+      : `<span class="badge ${ESTINS[i.estado][1]}">${ESTINS[i.estado][0]}</span>`;
+    const cert = i.estado === "confirmada" && celebrado && i.asistio !== false && c.estado !== "cancelado";
+    return `<tr><td><a class="enlace" data-ver="${c.id}"><b>${textoFechas(c.fechas)}</b></a></td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+      <td class="hide-m">${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}</td><td>${est}</td>
+      <td style="text-align:right">${cert ? `<button class="btn sec mini" data-cert-ins="${i.id}">Certificado</button>` : ""}</td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="vacio-t">Este técnico no tiene cursos${miSede ? " en tu sede" : ""}.</td></tr>`;
+  if (!$("#dlg-tec").open) $("#dlg-tec").showModal();
+}
+$("#ft-cursos").addEventListener("click", async e => {
+  const v = e.target.closest("[data-ver]"); if (v) { $("#dlg-tec").close(); return; }
+  const b = e.target.closest("[data-cert-ins]"); if (!b) return;
+  const i = fichaTecIns.find(x => x.id === b.dataset.certIns), c = i.cursos;
+  try {
+    await cargarFirmantes();
+    const docente = firmantes.find(f => f.id === c.docente_id), aprobador = firmantes.find(f => f.rol === "aprobador");
+    if (!docente) return toast("Ese curso aún no tiene docente: genera los certificados desde la ficha del curso para elegirlo");
+    b.disabled = true; b.textContent = "Generando…";
+    const { blob, nombre } = await Certificados.generar({ curso: c, alumnos: [{ nombre: fichaTec.nombre, dni: fichaTec.dni, centro: i.centros?.nombre || "" }],
+      docente, aprobador, horas: c.horas || HORAS[c.tipo], formato: "unico" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast("Certificado descargado");
+  } catch (ex) { toast(ex.message || "No se ha podido generar el certificado"); }
+  finally { b.disabled = false; b.textContent = "Certificado"; }
+});
+$("#f-tec").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, err = m => $("#ft-err").textContent = m;
+  const dni = f.dni.value.toUpperCase().replace(/[\s.\-]/g, "");
+  if (!dniValido(dni)) return err("El DNI o NIE no es válido.");
+  if (f.email.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.value.trim())) return err("El correo no es válido.");
+  let id = fichaTec.id;
+  if (dni !== fichaTec.dni) {
+    const { data, error } = await sb.rpc("corregir_dni", { p_tecnico: id, p_dni: dni });
+    if (error) return err(error.message);
+    if (data.accion === "unido") {
+      await sb.from("tecnicos").delete().eq("id", data.sobrante);
+      const { data: otro } = await sb.from("tecnicos").select("id").eq("dni", dni).maybeSingle();
+      id = otro?.id || id;
+      toast("Ya existía un técnico con ese DNI: se han unido sus cursos");
+    }
+  }
+  const { error } = await sb.from("tecnicos").update({ nombre: f.nombre.value, telefono: f.telefono.value.trim() || null, email: f.email.value.trim().toLowerCase() || null }).eq("id", id);
+  if (error) return err(error.message);
+  toast("Datos del técnico guardados");
+  await abrirTecnico(id);
+  if (!$("[data-panel=tecnicos]").classList.contains("hidden")) cargarTecnicos();
+});
+
+/* ---------- talleres ---------- */
+let talleres = [], filtroTall = "", fichaTall = null, fichaTallTecs = [];
+async function cargarTalleres() {
+  const { data, error } = await sb.from("centros_resumen").select("*").order("nombre");
+  if (error) return toast("No se han podido cargar los talleres");
+  talleres = data; pintarTalleres();
+  $("#dl-talleres").innerHTML = talleres.map(t => `<option value="${esc(t.nombre)}">`).join("");
+}
+function pintarTalleres() {
+  const conTec = talleres.filter(t => t.n_tecnicos > 0).length, porRenovar = talleres.filter(t => t.n_caducados + t.n_vence > 0).length, sinCorreo = talleres.filter(t => !t.email).length;
+  $("#stats-tall").innerHTML = [["", "Talleres", talleres.length], ["renovar", "con técnicos por renovar", porRenovar], ["sincorreo", "sin correo", sinCorreo]]
+    .map(([k, n, c]) => `<button class="stat" data-ft="${k}" aria-pressed="${filtroTall === k}"><b>${c}</b><span>${n}</span></button>`).join("");
+  const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const q = norm($("#buscar-tall").value);
+  let lista = talleres.filter(t => (!filtroTall || (filtroTall === "renovar" ? t.n_caducados + t.n_vence > 0 : !t.email))
+    && (!q || norm([t.nombre, t.contacto, t.telefono, t.email].join(" ")).includes(q)));
+  const o = $("#orden-tall").value;
+  if (o === "tecnicos") lista.sort((a, b) => b.n_tecnicos - a.n_tecnicos);
+  if (o === "caducados") lista.sort((a, b) => (b.n_caducados + b.n_vence) - (a.n_caducados + a.n_vence));
+  if (o === "reciente") lista.sort((a, b) => String(b.ultimo_curso || "").localeCompare(String(a.ultimo_curso || "")));
+  $("#tb-tall").innerHTML = lista.map(t => `<tr class="click" data-ficha-taller="${t.id}" tabindex="0">
+    <td><b>${esc(t.nombre)}</b>${t.email ? `<div class="gris" style="font-size:13px">${esc(t.email)}</div>` : ""}</td>
+    <td class="hide-m">${esc(t.contacto || "")}<div class="gris" style="font-size:13px">${esc(t.telefono || "")}</div></td>
+    <td>${t.n_tecnicos}</td>
+    <td>${t.n_caducados ? `<span class="badge b-bad">${t.n_caducados} caducado${t.n_caducados > 1 ? "s" : ""}</span> ` : ""}${t.n_vence ? `<span class="badge b-warn">${t.n_vence} vence pronto</span>` : ""}${!t.n_caducados && !t.n_vence ? `<span class="gris">—</span>` : ""}</td>
+    <td class="hide-m">${t.ultimo_curso ? fcorta(t.ultimo_curso) : "—"}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="vacio-t">Ningún taller coincide con la búsqueda.</td></tr>`;
+}
+$("#stats-tall").addEventListener("click", e => { const b = e.target.closest("[data-ft]"); if (b) { filtroTall = b.dataset.ft; pintarTalleres(); } });
+$("#buscar-tall").addEventListener("input", pintarTalleres);
+$("#orden-tall").addEventListener("change", pintarTalleres);
+$("#csv-tall").addEventListener("click", () => csv(`talleres_${hoy}.csv`,
+  ["Taller","Persona de contacto","Teléfono","Correo","Técnicos","Caducados","Vence pronto","Inscripciones","Último curso"],
+  talleres.map(t => [t.nombre, t.contacto, t.telefono, t.email, t.n_tecnicos, t.n_caducados, t.n_vence, t.n_inscripciones, t.ultimo_curso])));
+
+async function abrirTaller(id) {
+  const [res, tecs, ins] = await Promise.all([
+    sb.from("centros_resumen").select("*").eq("id", id).maybeSingle(),
+    sb.from("tecnicos_estado").select("*").or(`centro_id.eq.${id},centros_ids.cs.{${id}}`).order("nombre"),
+    sb.from("inscripciones").select("id,estado,asistio,tecnico_id,tecnicos(nombre),cursos(id,tipo,sede,fechas,fecha_inicio,fecha_fin,estado)").eq("centro_id", id)
+  ]);
+  if (res.error || !res.data) return toast("No se ha podido abrir la ficha del taller");
+  fichaTall = res.data; fichaTallTecs = tecs.data || [];
+  const t = fichaTall, f = $("#f-tall");
+  $("#fl-nombre").textContent = t.nombre;
+  $("#fl-sub").textContent = [t.contacto, t.telefono, t.email].filter(Boolean).join(" · ") || "Sin datos de contacto";
+  $("#fl-cifras").innerHTML = `
+    <div class="cifra"><b>${fichaTallTecs.length}</b><span>técnicos</span></div>
+    <div class="cifra"><b>${t.n_inscripciones}</b><span>plazas confirmadas</span></div>
+    <div class="cifra ${t.n_caducados ? "alerta" : ""}"><b>${t.n_caducados}</b><span>caducados</span></div>
+    <div class="cifra"><b>${t.n_vence}</b><span>vencen pronto</span></div>
+    <div class="cifra"><b style="font-size:20px">${t.ultimo_curso ? fcorta(t.ultimo_curso) : "—"}</b><span>último curso</span></div>`;
+  f.nombre.value = t.nombre || ""; f.contacto.value = t.contacto || ""; f.telefono.value = t.telefono || ""; f.email.value = t.email || "";
+  $("#fl-err").textContent = ""; $("#fl-unir-zona").classList.add("hidden"); $("#fl-destino").value = "";
+  $("#fl-unir").classList.toggle("hidden", !!miSede);
+  $("#fl-ntec").textContent = `(${fichaTallTecs.length})`;
+  $("#fl-tecs").innerHTML = fichaTallTecs.map(x => `<tr class="click" data-ficha-tec="${x.id}" tabindex="0">
+    <td><b>${esc(x.nombre)}</b>${x.centro_id !== id ? `<div class="gris" style="font-size:12px">ahora en ${esc(x.centro || "otro taller")}</div>` : ""}</td>
+    <td>${x.dni_ok ? esc(x.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(x.dni)}</span>`}</td>
+    <td class="hide-m">${x.ultimo_tipo ? TIPO[x.ultimo_tipo] + ", " + fcorta(x.ultima_fecha) : "—"}</td>
+    <td>${x.proximo_curso ? `Inscrito el ${fcorta(x.proximo_curso)}` : fcorta(x.renovar_antes)}</td>
+    <td><span class="badge ${SIT[x.situacion][1]}">${SIT[x.situacion][0]}</span></td></tr>`).join("")
+    || `<tr><td colspan="5" class="vacio-t">Este taller no tiene técnicos${miSede ? " en tu sede" : ""}.</td></tr>`;
+  const lista = (ins.data || []).filter(i => i.cursos).sort((a, b) => b.cursos.fecha_inicio.localeCompare(a.cursos.fecha_inicio));
+  $("#fl-ins").innerHTML = lista.map(i => {
+    const c = i.cursos, celebrado = c.fecha_fin < hoy;
+    const est = c.estado === "cancelado" ? `<span class="badge b-bad">Curso cancelado</span>`
+      : i.estado === "confirmada" ? (celebrado ? (i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : `<span class="badge b-ok">Realizado</span>`) : `<span class="badge b-azul">Inscrito</span>`)
+      : `<span class="badge ${ESTINS[i.estado][1]}">${ESTINS[i.estado][0]}</span>`;
+    return `<tr><td>${textoFechas(c.fechas)}</td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+      <td><a class="enlace" data-ficha-tec="${i.tecnico_id}">${esc(i.tecnicos?.nombre || "")}</a></td><td>${est}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="vacio-t">Sin inscripciones.</td></tr>`;
+  if (!$("#dlg-tall").open) $("#dlg-tall").showModal();
+}
+$("#f-tall").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.email.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.value.trim())) { $("#fl-err").textContent = "El correo no es válido."; return; }
+  const { error } = await sb.from("centros").update({ nombre: f.nombre.value, contacto: f.contacto.value || null, telefono: f.telefono.value.trim() || null, email: f.email.value.trim().toLowerCase() || null }).eq("id", fichaTall.id);
+  if (error) { $("#fl-err").textContent = /duplicate|unique/i.test(error.message) ? "Ya hay otro taller con ese nombre. Si es el mismo, usa «Unir con otro taller»." : error.message; return; }
+  toast("Datos del taller guardados"); await cargarTalleres(); abrirTaller(fichaTall.id);
+});
+$("#fl-unir").addEventListener("click", () => { $("#fl-unir-zona").classList.toggle("hidden"); if (!talleres.length) cargarTalleres(); });
+$("#fl-unir-ok").addEventListener("click", async () => {
+  const nombre = $("#fl-destino").value.trim();
+  const destino = talleres.find(t => t.nombre === nombre && t.id !== fichaTall.id);
+  if (!destino) { $("#fl-err").textContent = "Elige el taller correcto de la lista."; return; }
+  if (!confirm(`¿Unir «${fichaTall.nombre}» con «${destino.nombre}»? Los técnicos y cursos pasarán a «${destino.nombre}» y «${fichaTall.nombre}» desaparecerá.`)) return;
+  const { data, error } = await sb.rpc("unir_centros", { p_origen: fichaTall.id, p_destino: destino.id });
+  if (error) { $("#fl-err").textContent = error.message; return; }
+  await sb.from("centros").delete().eq("id", fichaTall.id);
+  toast(`Talleres unidos: ${data.inscripciones} inscripciones movidas`);
+  await cargarTalleres(); abrirTaller(destino.id);
+});
+$("#fl-csv").addEventListener("click", () => csv(`tecnicos_${(fichaTall.nombre || "taller").replace(/[^\wÁÉÍÓÚÑ]+/gi, "_")}.csv`,
+  ["Nombre","DNI","Último curso","Fecha último curso","Renovar antes de","Próximo curso","Situación","Correo","Teléfono"],
+  fichaTallTecs.map(t => [t.nombre, t.dni, t.ultimo_tipo ? TIPO[t.ultimo_tipo] : "", t.ultima_fecha, t.renovar_antes, t.proximo_curso, SIT[t.situacion][0], t.email, t.telefono])));
+$("#fl-mails").addEventListener("click", async () => {
+  const m = [...new Set([fichaTall.email, ...fichaTallTecs.map(t => t.email)].filter(Boolean))].join("; ");
+  if (!m) return toast("No hay correos guardados");
+  try { await navigator.clipboard.writeText(m); toast("Correos copiados"); } catch { prompt("Copia los correos:", m); }
+});
 
 iniciar();
 
