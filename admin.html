@@ -175,6 +175,7 @@ select.mini{padding:4px 8px;font-size:13px}
   .cifras{gap:10px 22px}
   .cifras .anio-sel{margin-left:0}
 }
+input.mayus{text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -330,13 +331,13 @@ select.mini{padding:4px 8px;font-size:13px}
     <div class="dh"><h2>Añadir asistente</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
     <div class="db" style="display:grid;gap:14px">
       <div class="grid2">
-        <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" required list="dl-centros" autocomplete="off"></label>
-        <label class="c">Persona de contacto<input name="contacto"></label>
+        <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" class="mayus" required list="dl-centros" autocomplete="off"></label>
+        <label class="c">Persona de contacto<input name="contacto" class="mayus"></label>
         <label class="c">Teléfono del centro<input name="tel_contacto"></label>
         <label class="c" style="grid-column:1/-1">Correo del centro técnico<input name="email_centro" type="email"></label>
       </div>
       <div class="grid2">
-        <label class="c" style="grid-column:1/-1">Nombre y apellidos<input name="nombre" required></label>
+        <label class="c" style="grid-column:1/-1">Nombre y apellidos<input name="nombre" class="mayus" required></label>
         <label class="c">DNI o NIE<input name="dni" required></label>
         <label class="c">Teléfono<input name="telefono"></label>
         <label class="c" style="grid-column:1/-1">Correo <span class="gris" style="font-weight:400">si lo pones, recibe la confirmación</span><input name="email" type="email"></label>
@@ -1141,6 +1142,14 @@ function dniValido(v) {
 }
 
 iniciar();
+
+/* nombres siempre en mayúsculas */
+document.addEventListener("input", e => {
+  const i = e.target;
+  if (!i.classList || !i.classList.contains("mayus")) return;
+  const s = i.selectionStart, f = i.selectionEnd, v = i.value.toLocaleUpperCase("es-ES");
+  if (v !== i.value) { i.value = v; try { i.setSelectionRange(s, f); } catch {} }
+});
 </script>
 </body>
 </html>
