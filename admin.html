@@ -57,12 +57,13 @@ label.c>input,label.c>select,label.c>textarea{display:block;width:100%;margin-to
 
 /* cabecera */
 .cab{background:#fff;color:var(--tinta);position:sticky;top:0;z-index:20;border-top:4px solid var(--verde);border-bottom:1px solid var(--linea)}
-.cab .in{max-width:1280px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:22px;min-height:60px;flex-wrap:wrap}
+.cab .in{max-width:1480px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:18px;min-height:60px;flex-wrap:wrap}
 .marca{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tinta)}
 .marca img{height:28px}
 .marca span{font-family:var(--f-tit);font-stretch:112%;font-weight:700;font-size:15px;border-left:1px solid var(--linea-2);padding-left:12px}
-nav.tabs{display:flex;gap:2px;flex:1;overflow-x:auto}
-nav.tabs button{background:transparent;border:0;color:var(--gris);padding:19px 12px 17px;cursor:pointer;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs{display:flex;gap:0;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{background:transparent;border:0;color:var(--gris);padding:19px 10px 17px;cursor:pointer;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
 nav.tabs button[aria-selected=true]{color:var(--tinta);font-weight:600;border-bottom-color:var(--verde)}
 nav.tabs button:hover{color:var(--tinta)}
 .usuario{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--gris)}
@@ -223,6 +224,9 @@ a.enlace:hover{color:var(--verde)}
 @media (max-width:640px){[data-solo-m]{display:block}}
 
 /* perfil y avisos */
+.perfil .em{display:none}
+@media (min-width:1560px){.perfil .em{display:inline}}
+@media (max-width:1240px) and (min-width:641px){.marca span{display:none}}
 .perfil-w{position:relative}
 .perfil{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--linea-2);border-radius:999px;padding:3px 12px 3px 3px;cursor:pointer;position:relative;color:var(--tinta);font-size:13px}
 .perfil:hover{border-color:var(--tinta)}
