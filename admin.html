@@ -224,16 +224,25 @@ a.enlace:hover{color:var(--verde)}
 @media (max-width:640px){[data-solo-m]{display:block}}
 
 /* perfil y avisos */
-.perfil .em{display:none}
-@media (min-width:1560px){.perfil .em{display:inline}}
+.perfil{padding:3px 10px 3px 3px;gap:10px}
+.pf-txt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;text-align:left;max-width:170px}
+.pf-txt b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pf-txt small{font-size:11.5px;color:var(--verde-osc);font-weight:600}
+.pf-flecha{color:var(--gris)}
+.pm-yo{display:flex;gap:12px;align-items:center;padding:4px 6px 12px;margin-bottom:4px;border-bottom:1px solid var(--linea)}
+.pm-yo b{display:block;font-size:15px}
+.pm-yo div>span{display:block;font-size:12.5px;color:var(--gris)}
+.pm-yo div>.rol{display:inline-block;margin-top:5px}
+.avatar.grande{width:44px;height:44px;font-size:16px}
+@media (max-width:1160px){.pf-txt,.pf-flecha{display:none}.perfil{padding:3px}}
 @media (max-width:1240px) and (min-width:641px){.marca span{display:none}}
 .perfil-w{position:relative}
 .perfil{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--linea-2);border-radius:999px;padding:3px 12px 3px 3px;cursor:pointer;position:relative;color:var(--tinta);font-size:13px}
 .perfil:hover{border-color:var(--tinta)}
 .perfil[aria-expanded=true]{border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-suave)}
-.avatar{width:30px;height:30px;border-radius:50%;background:var(--verde);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px;text-transform:uppercase;flex:none}
-.burbuja{position:absolute;top:-5px;left:20px;min-width:20px;height:20px;border-radius:999px;background:var(--rojo);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center;padding:0 5px;border:2px solid #fff;line-height:1}
-.perfil-menu{position:absolute;right:0;top:calc(100% + 8px);width:420px;max-height:min(78vh,680px);display:flex;flex-direction:column;background:#fff;border:1px solid var(--linea);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.18);z-index:60;overflow:hidden;color:var(--tinta)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--verde);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:.02em;text-transform:uppercase;flex:none}
+.burbuja{position:absolute;top:-7px;left:15px;min-width:20px;height:20px;border-radius:999px;background:var(--rojo);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center;padding:0 5px;border:2px solid #fff;line-height:1}
+.perfil-menu{position:absolute;right:0;top:calc(100% + 8px);width:420px;max-height:min(86vh,760px);display:flex;flex-direction:column;background:#fff;border:1px solid var(--linea);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.18);z-index:60;overflow:hidden;color:var(--tinta)}
 .pm-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--linea);font-size:15px}
 .pm-cab span{font-size:13px}
 .pm-avisos{overflow:auto;flex:1}
@@ -314,14 +323,15 @@ a.enlace:hover{color:var(--verde)}
     <div class="usuario">
       <div class="perfil-w">
         <button id="perfil" class="perfil" aria-haspopup="true" aria-expanded="false" aria-label="Avisos y cuenta">
-          <span class="avatar" id="avatar">·</span><span class="em" id="yo"></span>
+          <span class="avatar" id="avatar">·</span><span class="pf-txt"><b id="pf-nombre"></b><small id="pf-rol"></small></span><svg class="pf-flecha" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="burbuja hidden" id="n-avisos"></span>
         </button>
         <div id="perfil-menu" class="perfil-menu hidden" role="dialog" aria-label="Avisos y cuenta">
           <div class="pm-cab"><b>Avisos</b><span class="gris" id="pm-resumen"></span></div>
           <div id="pm-avisos" class="pm-avisos"></div>
           <div class="pm-cuenta">
-            <div class="gris" style="font-size:12.5px;padding:0 4px 6px" id="pm-quien"></div>
+            <div class="pm-yo"><span class="avatar grande" id="pm-avatar">·</span><div><b id="pm-nombre"></b><span id="pm-quien"></span><span class="rol" id="pm-rol"></span></div></div>
+            <button type="button" id="m-nombre">Cambiar mi nombre</button>
             <button type="button" id="m-clave">Cambiar mi contraseña</button>
             <button type="button" id="m-gestores" class="hidden">Contraseñas de los gestores</button>
             <button type="button" id="salir">Salir</button>
@@ -890,7 +900,8 @@ async function iniciar() {
   }
   const { data: esAdmin } = await sb.rpc("es_admin");
   if (!esAdmin) { $("#login").classList.remove("hidden"); $("#login-err").textContent = "Este usuario no tiene permiso de gestión."; await sb.auth.signOut(); return; }
-  $("#yo").textContent = session.user.email;
+  const { data: perfil } = await sb.rpc("mi_perfil");
+  pintarPerfil(perfil || { email: session.user.email });
   const { data: sede } = await sb.rpc("admin_sede");
   if (sede) aplicarSede(sede);
   else { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
@@ -2297,8 +2308,6 @@ async function marcarVistas() {
 }
 async function iniciarAvisos(email, superadmin) {
   miEmail = email.toLowerCase(); esSuper = superadmin;
-  $("#avatar").textContent = miEmail[0] || "·";
-  $("#pm-quien").textContent = miEmail;
   $("#m-gestores").classList.toggle("hidden", !superadmin);
   const [d, e] = await Promise.all([sb.from("avisos_descartados").select("clave"), sb.from("admin_estado").select("ultima_vista").maybeSingle()]);
   descartados = new Set((d.data || []).map(x => x.clave));
@@ -2340,9 +2349,9 @@ $("#f-clave").addEventListener("submit", async e => {
 });
 $("#m-gestores").addEventListener("click", async () => {
   abrirMenu(false); $("#gs-err").textContent = "";
-  const { data, error } = await sb.rpc("gestores");
+  const { data, error } = await sb.rpc("lista_gestores");
   if (error) return toast(error.message);
-  $("#gs-lista").innerHTML = data.map(g => `<tr><td><b>${esc(g.email)}</b><div class="gris" style="font-size:12.5px">${g.sede ? `Solo ${esc(g.sede)}` : "Gestión central"}</div></td>
+  $("#gs-lista").innerHTML = data.map(g => `<tr><td><b>${esc(g.nombre || g.email)}</b><div class="gris" style="font-size:12.5px">${g.nombre ? esc(g.email) + " · " : ""}${g.sede ? `Gestor · ${esc(g.sede)}` : "Administrador"}</div></td>
     <td class="hide-m gris" style="font-size:13px">${g.ultimo_acceso ? new Date(g.ultimo_acceso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : "Nunca ha entrado"}</td>
     <td style="text-align:right">${g.email.toLowerCase() === miEmail ? `<span class="gris" style="font-size:13px">Tú</span>` : `<button class="btn sec mini" data-temp="${esc(g.email)}">Contraseña temporal</button>`}</td></tr>`).join("");
   $("#dlg-gestores").showModal();
@@ -2358,6 +2367,30 @@ $("#gs-lista").addEventListener("click", async e => {
   $("#gs-err").textContent = "";
   b.outerHTML = `<span class="ok-msg" style="display:inline-block;padding:4px 10px">Cambiada</span>`;
   toast("Contraseña temporal guardada");
+});
+
+
+/* ---------- perfil ---------- */
+let miPerfil = {};
+const iniciales = n => String(n || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
+const rolDe = p => p.sede ? { txt: `Gestor · ${p.sede}`, cls: "b-azul" } : { txt: "Administrador", cls: "b-ok" };
+function pintarPerfil(p) {
+  miPerfil = p;
+  const nombre = p.nombre || p.email.split("@")[0], rol = rolDe(p);
+  $("#avatar").textContent = $("#pm-avatar").textContent = iniciales(nombre);
+  $("#pf-nombre").textContent = $("#pm-nombre").textContent = nombre;
+  $("#pf-rol").textContent = rol.txt;
+  $("#pm-quien").textContent = p.email;
+  $("#pm-rol").textContent = rol.txt; $("#pm-rol").className = `rol badge ${rol.cls}`;
+  $("#perfil").title = `${nombre} · ${rol.txt}`;
+}
+$("#m-nombre").addEventListener("click", async () => {
+  abrirMenu(false);
+  const n = prompt("¿Cómo quieres que aparezca tu nombre?", miPerfil.nombre || "");
+  if (n === null) return;
+  const { error } = await sb.rpc("cambiar_mi_nombre", { p_nombre: n });
+  if (error) return toast(error.message);
+  pintarPerfil({ ...miPerfil, nombre: n.trim() }); toast("Nombre guardado");
 });
 
 iniciar();
