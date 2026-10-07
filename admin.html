@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="certificados.js" defer></script>
 <script src="informes.js" defer></script>
+<script src="correos.js"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -155,7 +156,17 @@ dialog::backdrop{background:rgba(8,22,14,.55)}
 #dlg-tec .db,#dlg-tall .db{grid-template-columns:minmax(0,1fr)}
 .resumen-c{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .resumen-c .cifra b{font-size:24px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:12px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
+#pila{position:fixed;inset:auto auto 20px 50%;transform:translateX(-50%);margin:0;padding:0;border:0;background:transparent;overflow:visible;display:flex;flex-direction:column;gap:8px;align-items:center;z-index:200;width:max-content;max-width:calc(100vw - 24px)}
+#pila:empty{display:none}
+.toast{background:var(--tinta);color:#fff;padding:11px 18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:500}
+.toast.deshacer{display:flex;gap:16px;align-items:center;padding:10px 10px 10px 18px;position:relative;overflow:hidden;min-width:min(420px,calc(100vw - 24px))}
+.toast.deshacer span{flex:1}
+.toast.deshacer button{background:#fff;color:var(--tinta);border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.toast.deshacer button:hover{background:var(--verde-suave)}
+.toast.deshacer i{position:absolute;left:0;bottom:0;height:3px;background:#5fd393;animation:cuenta linear forwards;width:100%}
+@keyframes cuenta{from{width:100%}to{width:0}}
+tr.pend td{opacity:.45;text-decoration:line-through}
+.dup.pend{opacity:.45}
 .acc{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end}
 select.mini{padding:4px 8px;font-size:13px}
 .vacio-t{text-align:center;padding:28px;color:var(--gris)}
@@ -877,7 +888,50 @@ function disco(c, tam = 34, oscuro = false) {
   }
   return `<svg class="disco" width="${tam}" height="${tam}" viewBox="0 0 ${tam} ${tam}" aria-hidden="true">${s}</svg>`;
 }
-function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.textContent = m; t.setAttribute("role", "status"); document.body.append(t); setTimeout(() => t.remove(), 3000); }
+const pila = document.createElement("div"); pila.id = "pila"; pila.setAttribute("aria-live", "polite");
+if ("showPopover" in pila) pila.setAttribute("popover", "manual");
+document.body.append(pila);
+// Con una ventana abierta, lo de fuera no se puede pulsar: los avisos van dentro de la ventana de arriba
+const ventanas = [];
+const _showModal = HTMLDialogElement.prototype.showModal;
+HTMLDialogElement.prototype.showModal = function () { _showModal.call(this); ventanas.splice(ventanas.indexOf(this) >>> 0, ventanas.includes(this) ? 1 : 0); ventanas.push(this); if (pila.childElementCount) alFrente(); };
+document.addEventListener("close", e => { const i = ventanas.indexOf(e.target); if (i >= 0) ventanas.splice(i, 1); if (pila.childElementCount) alFrente(); }, true);
+function alFrente() {
+  const destino = ventanas.filter(d => d.open).at(-1) || document.body;
+  if (pila.parentNode !== destino) destino.append(pila);
+  if (!pila.showPopover) return;
+  try { pila.hidePopover(); } catch {} try { pila.showPopover(); } catch {}
+}
+function toast(m) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = m; t.setAttribute("role", "status");
+  pila.append(t); alFrente(); setTimeout(() => t.remove(), 3200);
+}
+/* Acciones con «Deshacer»: no se ejecutan hasta que pasan unos segundos sin pulsar el botón */
+const pendientesDeshacer = new Set();
+function conDeshacer(texto, accion, { seg = 8, alDeshacer } = {}) {
+  const t = document.createElement("div"); t.className = "toast deshacer"; t.setAttribute("role", "status");
+  t.innerHTML = `<span></span><button type="button">Deshacer</button><i style="animation-duration:${seg}s"></i>`;
+  t.querySelector("span").textContent = texto;
+  let hecho = false;
+  const p = {
+    ejecutar: async () => {
+      if (hecho) return; hecho = true; clearTimeout(p.timer); pendientesDeshacer.delete(p); t.remove();
+      try { await accion(); } catch (ex) { toast(ex?.message || "No se ha podido completar"); }
+    }
+  };
+  p.timer = setTimeout(p.ejecutar, seg * 1000);
+  t.querySelector("button").onclick = () => {
+    if (hecho) return; hecho = true; clearTimeout(p.timer); pendientesDeshacer.delete(p); t.remove();
+    try { alDeshacer?.(); } catch {} toast("Deshecho: no se ha cambiado nada");
+  };
+  pendientesDeshacer.add(p); pila.append(t); alFrente();
+}
+addEventListener("beforeunload", e => {
+  if (!pendientesDeshacer.size) return;
+  [...pendientesDeshacer].forEach(p => p.ejecutar());
+  e.preventDefault(); e.returnValue = "";
+});
+const ejecutar = async (q, msg) => { const { data, error } = await q; if (error) throw new Error(msg || error.message); return data; };
 function csv(nombre, cab, filas) {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const txt = "﻿" + [cab, ...filas].map(r => r.map(q).join(";")).join("\r\n");
@@ -1137,27 +1191,32 @@ let moviendo = null;
 $("#dc-tb").addEventListener("click", async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const i = inscritos.find(x => x.id === b.closest("tr").dataset.id);
+  const tr = b.closest("tr"), marcar = on => { tr.classList.toggle("pend", on); tr.querySelectorAll("button,select").forEach(x => x.disabled = on); };
   if (b.dataset.act === "cancelar") {
-    if (!confirm(`¿Dar de baja a ${i.tecnicos.nombre}? Si tenía plaza, pasa automáticamente al primero de la lista de espera.`)) return;
-    const { error } = await sb.from("inscripciones").update({ estado: "cancelada" }).eq("id", i.id);
-    if (error) return toast("No se ha podido dar de baja");
-    toast("Baja registrada"); await cargarInscritos(); cargarCursos();
+    marcar(true);
+    conDeshacer(`Baja de ${i.tecnicos.nombre}${i.estado === "confirmada" ? " (su plaza pasará al primero en espera)" : ""}`, async () => {
+      await ejecutar(sb.from("inscripciones").update({ estado: "cancelada" }).eq("id", i.id), "No se ha podido dar de baja");
+      toast("Baja registrada"); if ($("#dlg-curso").open && actual?.id === i.curso_id) await cargarInscritos(); cargarCursos();
+    }, { alDeshacer: () => marcar(false) });
   }
   if (b.dataset.act === "borrar") {
-    if (!confirm("¿Eliminar definitivamente este registro? No se puede deshacer.")) return;
-    await sb.from("inscripciones").delete().eq("id", i.id);
-    toast("Registro eliminado"); await cargarInscritos(); cargarCursos();
+    marcar(true);
+    conDeshacer(`Eliminando el registro de ${i.tecnicos.nombre}`, async () => {
+      await ejecutar(sb.from("inscripciones").delete().eq("id", i.id), "No se ha podido eliminar");
+      toast("Registro eliminado"); if ($("#dlg-curso").open && actual?.id === i.curso_id) await cargarInscritos(); cargarCursos();
+    }, { alDeshacer: () => marcar(false) });
   }
   if (b.dataset.act === "plaza") {
     const conf = inscritos.filter(x => x.estado === "confirmada").length;
     const lleno = conf >= actual.cupo_max;
-    if (!confirm(lleno
-      ? `El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max} y recibirá el correo de plaza asignada.`
-      : `¿Dar plaza a ${i.tecnicos.nombre}? Recibirá el correo de plaza asignada.`)) return;
-    const { data, error } = await sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false });
-    if (error) return toast(error.message);
-    toast(data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada");
-    await cargarInscritos(); cargarCursos();
+    if (lleno && !confirm(`El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max} y recibirá el correo de plaza asignada.`)) return;
+    marcar(true);
+    const cursoId = actual.id;
+    conDeshacer(`Dando plaza a ${i.tecnicos.nombre} (recibirá el correo de plaza asignada)`, async () => {
+      const data = await ejecutar(sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false }));
+      toast(data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada");
+      if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos(); cargarCursos();
+    }, { alDeshacer: () => marcar(false) });
   }
   if (b.dataset.act === "mover") {
     moviendo = i;
@@ -1169,10 +1228,14 @@ $("#dc-tb").addEventListener("click", async e => {
 });
 $("#f-mover").addEventListener("submit", async e => {
   e.preventDefault();
-  const { data, error } = await sb.rpc("mover_inscripcion", { p_ins: moviendo.id, p_curso: e.target.curso.value });
-  if (error) { $("#fm-err").textContent = error.message; return; }
-  $("#dlg-mover").close(); toast(data.estado === "confirmada" ? "Cambiado de curso con plaza confirmada" : "Cambiado de curso, en lista de espera");
-  await cargarCursos(); await cargarInscritos();
+  const m = moviendo, destino = cursos.find(c => c.id === e.target.curso.value), cursoId = actual.id;
+  $("#dlg-mover").close();
+  const tr = $(`#dc-tb tr[data-id="${m.id}"]`); tr?.classList.add("pend");
+  conDeshacer(`Moviendo a ${m.tecnicos.nombre} al curso del ${destino ? textoFechas(destino.fechas) + " en " + destino.sede : "otro curso"}`, async () => {
+    const data = await ejecutar(sb.rpc("mover_inscripcion", { p_ins: m.id, p_curso: destino.id }));
+    toast(data.estado === "confirmada" ? "Cambiado de curso con plaza confirmada" : "Cambiado de curso, en lista de espera");
+    await cargarCursos(); if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos();
+  }, { alDeshacer: () => tr?.classList.remove("pend") });
 });
 $("#dc-csv").addEventListener("click", () => {
   csv(`inscritos_${actual.sede}_${actual.fecha_inicio}.csv`,
@@ -1278,9 +1341,11 @@ $("#f-cert").addEventListener("submit", async e => {
 });
 $("#dc-cancelar").addEventListener("click", async () => {
   if (!confirm("¿Cancelar este curso? Se enviará un correo de cancelación a todos los inscritos.")) return;
-  const { error } = await sb.from("cursos").update({ estado: "cancelado" }).eq("id", actual.id);
-  if (error) return toast("No se ha podido cancelar el curso");
-  toast("Curso cancelado"); $("#dlg-curso").close(); cargarCursos();
+  const c = actual; $("#dlg-curso").close();
+  conDeshacer(`Cancelando el curso del ${textoFechas(c.fechas)} en ${c.sede}`, async () => {
+    await ejecutar(sb.from("cursos").update({ estado: "cancelado" }).eq("id", c.id), "No se ha podido cancelar el curso");
+    toast("Curso cancelado"); cargarCursos();
+  }, { seg: 10 });
 });
 $("#dc-editar").addEventListener("click", () => abrirEdicion(actual));
 
@@ -1318,6 +1383,8 @@ $("#dc-add").addEventListener("click", async () => {
 $("#f-add").addEventListener("submit", async e => {
   e.preventDefault();
   const v = Object.fromEntries(new FormData(e.target));
+  const dud = window.Correos?.pendiente(e.target);
+  if (dud) { $("#fa-err").textContent = `Revisa el correo «${dud.value.trim()}»: ¿quisiste decir ${dud.dataset.sugerencia}?`; dud.focus(); return; }
   const { data, error } = await sb.rpc("inscribirse", { p_curso: actual.id, p_centro: v.centro, p_contacto: v.contacto, p_tel_contacto: v.tel_contacto, p_email_centro: v.email_centro,
     p_nombre: v.nombre, p_dni: v.dni, p_telefono: v.telefono, p_email: v.email });
   if (error) { $("#fa-err").textContent = error.message; return; }
@@ -1381,9 +1448,12 @@ fc.addEventListener("submit", async e => {
 });
 $("#fe-borrar").addEventListener("click", async () => {
   if (editando.inscripciones.length) { $("#fe-err").textContent = "Este curso tiene inscripciones: cancélalo en lugar de eliminarlo."; return; }
-  if (!confirm("¿Eliminar este curso?")) return;
-  await sb.from("cursos").delete().eq("id", editando.id);
-  $("#dlg-edit").close(); $("#dlg-curso").close(); toast("Curso eliminado"); cargarCursos();
+  const c = editando;
+  $("#dlg-edit").close(); $("#dlg-curso").close();
+  conDeshacer(`Eliminando el curso del ${textoFechas(c.fechas)} en ${c.sede}`, async () => {
+    await ejecutar(sb.from("cursos").delete().eq("id", c.id), "No se ha podido eliminar el curso");
+    toast("Curso eliminado"); cargarCursos();
+  });
 });
 
 /* ---------- técnicos ---------- */
@@ -1780,12 +1850,14 @@ $("#fl-unir-ok").addEventListener("click", async () => {
   const nombre = $("#fl-destino").value.trim();
   const destino = talleres.find(t => t.nombre === nombre && t.id !== fichaTall.id);
   if (!destino) { $("#fl-err").textContent = "Elige el taller correcto de la lista."; return; }
-  if (!confirm(`¿Unir «${fichaTall.nombre}» con «${destino.nombre}»? Los técnicos y cursos pasarán a «${destino.nombre}» y «${fichaTall.nombre}» desaparecerá.`)) return;
-  const { data, error } = await sb.rpc("unir_centros", { p_origen: fichaTall.id, p_destino: destino.id });
-  if (error) { $("#fl-err").textContent = error.message; return; }
-  await sb.from("centros").delete().eq("id", fichaTall.id);
-  toast(`Talleres unidos: ${data.inscripciones} inscripciones movidas`);
-  await cargarTalleres(); abrirTaller(destino.id);
+  const origen = fichaTall;
+  $("#dlg-tall").close();
+  conDeshacer(`Uniendo «${origen.nombre}» en «${destino.nombre}»`, async () => {
+    const data = await ejecutar(sb.rpc("unir_centros", { p_origen: origen.id, p_destino: destino.id }));
+    await ejecutar(sb.from("centros").delete().eq("id", origen.id));
+    toast(`Talleres unidos: ${data.inscripciones} inscripciones movidas`);
+    await cargarTalleres(); abrirTaller(destino.id);
+  }, { seg: 10, alDeshacer: () => abrirTaller(origen.id) });
 });
 $("#fl-csv").addEventListener("click", () => csv(`tecnicos_${(fichaTall.nombre || "taller").replace(/[^\wÁÉÍÓÚÑ]+/gi, "_")}.csv`,
   ["Nombre","DNI","Último curso","Fecha último curso","Renovar antes de","Próximo curso","Situación","Correo","Teléfono"],
@@ -2029,25 +2101,26 @@ $("[data-panel=duplicados]").addEventListener("click", async e => {
   const esT = "unirT" in b.dataset || "ignT" in b.dataset, k = +(b.dataset.unirT ?? b.dataset.unirC ?? b.dataset.ignT ?? b.dataset.ignC);
   const d = (esT ? dupT : dupC)[k]; if (!d) return;
   if ("ignT" in b.dataset || "ignC" in b.dataset) {
-    const { error } = await sb.from("duplicados_ignorados").insert({ tipo: esT ? "taller" : "tecnico", a: d.a, b: d.b });
-    if (error) return toast(error.message);
-    toast("Marcados como distintos"); return cargarDuplicados();
+    const card = b.closest(".dup"); card.classList.add("pend"); card.querySelectorAll("button").forEach(x => x.disabled = true);
+    return conDeshacer(`«${d.a_nombre}» y «${d.b_nombre}» no son el mismo`, async () => {
+      await ejecutar(sb.from("duplicados_ignorados").insert({ tipo: esT ? "taller" : "tecnico", a: d.a, b: d.b }));
+      toast("Marcados como distintos"); cargarDuplicados();
+    }, { alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
   }
   const [keep, drop] = b.dataset.quedar === "a" ? [d.a, d.b] : [d.b, d.a];
   const [nk, nd] = b.dataset.quedar === "a" ? [d.a_nombre, d.b_nombre] : [d.b_nombre, d.a_nombre];
-  if (!confirm(`Se conserva «${nk}» y «${nd}» desaparece: todos sus cursos pasan a la ficha que conservas. ¿Unir?`)) return;
-  b.disabled = true;
-  if (esT) {
-    const { error } = await sb.rpc("unir_centros", { p_origen: drop, p_destino: keep });
-    if (error) { b.disabled = false; return toast(error.message); }
-    await sb.from("centros").delete().eq("id", drop);
-    talleres = [];
-  } else {
-    const { error } = await sb.rpc("unir_tecnicos", { p_origen: drop, p_destino: keep });
-    if (error) { b.disabled = false; return toast(error.message); }
-    await sb.from("tecnicos").delete().eq("id", drop);
-  }
-  toast("Unidos"); cargarDuplicados();
+  const card = b.closest(".dup"); card.classList.add("pend"); card.querySelectorAll("button").forEach(x => x.disabled = true);
+  conDeshacer(`Uniendo «${nd}» en «${nk}»`, async () => {
+    if (esT) {
+      await ejecutar(sb.rpc("unir_centros", { p_origen: drop, p_destino: keep }));
+      await ejecutar(sb.from("centros").delete().eq("id", drop));
+      talleres = [];
+    } else {
+      await ejecutar(sb.rpc("unir_tecnicos", { p_origen: drop, p_destino: keep }));
+      await ejecutar(sb.from("tecnicos").delete().eq("id", drop));
+    }
+    toast("Unidos"); cargarDuplicados();
+  }, { seg: 10, alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
 });
 
 /* ---------- historial ---------- */
@@ -2462,7 +2535,7 @@ $("#cu-lista").addEventListener("change", e => {
   const el = e.target.closest("[data-campo]"), tr = e.target.closest("[data-cu]"); if (!el || !tr) return;
   const k = +tr.dataset.cu, campo = el.dataset.campo;
   const v = el.type === "checkbox" ? el.checked : el.value.trim();
-  if (campo === "activo" && !v && !confirm(`¿Desactivar la cuenta de ${cuentas[k].nombre || cuentas[k].email}? No podrá entrar hasta que la vuelvas a activar.`)) return pintarCuentas();
+  if (campo === "activo" && !v) return conDeshacer(`Desactivando la cuenta de ${cuentas[k].nombre || cuentas[k].email}`, () => guardarCuenta(k, { activo: false }), { alDeshacer: pintarCuentas });
   guardarCuenta(k, { [campo]: v });
 });
 $("#cu-lista").addEventListener("click", async e => {
@@ -2478,11 +2551,13 @@ $("#cu-lista").addEventListener("click", async e => {
   if (bo) {
     const c = cuentas[+bo.dataset.borrar];
     if (!confirm(`¿Borrar la cuenta de ${c.nombre || c.email}?\n\nSe elimina su usuario y ya no podrá entrar. Lo que hizo queda en el historial. Si solo quieres quitarle el acceso un tiempo, mejor desactívala.`)) return;
-    bo.disabled = true;
-    const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "borrar", email: c.email } });
-    const msg = error ? await mensajeFuncion(error) : data?.error;
-    if (msg) { bo.disabled = false; return toast(msg); }
-    toast("Cuenta borrada"); cargarCuentas();
+    const fila = bo.closest("tr"); fila.classList.add("pend"); fila.querySelectorAll("button,select,input").forEach(x => x.disabled = true);
+    conDeshacer(`Borrando la cuenta de ${c.nombre || c.email}`, async () => {
+      const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "borrar", email: c.email } });
+      const msg = error ? await mensajeFuncion(error) : data?.error;
+      if (msg) { toast(msg); return cargarCuentas(); }
+      toast("Cuenta borrada"); cargarCuentas();
+    }, { seg: 10, alDeshacer: pintarCuentas });
   }
 });
 async function mensajeFuncion(error) {

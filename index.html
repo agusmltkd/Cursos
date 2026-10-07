@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="correos.js"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -597,6 +598,8 @@ $("#f").addEventListener("submit", async e => {
     if (vistos.has(d)) return err(`El técnico ${n + 1} tiene el mismo DNI que otro de la lista.`, q("dni"));
     vistos.add(d);
   }
+  const dudoso = window.Correos?.pendiente(f);
+  if (dudoso) return err(`Revisa el correo «${dudoso.value.trim()}»: ¿quisiste decir ${dudoso.dataset.sugerencia}? Pulsa «Sí, corregir» o «No, está bien así».`, dudoso);
   if (!f.acepto.checked) return err("Marca la casilla de conformidad para continuar.");
   err("");
   const btn = $("#enviar"), txt = btn.textContent; btn.disabled = true;
