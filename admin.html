@@ -278,6 +278,10 @@ tr.cu-off td{background:var(--hover)} tr.cu-off .cu-nombre{color:var(--gris)}
 .cu-cred{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
 .cu-cred span{color:var(--verde-osc);font-weight:600}
 .cu-cred code{font-family:ui-monospace,monospace;background:#fff;padding:2px 8px;border-radius:6px;word-break:break-all}
+body.docente #ir-renov{pointer-events:none;color:inherit;text-decoration:none}
+body.docente .cifras .cifra:has(#ir-renov),body.docente #avisos{display:none}
+body.docente .panel-grid{grid-template-columns:1fr}
+body.docente a.enlace{text-decoration:none;cursor:default}
 .ok-msg{background:var(--verde-suave);color:var(--verde-osc);border-radius:10px;padding:10px 12px;font-size:14px}
 @media (max-width:640px){.perfil-menu{position:fixed;left:8px;right:8px;top:56px;width:auto;max-height:calc(100vh - 70px)}.perfil{padding:3px}}
 </style>
@@ -531,6 +535,7 @@ tr.cu-off td{background:var(--hover)} tr.cu-off .cu-nombre{color:var(--gris)}
         <label class="c">Cupo máximo<input type="number" name="cupo_max" min="1" value="10" required></label>
         <label class="c">Quórum mínimo<input type="number" name="quorum_min" min="0" value="6" required></label>
       </div>
+      <label class="c">Docente <span class="gris" style="font-weight:400">firma los certificados y, si tiene cuenta de docente, ve el curso</span><select name="docente" id="fc-docente"><option value="">Sin asignar</option></select></label>
       <label class="c">Estado<select name="estado"><option value="abierto">Abierto: aparece en el formulario</option><option value="cerrado">Cerrado: no admite inscripciones</option><option value="cancelado">Cancelado: avisa a los inscritos</option></select></label>
       <label class="c">Notas internas<textarea name="notas" rows="2"></textarea></label>
       <div class="error" id="fe-err"></div>
@@ -757,7 +762,7 @@ tr.cu-off td{background:var(--hover)} tr.cu-off .cu-nombre{color:var(--gris)}
 
 <!-- Cuentas y permisos -->
 <dialog id="dlg-gestores">
-  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas. <b>Gestor</b>: solo ve y gestiona su sede. El historial de cambios se da aparte.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas. <b>Gestor</b>: solo ve y gestiona su sede. <b>Docente</b>: solo ve los cursos que tiene asignados, marca asistencia y genera sus certificados.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="db" style="display:grid;gap:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="gris" id="cu-resumen"></span><button class="btn" type="button" id="cu-mostrar">+ Nueva cuenta</button></div>
     <form id="cu-nueva" class="caja pad hidden" style="display:grid;gap:12px">
@@ -765,7 +770,7 @@ tr.cu-off td{background:var(--hover)} tr.cu-off .cu-nombre{color:var(--gris)}
       <div class="grid2">
         <label class="c">Nombre<input name="nombre" required placeholder="Nombre y apellidos"></label>
         <label class="c">Correo<input name="email" type="email" required placeholder="persona@wortach.com"></label>
-        <label class="c">Tipo de cuenta<select name="sede"><option value="">Administrador</option><option value="Sevilla">Gestor · Sevilla</option><option value="Zaragoza">Gestor · Zaragoza</option><option value="Online">Gestor · Online</option></select></label>
+        <label class="c">Tipo de cuenta<select name="tipo"></select></label>
         <label class="c">Contraseña inicial<span style="display:flex;gap:6px;margin-top:5px"><input name="clave" required minlength="8" style="flex:1;font-family:ui-monospace,monospace"><button type="button" class="btn sec mini" id="cu-generar">Otra</button></span></label>
       </div>
       <label style="display:flex;gap:9px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" name="ver_historial" style="accent-color:var(--verde);width:18px;height:18px"> Puede ver el historial de cambios</label>
@@ -929,17 +934,31 @@ async function iniciar() {
     return;
   }
   const { data: esAdmin } = await sb.rpc("es_admin");
-  if (!esAdmin) { $("#login").classList.remove("hidden"); $("#login-err").textContent = "Este usuario no tiene permiso de gestión."; await sb.auth.signOut(); return; }
+  if (!esAdmin) {
+    const { data: esDoc } = await sb.rpc("es_docente");
+    if (!esDoc) { $("#login").classList.remove("hidden"); $("#login-err").textContent = "Este usuario no tiene permiso de gestión o su cuenta está desactivada."; await sb.auth.signOut(); return; }
+    modoDocente = true; aplicarDocente();
+  }
   const { data: perfil } = await sb.rpc("mi_perfil");
   pintarPerfil(perfil || { email: session.user.email });
   const { data: sede } = await sb.rpc("admin_sede");
   if (sede) aplicarSede(sede);
-  else { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
+  else if (!modoDocente) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
   const { data: ph } = await sb.rpc("puede_historial");
   puedeHist = !!ph; $("#tab-hist").classList.toggle("hidden", !puedeHist); $$(".solo-hist").forEach(b => b.classList.toggle("hidden", !puedeHist));
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
-  iniciarAvisos(session.user.email, !sede);
+  iniciarAvisos(session.user.email, !sede && !modoDocente);
+}
+
+/* ---------- cuenta de docente ---------- */
+let modoDocente = false;
+function aplicarDocente() {
+  document.body.classList.add("docente");
+  $(".marca span").textContent = "Mis cursos";
+  document.title = "Mis cursos · Adiestramientos WORTACH";
+  $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -1071,7 +1090,7 @@ async function abrirCurso(id) {
   $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
   $("#dc-titulo").textContent = textoFechas(actual.fechas);
   $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${i === 0 ? "10:00–18:30" : "9:00–17:15"}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
-  $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado");
+  $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado" || modoDocente);
   $("#dc-tb").innerHTML = `<tr><td colspan="8" class="vacio-t">Cargando…</td></tr>`;
   if (!$("#dlg-curso").open) $("#dlg-curso").showModal();
   await cargarInscritos();
@@ -1100,18 +1119,19 @@ async function cargarInscritos() {
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
       <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
-      <td><div class="acc">
+      <td><div class="acc">${modoDocente ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
-        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}
+        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}`}
       </div></td></tr>`;
   }).join("") || `<tr><td colspan="8" class="vacio-t">Todavía no hay inscritos. Comparte el formulario con los talleres o añade un asistente a mano.</td></tr>`;
 }
 $("#dc-tb").addEventListener("change", async e => {
   if (e.target.dataset.act !== "asistio") return;
   const id = e.target.closest("tr").dataset.id, v = e.target.value === "" ? null : e.target.value === "true";
-  const { error } = await sb.from("inscripciones").update({ asistio: v }).eq("id", id);
+  const { error } = await sb.rpc("marcar_asistencia", { p_ins: id, p_valor: v });
   toast(error ? "No se ha podido guardar la asistencia" : "Asistencia guardada");
+  const i = inscritos.find(x => x.id === id); if (i && !error) i.asistio = v;
 });
 let moviendo = null;
 $("#dc-tb").addEventListener("click", async e => {
@@ -1175,7 +1195,7 @@ async function cargarFirmantes() {
 }
 function pintarDocentes(sel) {
   const docs = firmantes.filter(f => f.rol === "docente");
-  $("#ce-docente").innerHTML = `<option value="">Elige el docente…</option>` + docs.map(d => `<option value="${d.id}" ${d.id === sel ? "selected" : ""}>${esc(d.nombre)}${d.firma ? "" : " (sin firma)"}</option>`).join("") + `<option value="__nuevo">+ Añadir otro docente…</option>`;
+  $("#ce-docente").innerHTML = (modoDocente ? "" : `<option value="">Elige el docente…</option>`) + docs.map(d => `<option value="${d.id}" ${d.id === sel || modoDocente ? "selected" : ""}>${esc(d.nombre)}${d.firma ? "" : " (sin firma)"}</option>`).join("") + (modoDocente ? "" : `<option value="__nuevo">+ Añadir otro docente…</option>`);
 }
 $("#dc-cert").addEventListener("click", async () => {
   try { await cargarFirmantes(); } catch (e) { return toast(e.message); }
@@ -1241,7 +1261,7 @@ $("#f-cert").addEventListener("submit", async e => {
   const horas = +f.horas.value;
   const btn = $("#ce-ok"), txt = btn.textContent; btn.disabled = true;
   try {
-    if (actual.docente_id !== docente.id || (actual.horas || HORAS[actual.tipo]) !== horas)
+    if (!modoDocente && (actual.docente_id !== docente.id || (actual.horas || HORAS[actual.tipo]) !== horas))
       await sb.from("cursos").update({ docente_id: docente.id, horas }).eq("id", actual.id);
     actual.docente_id = docente.id; actual.horas = horas;
     const { blob, nombre } = await Certificados.generar({
@@ -1335,6 +1355,10 @@ function abrirEdicion(c) {
   fc.reset(); $("#fe-err").textContent = "";
   $("#fe-titulo").textContent = c ? "Editar curso" : "Nuevo curso";
   $("#fe-borrar").classList.toggle("hidden", !c);
+  cargarFirmantes().then(() => {
+    $("#fc-docente").innerHTML = `<option value="">Sin asignar</option>` + firmantes.filter(f => f.rol === "docente").map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
+    fc.docente.value = c?.docente_id || "";
+  }).catch(() => {});
   if (c) {
     fc.tipo.value = c.tipo; fc.sede.value = c.sede; fc.inicio.value = c.fecha_inicio;
     fc.cupo_max.value = c.cupo_max; fc.quorum_min.value = c.quorum_min; fc.estado.value = c.estado; fc.notas.value = c.notas || "";
@@ -1347,7 +1371,7 @@ fc.addEventListener("submit", async e => {
   e.preventDefault();
   const fechas = [...new Set(leerJornadas())].sort();
   if (!fechas.length) { $("#fe-err").textContent = "Indica al menos una jornada."; return; }
-  const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null };
+  const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null, docente_id: fc.docente.value || null };
   if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm("Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;
   const { error } = editando ? await sb.from("cursos").update(row).eq("id", editando.id) : await sb.from("cursos").insert(row);
   if (error) { $("#fe-err").textContent = error.message; return; }
@@ -1587,6 +1611,7 @@ const ESTINS = { confirmada: ["Realizado","b-ok"], lista_espera: ["En espera","b
 let fichaTec = null, fichaTecIns = [];
 document.addEventListener("click", e => {
   if (e.target.closest("[data-corregir]")) return;
+  if (modoDocente && e.target.closest("[data-ficha-tec],[data-ficha-taller]")) { e.preventDefault(); e.stopPropagation(); return; }
   const t = e.target.closest("[data-ficha-tec]"); if (t) { e.preventDefault(); abrirTecnico(t.dataset.fichaTec); return; }
   const l = e.target.closest("[data-ficha-taller]"); if (l) { e.preventDefault(); e.stopPropagation(); abrirTaller(l.dataset.fichaTaller); }
 }, true);
@@ -2079,10 +2104,10 @@ function frase(h) {
     case "centros": return h.accion === "alta" ? `Registró el taller ${nom}` : h.accion === "borrado" ? `Eliminó el taller ${nom}` : ("token" in d ? `Cambió el enlace del taller ${nom}` : `Modificó los datos del taller ${nom}`);
     case "admins": {
       const q = `<b>${esc(x.nombre || x.email || "")}</b>`;
-      if (h.accion === "alta") return `Creó la cuenta de ${q} (${d.sede ? "Gestor · " + esc(d.sede) : "Administrador"})`;
+      if (h.accion === "alta") return `Creó la cuenta de ${q} (${d.docente_id ? "Docente" : d.sede ? "Gestor · " + esc(d.sede) : "Administrador"})`;
       if (h.accion === "borrado") return `Borró la cuenta de ${q}`;
       if ("activo" in d) return `${d.activo ? "Activó" : "Desactivó"} la cuenta de ${q}`;
-      if ("sede" in d) return `Cambió el tipo de cuenta de ${q}`;
+      if ("sede" in d || "docente_id" in d) return `Cambió el tipo de cuenta de ${q}`;
       return `Cambió los permisos de ${q}`;
     }
     case "firmantes": return h.accion === "alta" ? `Añadió al firmante ${nom}` : `Modificó al firmante ${nom}`;
@@ -2296,6 +2321,11 @@ async function calcularAvisos() {
     if (df < 0 && df >= -30 && c.ocupadas > 0)
       add({ clave: `cert:${c.id}`, nivel: "tarea", titulo: "Generar los certificados", sub: `${et} · terminó hace ${-df} día${df === -1 ? "" : "s"}`, curso: c.id, quitar: true });
   }
+  if (modoDocente) {
+    for (const c of vivos) { const d = diasHasta(c.fecha_inicio); if (d >= 0 && d <= 14) add({ clave: `prox:${c.id}`, nivel: "nuevo", titulo: d === 0 ? "Tu curso empieza hoy" : d === 1 ? "Tu curso empieza mañana" : `Tu curso empieza en ${d} días`, sub: `${etiquetaCurso(c)} · ${c.ocupadas} inscrito${c.ocupadas === 1 ? "" : "s"}`, curso: c.id, quitar: true }); }
+    avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:"));
+    return pintarAvisos();
+  }
   const [dni, prov, cor, nuevas, dup] = await Promise.all([
     sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false),
     sb.from("centros_resumen").select("id", { count: "exact", head: true }).is("provincia", null),
@@ -2388,11 +2418,15 @@ $("#f-clave").addEventListener("submit", async e => {
 });
 /* ---------- cuentas y permisos (solo administradores) ---------- */
 let cuentas = [];
-const ROLES = [["", "Administrador"], ["Sevilla", "Gestor · Sevilla"], ["Zaragoza", "Gestor · Zaragoza"], ["Online", "Gestor · Online"]];
+const tiposCuenta = () => [["admin", "Administrador"], ["sede:Sevilla", "Gestor · Sevilla"], ["sede:Zaragoza", "Gestor · Zaragoza"], ["sede:Online", "Gestor · Online"],
+  ...firmantes.filter(f => f.rol === "docente").map(f => [`docente:${f.id}`, `Docente · ${f.nombre}`])];
+const tipoDe = c => c.docente_id ? `docente:${c.docente_id}` : c.sede ? `sede:${c.sede}` : "admin";
+const opcionesTipo = v => tiposCuenta().map(([k, t]) => `<option value="${k}" ${k === v ? "selected" : ""}>${esc(t)}</option>`).join("");
 const claveAleatoria = () => { const l = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint32Array(10)); return [...r].map(x => l[x % l.length]).join(""); };
 const urlPanel = () => new URL("admin.html", location.href).href;
 async function cargarCuentas() {
-  const { data, error } = await sb.rpc("lista_cuentas");
+  await cargarFirmantes().catch(() => {});
+  const { data, error } = await sb.rpc("cuentas_lista");
   if (error) return toast(error.message);
   cuentas = data; pintarCuentas();
 }
@@ -2405,8 +2439,8 @@ function pintarCuentas() {
       <td><div class="cu-quien"><span class="avatar" style="${c.activo ? "" : "background:var(--linea-2)"}">${esc(iniciales(nombre))}</span><div>
         <input class="cu-nombre" data-campo="nombre" value="${esc(c.nombre || "")}" placeholder="${esc(nombre)}" aria-label="Nombre">
         <span class="gris" style="font-size:12.5px;display:block">${esc(c.email)}${yo ? " · <b style=\"color:var(--verde-osc)\">tú</b>" : ""}</span></div></div></td>
-      <td><select class="mini" data-campo="sede" ${yo ? "disabled title=\"No puedes cambiar tu propio rol\"" : ""}>${ROLES.map(([v, t]) => `<option value="${v}" ${(c.sede || "") === v ? "selected" : ""}>${t}</option>`).join("")}</select></td>
-      <td style="text-align:center"><input type="checkbox" data-campo="ver_historial" ${c.ver_historial ? "checked" : ""} aria-label="Ver historial" style="accent-color:var(--verde);width:18px;height:18px"></td>
+      <td><select class="mini" data-campo="tipo" style="max-width:230px" ${yo ? "disabled title=\"No puedes cambiar tu propio tipo de cuenta\"" : ""}>${opcionesTipo(tipoDe(c))}</select></td>
+      <td style="text-align:center"><input type="checkbox" data-campo="ver_historial" ${c.ver_historial ? "checked" : ""} ${c.docente_id ? "disabled title=\"Los docentes no ven el historial\"" : ""} aria-label="Ver historial" style="accent-color:var(--verde);width:18px;height:18px"></td>
       <td><label class="interr"><input type="checkbox" data-campo="activo" ${c.activo ? "checked" : ""} ${yo ? "disabled" : ""}><span></span><em>${c.activo ? "Activa" : "Desactivada"}</em></label></td>
       <td class="hide-m gris" style="font-size:12.5px">${c.ultimo_acceso ? new Date(c.ultimo_acceso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : (c.tiene_usuario ? "Nunca ha entrado" : "Sin usuario")}</td>
       <td><div class="acc">${yo ? "" : `<button class="btn sec mini" data-temp="${k}">Contraseña</button><button class="btn peligro mini" data-borrar="${k}" title="Borrar cuenta">Borrar</button>`}</div></td></tr>`;
@@ -2414,9 +2448,10 @@ function pintarCuentas() {
 }
 async function guardarCuenta(k, cambio) {
   const c = { ...cuentas[k], ...cambio };
-  const { error } = await sb.rpc("actualizar_cuenta", { p_email: c.email, p_nombre: c.nombre || null, p_sede: c.sede || null, p_activo: c.activo, p_ver_historial: c.ver_historial });
+  const tipo = cambio.tipo || tipoDe(c);
+  const { error } = await sb.rpc("guardar_cuenta", { p_email: c.email, p_nombre: c.nombre || null, p_tipo: tipo, p_activo: c.activo, p_ver_historial: c.ver_historial });
   if (error) { toast(error.message); pintarCuentas(); return; }
-  cuentas[k] = c; pintarCuentas(); toast("Cambios guardados");
+  toast("Cambios guardados"); await cargarCuentas();
   if (c.email.toLowerCase() === miEmail) pintarPerfil({ ...miPerfil, nombre: c.nombre });
 }
 $("#m-gestores").addEventListener("click", async () => {
@@ -2428,7 +2463,7 @@ $("#cu-lista").addEventListener("change", e => {
   const k = +tr.dataset.cu, campo = el.dataset.campo;
   const v = el.type === "checkbox" ? el.checked : el.value.trim();
   if (campo === "activo" && !v && !confirm(`¿Desactivar la cuenta de ${cuentas[k].nombre || cuentas[k].email}? No podrá entrar hasta que la vuelvas a activar.`)) return pintarCuentas();
-  guardarCuenta(k, { [campo]: v || (campo === "sede" ? null : v) });
+  guardarCuenta(k, { [campo]: v });
 });
 $("#cu-lista").addEventListener("click", async e => {
   const t = e.target.closest("[data-temp]"), bo = e.target.closest("[data-borrar]");
@@ -2467,8 +2502,10 @@ function mostrarDatos(email, clave, titulo) {
 }
 $("#cu-mostrar").addEventListener("click", () => {
   const f = $("#cu-nueva"); f.reset(); f.clave.value = claveAleatoria(); $("#cu-err").textContent = "";
+  f.tipo.innerHTML = opcionesTipo("sede:Sevilla"); f.ver_historial.disabled = false;
   f.classList.remove("hidden"); $("#cu-datos").classList.add("hidden"); f.nombre.focus();
 });
+$("#cu-nueva").tipo.addEventListener("change", e => { const d = e.target.value.startsWith("docente:"); const h = $("#cu-nueva").ver_historial; h.disabled = d; if (d) h.checked = false; });
 $("#cu-cancelar").addEventListener("click", () => $("#cu-nueva").classList.add("hidden"));
 $("#cu-generar").addEventListener("click", () => { $("#cu-nueva").clave.value = claveAleatoria(); });
 $("#cu-nueva").addEventListener("submit", async e => {
@@ -2478,7 +2515,7 @@ $("#cu-nueva").addEventListener("submit", async e => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err("El correo no es válido.");
   if (f.clave.value.length < 8) return err("La contraseña debe tener al menos 8 caracteres.");
   const b = f.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
-  const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "crear", email, nombre: f.nombre.value.trim(), sede: f.sede.value || null, ver_historial: f.ver_historial.checked, clave: f.clave.value } });
+  const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "crear", email, nombre: f.nombre.value.trim(), tipo: f.tipo.value, ver_historial: f.ver_historial.checked, clave: f.clave.value } });
   b.disabled = false; b.textContent = "Crear cuenta";
   const msg = error ? await mensajeFuncion(error) : data?.error;
   if (msg) return err(msg);
@@ -2492,7 +2529,7 @@ $("#cu-nueva").addEventListener("submit", async e => {
 /* ---------- perfil ---------- */
 let miPerfil = {};
 const iniciales = n => String(n || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
-const rolDe = p => p.sede ? { txt: `Gestor · ${p.sede}`, cls: "b-azul" } : { txt: "Administrador", cls: "b-ok" };
+const rolDe = p => p.docente_id ? { txt: "Docente", cls: "b-ini" } : p.sede ? { txt: `Gestor · ${p.sede}`, cls: "b-azul" } : { txt: "Administrador", cls: "b-ok" };
 function pintarPerfil(p) {
   miPerfil = p;
   const nombre = p.nombre || p.email.split("@")[0], rol = rolDe(p);
