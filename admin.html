@@ -16,6 +16,7 @@
 <script src="informes.js" defer></script>
 <script src="correos.js"></script>
 <script src="plantillas.js"></script>
+<script src="simdb.js"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -327,6 +328,23 @@ body.docente .panel-grid{grid-template-columns:1fr}
 body.docente a.enlace{text-decoration:none;cursor:default}
 .ok-msg{background:var(--verde-suave);color:var(--verde-osc);border-radius:10px;padding:10px 12px;font-size:14px}
 @media (max-width:640px){.perfil-menu{position:fixed;left:8px;right:8px;top:56px;width:auto;max-height:calc(100vh - 70px)}.perfil{padding:3px}}
+
+/* modo práctica */
+.banda-practica{position:sticky;top:0;z-index:300;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#ffd84d,#ffd84d 14px,#ffcf26 14px,#ffcf26 28px);color:#3d2e00;padding:8px 14px;font-size:14px;text-align:center;border-bottom:2px solid #c99a00}
+.banda-practica b{letter-spacing:.06em}
+.banda-practica a{color:#3d2e00;font-weight:700}
+html.practica .cab{top:38px}
+/* en directo */
+.vivo{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--verde-osc);background:var(--verde-suave);border-radius:999px;padding:3px 10px}
+.vivo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--verde);animation:pulso 2s infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(38,140,86,.5)}70%{box-shadow:0 0 0 7px rgba(38,140,86,0)}100%{box-shadow:0 0 0 0 rgba(38,140,86,0)}}
+@media (max-width:1160px){.vivo{font-size:0;padding:5px}.vivo::before{margin:0}}
+tr.recien td{animation:recien 3s ease-out}
+@keyframes recien{from{background:#fff3c4}to{background:transparent}}
+/* cargos */
+.cg-tecs{font-size:12.5px;color:var(--gris);max-width:360px}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pasos-copia{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14.5px}
 </style>
 </head>
 <body>
@@ -349,6 +367,7 @@ body.docente a.enlace{text-decoration:none;cursor:default}
       <div class="error" id="login-err"></div>
       <button class="btn" type="submit" style="justify-content:center;padding:12px">Entrar</button>
       <a href="#" id="olvide" style="font-size:14px;justify-self:center">¿Has olvidado la contraseña?</a>
+      <a href="?practica" class="btn sec" style="justify-content:center;margin-top:6px">Probar el modo práctica <span class="gris" style="font-weight:400">· sin contraseña, con datos inventados</span></a>
     </form>
     <form id="olvidof" class="hidden">
       <h2 class="tit">Recuperar la contraseña</h2>
@@ -384,6 +403,7 @@ body.docente a.enlace{text-decoration:none;cursor:default}
       <button role="tab" data-tab="correos" aria-selected="false">Correos</button>
     </nav>
     <div class="usuario">
+      <span class="vivo hidden" id="vivo" title="Las inscripciones y cambios aparecen solos, sin recargar">En directo</span>
       <div class="perfil-w">
         <button id="perfil" class="perfil" aria-haspopup="true" aria-expanded="false" aria-label="Avisos y cuenta">
           <span class="avatar" id="avatar">·</span><span class="pf-txt"><b id="pf-nombre"></b><small id="pf-rol"></small></span><svg class="pf-flecha" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -397,6 +417,9 @@ body.docente a.enlace{text-decoration:none;cursor:default}
             <button type="button" id="m-nombre">Cambiar mi nombre</button>
             <button type="button" id="m-clave">Cambiar mi contraseña</button>
             <button type="button" id="m-gestores" class="hidden">Cuentas y permisos</button>
+            <button type="button" id="m-copia" class="hidden">Copia de seguridad en Drive</button>
+            <button type="button" id="m-sonido">Sonido de nuevas inscripciones: sí</button>
+            <button type="button" id="m-practica">Abrir el modo práctica</button>
             <button type="button" id="salir">Salir</button>
           </div>
         </div>
@@ -426,6 +449,7 @@ body.docente a.enlace{text-decoration:none;cursor:default}
         <label style="display:flex;gap:7px;align-items:center;font-size:14px"><input type="checkbox" id="f-pasados" style="accent-color:var(--verde)"> Mostrar celebrados</label>
         <span class="esp"></span>
         <a class="btn sec" id="ver-publico" href="./" target="_blank" rel="noopener">Ver formulario público</a>
+        <button class="btn sec" id="abrir-cargos">Cargos</button>
         <button class="btn sec" id="copiar-cal">Copiar calendario</button>
         <button class="btn sec" id="importar">Importar Excel</button>
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
@@ -812,10 +836,63 @@ body.docente a.enlace{text-decoration:none;cursor:default}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button type="submit" class="btn" id="pl-guardar">Guardar plantilla</button>
         <button type="button" class="btn sec" id="pl-restaurar">Volver al texto original</button>
+        <button type="button" class="btn sec" id="pl-prueba">Enviarme una prueba</button>
         <span class="gris" style="font-size:12.5px" id="pl-info"></span>
       </div>
     </form>
     <div class="pl-prev"><div class="pl-asunto" id="pl-asunto"></div><iframe id="pl-frame" title="Vista previa del correo"></iframe></div>
+  </div>
+</dialog>
+
+<!-- Cargos a contabilidad -->
+<dialog id="dlg-cargos">
+  <div class="dh"><div><h2>Cargos a los talleres</h2><div class="gris">Lo que hay que cobrar a cada taller, 45 días antes de la primera jornada de cada curso.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:14px">
+    <div class="toolbar" style="margin:0">
+      <select id="cg-periodo" aria-label="Periodo">
+        <option value="7">Próximos 7 días</option><option value="14">Próximos 14 días</option><option value="30">Próximos 30 días</option>
+        <option value="mes">Este mes</option><option value="mes+1">Mes que viene</option><option value="-30">Últimos 30 días (ya cobrados)</option>
+      </select>
+      <span class="esp"></span>
+      <button class="btn sec" type="button" id="cg-precios-btn">Precios</button>
+      <button class="btn sec" type="button" id="cg-csv">Exportar a Excel</button>
+      <button class="btn sec" type="button" id="cg-pdf">Imprimir o PDF</button>
+      <button class="btn" type="button" id="cg-enviar">Enviar a contabilidad</button>
+    </div>
+    <form id="cg-precios" class="caja pad hidden" style="display:grid;gap:12px">
+      <b>Precios por técnico <span class="gris" style="font-weight:400">sin IVA</span></b>
+      <div class="grid2">
+        <label class="c">Actualización (€)<input name="precio_actualizacion" type="number" min="0" step="0.01"></label>
+        <label class="c">Iniciación (€)<input name="precio_iniciacion" type="number" min="0" step="0.01"></label>
+        <label class="c">IVA (%)<input name="iva" type="number" min="0" max="50" step="1"></label>
+        <label class="c">Correo de contabilidad<input name="correo_contabilidad" type="email" placeholder="contabilidad@wortach.com"></label>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn mini" type="submit">Guardar precios</button><span class="error" id="cg-err" style="min-height:0"></span></div>
+    </form>
+    <div class="resumen-c" id="cg-cifras" style="margin:0"></div>
+    <div class="caja scroll"><table>
+      <thead><tr><th>Cargo</th><th>Taller</th><th>Curso</th><th>Técnicos</th><th style="text-align:right">Base</th><th style="text-align:right">Total con IVA</th></tr></thead>
+      <tbody id="cg-lista"></tbody></table></div>
+  </div>
+</dialog>
+
+<!-- Copia de seguridad -->
+<dialog id="dlg-copia" class="peq" style="width:min(760px,calc(100vw - 24px))">
+  <div class="dh"><div><h2>Copia de seguridad en Google Drive</h2><div class="gris">Cada semana, una copia de todos los datos en una carpeta de tu Drive. Va directa de la base de datos a tu cuenta de Google: no pasa por GitHub ni por ningún otro sitio.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:14px">
+    <div id="bk-estado" class="caja pad" style="background:var(--hover)"></div>
+    <ol class="pasos-copia">
+      <li>Pulsa <b>Generar clave y script</b>. La clave da acceso a todos los datos: no la compartas.</li>
+      <li>Entra en <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> con la <b>cuenta de Google de la empresa</b> y crea un proyecto nuevo.</li>
+      <li>Borra lo que haya, pega el script y guarda (por ejemplo, «Copia adiestramientos»).</li>
+      <li>Arriba, elige la función <b>instalar</b> y pulsa <b>Ejecutar</b>. Acepta los permisos que pide (Drive y conexión externa).</li>
+      <li>Listo: se hace una copia en ese momento y luego cada lunes a las 6:00 en la carpeta «Copias adiestramientos WORTACH». Se guardan las 12 últimas.</li>
+    </ol>
+    <div><button class="btn" type="button" id="bk-generar">Generar clave y script</button> <span class="gris" style="font-size:13px">Si generas otra, la anterior deja de funcionar.</span></div>
+    <div id="bk-script-zona" class="hidden" style="display:grid;gap:8px">
+      <textarea id="bk-script" rows="12" readonly style="font-family:ui-monospace,monospace;font-size:12px"></textarea>
+      <div><button class="btn mini" type="button" id="bk-copiar">Copiar el script</button></div>
+    </div>
   </div>
 </dialog>
 
@@ -904,7 +981,14 @@ body.docente a.enlace{text-decoration:none;cursor:default}
 <script>
 const SUPABASE_URL = "https://ylnwqtgyfeqihggjneba.supabase.co";
 const SUPABASE_KEY = "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const PRACTICA = new URLSearchParams(location.search).has("practica");
+const sb = PRACTICA ? SimDB.crear() : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+if (PRACTICA) {
+  document.documentElement.classList.add("practica");
+  const b = document.createElement("div"); b.className = "banda-practica";
+  b.innerHTML = `<b>MODO PRÁCTICA</b><span>Datos inventados. Nada de lo que hagas se guarda ni llega a nadie: al recargar empieza de cero.</span><a href="?practica">Reiniciar</a><a href="./admin.html">Salir</a>`;
+  document.body.prepend(b);
+}
 const HASH0 = location.hash + location.search;
 let recuperando = /type=recovery/.test(HASH0);
 const errorEnlace = /error_code=otp_expired|error=access_denied/.test(HASH0);
@@ -1064,6 +1148,8 @@ async function iniciar() {
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
   iniciarAvisos(session.user.email, !sede && !modoDocente);
+  $("#m-copia").classList.toggle("hidden", !(!sede && !modoDocente) || PRACTICA);
+  tiempoReal();
 }
 
 /* ---------- cuenta de docente ---------- */
@@ -2463,14 +2549,17 @@ async function calcularAvisos() {
     const d = diasHasta(c.fecha_inicio), et = etiquetaCurso(c);
     if (d >= 0 && d <= 30 && c.ocupadas < c.quorum_min)
       add({ clave: `quorum:${c.id}`, nivel: "urgente", titulo: `Faltan ${c.quorum_min - c.ocupadas} para el quórum`, sub: `${et} · empieza ${d === 0 ? "hoy" : d === 1 ? "mañana" : `en ${d} días`} (${c.ocupadas}/${c.quorum_min})`, curso: c.id });
-    const dc = diasHasta(c.cargo);
-    if (dc >= 0 && dc <= 7 && c.ocupadas > 0)
-      add({ clave: `cargo:${c.id}`, nivel: "urgente", titulo: `Cargo a los talleres ${dc === 0 ? "hoy" : `el ${fcorta(c.cargo)}`}`, sub: `${et} · ${c.ocupadas} plaza${c.ocupadas > 1 ? "s" : ""}`, curso: c.id, quitar: true });
+
     if (!c.docente_id && c.ocupadas > 0 && d <= 30 && diasHasta(c.fecha_fin) >= -30)
       add({ clave: `docente:${c.id}`, nivel: "tarea", titulo: "Curso sin docente asignado", sub: `${et} · hace falta para los certificados`, curso: c.id, quitar: true });
     const df = diasHasta(c.fecha_fin);
     if (df < 0 && df >= -30 && c.ocupadas > 0)
       add({ clave: `cert:${c.id}`, nivel: "tarea", titulo: "Generar los certificados", sub: `${et} · terminó hace ${-df} día${df === -1 ? "" : "s"}`, curso: c.id, quitar: true });
+  }
+  const conCargo = vivos.filter(c => { const dc = diasHasta(c.cargo); return dc >= 0 && dc <= 7 && c.ocupadas > 0; });
+  if (conCargo.length && !modoDocente) {
+    const n = conCargo.reduce((s, c) => s + c.ocupadas, 0), prox = conCargo.map(c => c.cargo).sort()[0];
+    add({ clave: `cargos:${prox}:${n}`, nivel: "urgente", titulo: `Cargos de los próximos 7 días: ${n} técnico${n > 1 ? "s" : ""}`, sub: `${conCargo.length} curso${conCargo.length > 1 ? "s" : ""} · el primero ${diasHasta(prox) === 0 ? "hoy" : "el " + fcorta(prox)} · ver por taller e importes`, ir: "cargos", quitar: true });
   }
   if (modoDocente) {
     for (const c of vivos) { const d = diasHasta(c.fecha_inicio); if (d >= 0 && d <= 14) add({ clave: `prox:${c.id}`, nivel: "nuevo", titulo: d === 0 ? "Tu curso empieza hoy" : d === 1 ? "Tu curso empieza mañana" : `Tu curso empieza en ${d} días`, sub: `${etiquetaCurso(c)} · ${c.ocupadas} inscrito${c.ocupadas === 1 ? "" : "s"}`, curso: c.id, quitar: true }); }
@@ -2551,6 +2640,7 @@ $("#pm-avisos").addEventListener("click", e => {
   abrirMenu(false);
   if (a.curso) { abrirTab("cursos"); abrirCurso(a.curso); }
   else if (a.ir === "dni") { filtroSit = "dni"; abrirTab("tecnicos"); }
+  else if (a.ir === "cargos") abrirCargos("7");
   else if (a.ir === "provincias") { abrirTab("estadisticas"); setTimeout(() => $("#es-sinprov").click(), 900); }
   else abrirTab(a.ir);
 });
@@ -2778,6 +2868,237 @@ async function pintarEmbudo() {
   }).join("")}</div>
   <p class="gris" style="font-size:13px;margin:12px 0 0">${sede ? `Las visitas son del formulario completo; el resto, solo de ${esc(sede)}. ` : ""}De cada 10 que entran, ${Math.round(t("inscritos") / v0 * 10)} acaban inscribiendo a alguien.</p>`;
 }
+
+/* ---------- tiempo real ---------- */
+let sonido = (() => { try { return localStorage.getItem("wortach_sonido") !== "no"; } catch { return true; } })();
+function pintarSonido() { $("#m-sonido").textContent = `Sonido de nuevas inscripciones: ${sonido ? "sí" : "no"}`; }
+pintarSonido();
+$("#m-sonido").addEventListener("click", () => { sonido = !sonido; try { localStorage.setItem("wortach_sonido", sonido ? "si" : "no"); } catch {} pintarSonido(); });
+function pitido() {
+  if (!sonido) return;
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)(), t = ac.currentTime;
+    [[880, 0], [1320, .12]].forEach(([f, d]) => { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; o.type = "sine"; g.gain.setValueAtTime(.0001, t + d); g.gain.exponentialRampToValueAtTime(.18, t + d + .02); g.gain.exponentialRampToValueAtTime(.0001, t + d + .25); o.connect(g).connect(ac.destination); o.start(t + d); o.stop(t + d + .3); });
+  } catch {}
+}
+let canalVivo = null, tVivo = null, recienIds = new Set();
+function tiempoReal() {
+  if (!sb.channel || canalVivo) return;
+  const refrescar = () => {
+    clearTimeout(tVivo);
+    tVivo = setTimeout(async () => {
+      await cargarCursos();
+      if ($("#dlg-curso").open && actual) { await cargarInscritos(); recienIds.forEach(id => $(`#dc-tb tr[data-id="${id}"]`)?.classList.add("recien")); }
+      recienIds.clear();
+      const vis = t => !$(`[data-panel=${t}]`).classList.contains("hidden");
+      if (vis("tecnicos")) cargarTecnicos();
+      if (vis("talleres")) cargarTalleres();
+      calcularAvisos();
+    }, 700);
+  };
+  canalVivo = sb.channel("cambios-gestion")
+    .on("postgres_changes", { event: "*", schema: "public", table: "inscripciones" }, p => {
+      if (p?.eventType === "INSERT" && p.new) {
+        recienIds.add(p.new.id);
+        if (p.new.origen === "web") {
+          const c = cursos.find(x => x.id === p.new.curso_id);
+          toast(`Nueva inscripción${c ? " en " + etiquetaCurso(c) : ""}${p.new.estado === "lista_espera" ? " (lista de espera)" : ""}`); pitido();
+        }
+      }
+      refrescar();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "cursos" }, refrescar)
+    .subscribe(estado => { $("#vivo").classList.toggle("hidden", estado !== "SUBSCRIBED"); });
+}
+
+/* ---------- cargos a contabilidad ---------- */
+let ajCargos = { precio_actualizacion: null, precio_iniciacion: null, iva: 21, correo_contabilidad: null }, filasCargos = [];
+const euros = n => n == null || isNaN(n) ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
+async function cargarAjustesCargos() {
+  const { data } = await sb.from("ajustes").select("valor").eq("clave", "cargos").maybeSingle();
+  if (data?.valor) ajCargos = { ...ajCargos, ...data.valor };
+}
+function periodoCargos() {
+  const v = $("#cg-periodo").value, d = new Date(hoy + "T12:00:00");
+  if (v === "mes") return [hoy.slice(0, 8) + "01", iso(new Date(d.getFullYear(), d.getMonth() + 1, 0, 12))];
+  if (v === "mes+1") return [iso(new Date(d.getFullYear(), d.getMonth() + 1, 1, 12)), iso(new Date(d.getFullYear(), d.getMonth() + 2, 0, 12))];
+  const n = +v; return n < 0 ? [addDias(hoy, n), addDias(hoy, -1)] : [hoy, addDias(hoy, n)];
+}
+async function abrirCargos(periodo) {
+  if (periodo) $("#cg-periodo").value = periodo;
+  await cargarAjustesCargos();
+  ["#cg-precios-btn"].forEach(x => $(x).classList.toggle("hidden", !esSuper && !PRACTICA));
+  $("#cg-precios").classList.add("hidden");
+  await pintarCargos();
+  if (!$("#dlg-cargos").open) $("#dlg-cargos").showModal();
+}
+async function pintarCargos() {
+  if (!cursos.length) await cargarCursos();
+  const [desde, hasta] = periodoCargos();
+  const cs = cursos.filter(c => c.estado !== "cancelado" && c.cargo >= desde && c.cargo <= hasta);
+  let ins = [];
+  if (cs.length) {
+    const { data, error } = await sb.from("inscripciones").select("curso_id,centro_id,tecnicos(nombre,dni),centros(nombre,email,provincia)").in("curso_id", cs.map(c => c.id)).eq("estado", "confirmada");
+    if (error) return toast("No se han podido cargar los cargos");
+    ins = data;
+  }
+  const grupos = new Map();
+  for (const i of ins) {
+    const k = `${i.curso_id}|${i.centro_id}`, curso = cs.find(c => c.id === i.curso_id);
+    if (!curso) continue;
+    if (!grupos.has(k)) grupos.set(k, { curso, centro: i.centros || { nombre: "(sin taller)" }, tecs: [] });
+    grupos.get(k).tecs.push(i.tecnicos);
+  }
+  const precio = t => t === "iniciacion" ? ajCargos.precio_iniciacion : ajCargos.precio_actualizacion, iva = (+ajCargos.iva || 0) / 100;
+  filasCargos = [...grupos.values()].map(g => {
+    const p = precio(g.curso.tipo), base = p == null ? null : p * g.tecs.length;
+    return { ...g, base, total: base == null ? null : base * (1 + iva) };
+  }).sort((a, b) => a.curso.cargo.localeCompare(b.curso.cargo) || a.centro.nombre.localeCompare(b.centro.nombre));
+  const sinPrecio = filasCargos.some(f => f.base == null);
+  const sum = k => filasCargos.reduce((s, f) => s + (f[k] || 0), 0);
+  const ntec = filasCargos.reduce((s, f) => s + f.tecs.length, 0), ntall = new Set(filasCargos.map(f => f.centro.nombre)).size;
+  $("#cg-cifras").innerHTML = `
+    <div class="cifra"><b>${ntall}</b><span>talleres</span></div>
+    <div class="cifra"><b>${ntec}</b><span>técnicos</span></div>
+    <div class="cifra"><b style="font-size:22px">${sinPrecio ? "—" : euros(sum("base"))}</b><span>base</span></div>
+    <div class="cifra"><b style="font-size:22px">${sinPrecio ? "—" : euros(sum("total"))}</b><span>total con IVA (${ajCargos.iva ?? 0} %)</span></div>
+    ${sinPrecio ? `<div class="aviso" style="border-color:var(--ambar);background:var(--ambar-suave);font-size:14px">Faltan los precios: pulsa «Precios» para ponerlos y verás los importes.</div>` : ""}`;
+  $("#cg-lista").innerHTML = filasCargos.map(f => `<tr>
+      <td style="white-space:nowrap"><b>${fcorta(f.curso.cargo)}</b>${f.curso.cargo < hoy ? `<div class="gris" style="font-size:12px">ya pasó</div>` : diasHasta(f.curso.cargo) === 0 ? `<div style="color:var(--rojo);font-size:12px;font-weight:600">hoy</div>` : ""}</td>
+      <td><b>${esc(f.centro.nombre)}</b><div class="gris" style="font-size:12.5px">${esc([f.centro.provincia, f.centro.email].filter(Boolean).join(" · ") || "sin correo")}</div></td>
+      <td>${tipoBadge(f.curso.tipo)} ${sedeTag(f.curso.sede)}<div class="gris" style="font-size:12.5px">${textoFechas(f.curso.fechas)}</div></td>
+      <td><b>${f.tecs.length}</b><div class="cg-tecs">${f.tecs.map(t => esc(t?.nombre || "")).join(", ")}</div></td>
+      <td class="num">${euros(f.base)}</td><td class="num"><b>${euros(f.total)}</b></td></tr>`).join("")
+    || `<tr><td colspan="6" class="vacio-t">No hay cargos en este periodo.</td></tr>`;
+}
+function textoCargos() {
+  const [d, h] = periodoCargos();
+  return `Cargos de adiestramientos del ${fcorta(d)} al ${fcorta(h)}\n\n` + filasCargos.map(f =>
+    `${fcorta(f.curso.cargo)} · ${f.centro.nombre}${f.centro.email ? " (" + f.centro.email + ")" : ""}\n  ${TIPO[f.curso.tipo]} ${f.curso.sede}, ${textoFechas(f.curso.fechas)} · ${f.tecs.length} técnico${f.tecs.length > 1 ? "s" : ""}: ${f.tecs.map(t => t?.nombre).join(", ")}\n  Base ${euros(f.base)} · Total ${euros(f.total)}`).join("\n\n");
+}
+$("#abrir-cargos").addEventListener("click", () => abrirCargos());
+$("#cg-periodo").addEventListener("change", pintarCargos);
+$("#cg-precios-btn").addEventListener("click", () => {
+  const f = $("#cg-precios"); f.classList.toggle("hidden");
+  for (const k of ["precio_actualizacion", "precio_iniciacion", "iva", "correo_contabilidad"]) f[k].value = ajCargos[k] ?? "";
+});
+$("#cg-precios").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, num = v => v === "" ? null : +v;
+  const valor = { precio_actualizacion: num(f.precio_actualizacion.value), precio_iniciacion: num(f.precio_iniciacion.value), iva: num(f.iva.value) ?? 21, correo_contabilidad: f.correo_contabilidad.value.trim() || null };
+  const { error } = await sb.from("ajustes").upsert({ clave: "cargos", valor });
+  if (error) return $("#cg-err").textContent = error.message;
+  ajCargos = valor; f.classList.add("hidden"); toast("Precios guardados"); pintarCargos();
+});
+$("#cg-csv").addEventListener("click", () => {
+  const [d, h] = periodoCargos();
+  csv(`cargos_${d}_${h}.csv`, ["Fecha del cargo", "Taller", "Provincia", "Correo del taller", "Curso", "Sede", "Fechas del curso", "Nº técnicos", "Técnicos", "DNI", "Base (€)", "IVA (%)", "Total (€)"],
+    filasCargos.map(f => [f.curso.cargo, f.centro.nombre, f.centro.provincia || "", f.centro.email || "", TIPO[f.curso.tipo], f.curso.sede, textoFechas(f.curso.fechas), f.tecs.length,
+      f.tecs.map(t => t?.nombre).join(", "), f.tecs.map(t => t?.dni).join(", "), f.base == null ? "" : f.base.toFixed(2).replace(".", ","), ajCargos.iva ?? "", f.total == null ? "" : f.total.toFixed(2).replace(".", ",")]));
+});
+$("#cg-pdf").addEventListener("click", () => {
+  const [d, h] = periodoCargos(), w = open("", "_blank"); if (!w) return toast("Permite las ventanas emergentes para imprimir");
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cargos ${d} a ${h}</title><style>body{font:13px Arial,sans-serif;margin:28px;color:#16201b}h1{font-size:20px;margin:0}p{color:#5a6660;margin:4px 0 16px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:7px 6px;text-align:left;vertical-align:top}th{background:#e4f1e9;font-size:11px;text-transform:uppercase}.n{text-align:right;white-space:nowrap}small{color:#5a6660}tfoot td{font-weight:bold;border-top:2px solid #16201b}</style></head><body>
+    <img src="${location.href.replace(/[^/]*$/, "")}icons/logo.png" style="height:32px"><h1>Cargos a los talleres</h1><p>Del ${fcorta(d)} al ${fcorta(h)} · precios sin IVA: actualización ${euros(ajCargos.precio_actualizacion)}, iniciación ${euros(ajCargos.precio_iniciacion)} por técnico · IVA ${ajCargos.iva ?? 0} %</p>
+    <table><thead><tr><th>Cargo</th><th>Taller</th><th>Curso</th><th>Técnicos</th><th class="n">Base</th><th class="n">Total</th></tr></thead><tbody>
+    ${filasCargos.map(f => `<tr><td>${fcorta(f.curso.cargo)}</td><td><b>${esc(f.centro.nombre)}</b><br><small>${esc(f.centro.email || "")}</small></td><td>${TIPO[f.curso.tipo]} ${esc(f.curso.sede)}<br><small>${textoFechas(f.curso.fechas)}</small></td><td>${f.tecs.length}<br><small>${f.tecs.map(t => esc(t?.nombre)).join(", ")}</small></td><td class="n">${euros(f.base)}</td><td class="n">${euros(f.total)}</td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="4">Total</td><td class="n">${euros(filasCargos.reduce((s, f) => s + (f.base || 0), 0))}</td><td class="n">${euros(filasCargos.reduce((s, f) => s + (f.total || 0), 0))}</td></tr></tfoot></table>
+    <script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+});
+$("#cg-enviar").addEventListener("click", async () => {
+  if (!filasCargos.length) return toast("No hay cargos en este periodo");
+  const txt = textoCargos(), [d, h] = periodoCargos(), para = ajCargos.correo_contabilidad || "";
+  try { await navigator.clipboard.writeText(txt); } catch {}
+  const asunto = `Cargos de adiestramientos del ${fcorta(d)} al ${fcorta(h)}`;
+  const cuerpo = txt.length < 1600 ? txt : "Te paso la lista de cargos de este periodo (la tienes copiada: pégala aquí) y adjunto el Excel.";
+  location.href = `mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  toast(para ? "Se abre tu correo con la lista; también está copiada" : "Pon el correo de contabilidad en «Precios». La lista está copiada");
+});
+
+/* ---------- copia de seguridad en Drive ---------- */
+async function abrirCopia() {
+  abrirMenu(false);
+  const { data } = await sb.rpc("estado_copia");
+  $("#bk-estado").innerHTML = data
+    ? `Clave creada el ${new Date(data.creada).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}${data.creada_por ? " por " + esc(data.creada_por.split("@")[0]) : ""}. ${data.ultimo_uso ? `<b>Última copia: ${new Date(data.ultimo_uso).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })}.</b>` : "<b>Todavía no se ha hecho ninguna copia</b> con esta clave."}`
+    : "Aún no está configurada. Sigue los pasos de abajo (unos 5 minutos).";
+  $("#bk-script-zona").classList.add("hidden");
+  $("#dlg-copia").showModal();
+}
+function scriptCopia(clave) {
+  return `/* Copia de seguridad semanal de los adiestramientos WORTACH en Google Drive.
+   Ejecuta «instalar» una vez. Después funciona solo cada lunes a las 6:00. */
+const URL_COPIA = '${SUPABASE_URL}/rest/v1/rpc/copia_seguridad';
+const CLAVE_PUBLICA = '${SUPABASE_KEY}';
+const CLAVE_COPIA = '${clave}'; // ¡secreta! da acceso a todos los datos
+const CARPETA = 'Copias adiestramientos WORTACH';
+const CONSERVAR = 12; // copias que se guardan
+
+function copiaSemanal() {
+  const r = UrlFetchApp.fetch(URL_COPIA, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { apikey: CLAVE_PUBLICA, Authorization: 'Bearer ' + CLAVE_PUBLICA }, payload: JSON.stringify({ p_clave: CLAVE_COPIA }) });
+  if (r.getResponseCode() !== 200) throw new Error('No se ha podido hacer la copia (' + r.getResponseCode() + '): ' + r.getContentText());
+  const texto = r.getContentText(), datos = JSON.parse(texto), carpeta = obtenerCarpeta();
+  const nombre = 'Copia adiestramientos ' + Utilities.formatDate(new Date(), 'Europe/Madrid', 'yyyy-MM-dd HH.mm');
+  const ss = SpreadsheetApp.create(nombre);
+  ['cursos', 'inscripciones', 'tecnicos', 'centros', 'firmantes', 'cuentas', 'plantillas_correo', 'historial_90_dias'].forEach(function (t, i) {
+    const filas = datos[t] || [], hoja = i === 0 ? ss.getSheets()[0].setName(t) : ss.insertSheet(t);
+    if (!filas.length) { hoja.getRange(1, 1).setValue('(vacío)'); return; }
+    const cols = Object.keys(filas[0]);
+    const valores = [cols].concat(filas.map(function (f) { return cols.map(function (c) {
+      let v = f[c]; if (v === null || v === undefined) return '';
+      if (typeof v === 'object') v = JSON.stringify(v);
+      if (typeof v === 'string' && /^[=+\\-@]/.test(v)) v = "'" + v;
+      return v; }); }));
+    hoja.getRange(1, 1, valores.length, cols.length).setValues(valores);
+    hoja.setFrozenRows(1);
+  });
+  DriveApp.getFileById(ss.getId()).moveTo(carpeta);
+  carpeta.createFile(nombre + '.json', texto, 'application/json');
+  limpiar(carpeta);
+}
+function obtenerCarpeta() { const it = DriveApp.getFoldersByName(CARPETA); return it.hasNext() ? it.next() : DriveApp.createFolder(CARPETA); }
+function limpiar(carpeta) {
+  const todos = [], it = carpeta.getFiles(); while (it.hasNext()) todos.push(it.next());
+  todos.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); });
+  todos.filter(function (f) { return f.getMimeType() === MimeType.GOOGLE_SHEETS; }).slice(CONSERVAR).forEach(function (f) { f.setTrashed(true); });
+  todos.filter(function (f) { return /\\.json$/.test(f.getName()); }).slice(CONSERVAR).forEach(function (f) { f.setTrashed(true); });
+}
+function instalar() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('copiaSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(6).inTimezone('Europe/Madrid').create();
+  copiaSemanal();
+}
+`;
+}
+$("#m-copia").addEventListener("click", abrirCopia);
+$("#bk-generar").addEventListener("click", async () => {
+  if (!confirm("Se creará una clave nueva y la anterior (si había) dejará de funcionar. ¿Seguimos?")) return;
+  const { data, error } = await sb.rpc("nueva_clave_copia");
+  if (error) return toast(error.message);
+  $("#bk-script").value = scriptCopia(data); $("#bk-script-zona").classList.remove("hidden");
+  toast("Clave creada: copia el script y pégalo en Google Apps Script");
+});
+$("#bk-copiar").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("#bk-script").value); toast("Script copiado"); } catch { $("#bk-script").select(); document.execCommand("copy"); toast("Script copiado"); }
+});
+
+/* ---------- correo de prueba de una plantilla ---------- */
+$("#pl-prueba").addEventListener("click", async e => {
+  const b = e.currentTarget, f = $("#f-plant"); b.disabled = true; b.textContent = "Enviando…";
+  const { data, error } = await sb.functions.invoke("enviar-correos", { body: { prueba: { tipo: plTipo, plantilla: { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value } } } });
+  b.disabled = false; b.textContent = "Enviarme una prueba";
+  const msg = error ? await mensajeFuncion(error) : data?.error;
+  if (msg) { $("#pl-err").textContent = msg; return; }
+  $("#pl-err").textContent = ""; toast(`Prueba enviada a ${data?.para || "tu correo"}`);
+});
+
+/* ---------- modo práctica desde el menú ---------- */
+$("#m-practica").addEventListener("click", () => { abrirMenu(false); open("admin.html?practica", "_blank"); });
+// en práctica llegan unas pocas inscripciones "desde la web" para ver el panel en directo
+if (PRACTICA && sb.simularWeb) { let n = 0; const llega = () => { if (n++ < 3) { sb.simularWeb(); setTimeout(llega, 150000); } }; setTimeout(llega, 30000); }
+if (PRACTICA) { $("#m-practica").classList.add("hidden"); $("#salir").textContent = "Salir del modo práctica"; $("#salir").onclick = e => { e.stopImmediatePropagation(); location.href = "./admin.html"; }; }
 
 iniciar();
 
