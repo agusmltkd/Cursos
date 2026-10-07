@@ -458,7 +458,7 @@ function fila(c) {
   const b = bloqueFecha(c.fechas);
   return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}" style="--sc:${colorSede(c.sede)}" aria-label="${esc(nombreSede(c.sede))}, ${TIPO[c.tipo]}, ${frase(c.fechas)}">
     <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
-    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 2 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
+    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 3 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
       <span class="dias">${frase(c.fechas)}</span>
       <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : ` en la sede de ${esc(c.sede)}`}</span></span>
     <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
