@@ -105,6 +105,10 @@ body.compacto .cab{padding-bottom:30px}
 .sede-et svg{flex:none}
 .cab-conv{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;margin-bottom:3px}
 .cab-conv .tipo{margin-bottom:0}
+.nuevo{display:inline-flex;align-items:center;background:#d7261e;color:#fff;font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 10px;margin-left:8px;box-shadow:0 0 0 0 rgba(215,38,30,.5);animation:latido 2.4s ease-out infinite}
+.elige-op .nuevo{margin-left:0;margin-top:4px;color:#fff;font-size:12px}
+@keyframes latido{0%{box-shadow:0 0 0 0 rgba(215,38,30,.45)}70%{box-shadow:0 0 0 9px rgba(215,38,30,0)}100%{box-shadow:0 0 0 0 rgba(215,38,30,0)}}
+@media (prefers-reduced-motion:reduce){.nuevo{animation:none}}
 .segmento button .pt{width:9px;height:9px;border-radius:50%;background:var(--sc)}
 .segmento button[aria-pressed=true] .pt{background:#fff}
 .elige{background:var(--panel);border:1px solid var(--linea);border-radius:20px;padding:24px;margin:8px 0 24px}
@@ -414,6 +418,7 @@ function pintarElige() {
       const cs = cursos.filter(c => c.sede === s), prox = cs[0], libres = cs.reduce((n, c) => n + c.libres, 0);
       return `<button type="button" data-sede="${s}" style="--sc:${colorSede(s)}"><b>${icoSede(s, 22)} ${esc(nombreSede(s))}</b>
         <span>${cs.length} convocatoria${cs.length > 1 ? "s" : ""} · ${libres} plaza${libres === 1 ? "" : "s"} libre${libres === 1 ? "" : "s"}</span>
+        ${cs.some(c => c.nuevo) ? `<span class="nuevo" style="justify-self:start">${cs.filter(c => c.nuevo).length > 1 ? `¡${cs.filter(c => c.nuevo).length} nuevas!` : "¡Nueva convocatoria!"}</span>` : ""}
         ${prox ? `<span>Próxima: ${frase(prox.fechas)}</span>` : ""}</button>`;
     }).join("")}</div>
     <button type="button" class="todas" data-sede="">Ver todas las sedes juntas</button>`;
@@ -442,7 +447,7 @@ function fila(c) {
   const b = bloqueFecha(c.fechas);
   return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}" style="--sc:${colorSede(c.sede)}" aria-label="${esc(nombreSede(c.sede))}, ${TIPO[c.tipo]}, ${frase(c.fechas)}">
     <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
-    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span></span>
+    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}</span>
       <span class="dias">${frase(c.fechas)}</span>
       <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : ` en la sede de ${esc(c.sede)}`}</span></span>
     <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
@@ -459,7 +464,8 @@ $("#f-libres").addEventListener("change", e => { filtro.libres = e.target.checke
 $("#lista").addEventListener("click", e => { const b = e.target.closest(".conv"); if (!b) return; sel = cursos.find(c => c.id === b.dataset.id); irPaso(2); });
 
 async function cargar() {
-  const { data, error } = await sb.rpc("cursos_disponibles");
+  let { data, error } = await sb.rpc("convocatorias");
+  if (error) ({ data, error } = await sb.rpc("cursos_disponibles"));
   if (error) { if (!cursos.length) $("#lista").innerHTML = `<div class="vacio">No se han podido cargar las convocatorias. Comprueba tu conexión y recarga la página.</div>`; return; }
   cursos = data;
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0,4)))];
