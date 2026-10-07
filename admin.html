@@ -145,6 +145,10 @@ tr.pasado td{color:var(--gris)}
 /* diálogos */
 dialog{border:0;border-radius:18px;padding:0;width:min(1060px,calc(100vw - 24px));max-height:calc(100vh - 24px);background:var(--panel);color:var(--tinta);box-shadow:0 24px 70px rgba(0,0,0,.3)}
 dialog.peq{width:min(580px,calc(100vw - 24px))}
+#dlg-curso,#dlg-tec,#dlg-tall,#dlg-plant,#dlg-gestores{width:min(1480px,calc(100vw - 32px))}
+#dc-tb td{padding:9px 10px}
+#dc-tb .acc .btn.mini{padding:5px 9px}
+#dlg-curso th{padding:10px}
 dialog::backdrop{background:rgba(8,22,14,.55)}
 .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--linea);position:sticky;top:0;background:var(--panel);z-index:2}
 .dh h2{margin:0;font-family:var(--f-tit);font-stretch:112%;font-size:21px;line-height:1.15}
@@ -1233,7 +1237,7 @@ async function cargarInscritos() {
       <td><div class="acc">${modoDocente ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
-        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar">Dar de baja</button>`}`}
+        ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar" title="Dar de baja">Baja</button>`}`}
       </div></td></tr>`;
   }).join("") || `<tr><td colspan="8" class="vacio-t">Todavía no hay inscritos. Comparte el formulario con los talleres o añade un asistente a mano.</td></tr>`;
 }
