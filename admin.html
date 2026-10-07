@@ -262,6 +262,22 @@ a.enlace:hover{color:var(--verde)}
 .pm-cuenta button{border:0;background:none;text-align:left;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--tinta)}
 .pm-cuenta button:hover{background:#fff}
 .pm-cuenta #salir{color:var(--rojo)}
+.cu-quien{display:flex;gap:10px;align-items:center}
+.cu-nombre{border:1px solid transparent;background:transparent;padding:3px 6px;margin-left:-6px;font-weight:600;font-size:14px;border-radius:7px;width:100%;min-width:140px}
+.cu-nombre:hover{border-color:var(--linea-2)}
+tr.cu-off td{background:var(--hover)} tr.cu-off .cu-nombre{color:var(--gris)}
+.interr{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.interr input{position:absolute;opacity:0;width:1px;height:1px}
+.interr span{width:36px;height:20px;border-radius:999px;background:var(--linea-2);position:relative;transition:background .15s;flex:none}
+.interr span::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.interr input:checked+span{background:var(--verde)} .interr input:checked+span::after{left:18px}
+.interr input:focus-visible+span{outline:3px solid var(--verde);outline-offset:2px}
+.interr input:disabled+span{opacity:.5;cursor:not-allowed}
+.interr em{font-style:normal;color:var(--gris)}
+.cu-datos{background:var(--verde-suave);border-radius:12px;padding:14px 16px;display:grid;gap:10px}
+.cu-cred{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.cu-cred span{color:var(--verde-osc);font-weight:600}
+.cu-cred code{font-family:ui-monospace,monospace;background:#fff;padding:2px 8px;border-radius:6px;word-break:break-all}
 .ok-msg{background:var(--verde-suave);color:var(--verde-osc);border-radius:10px;padding:10px 12px;font-size:14px}
 @media (max-width:640px){.perfil-menu{position:fixed;left:8px;right:8px;top:56px;width:auto;max-height:calc(100vh - 70px)}.perfil{padding:3px}}
 </style>
@@ -333,7 +349,7 @@ a.enlace:hover{color:var(--verde)}
             <div class="pm-yo"><span class="avatar grande" id="pm-avatar">·</span><div><b id="pm-nombre"></b><span id="pm-quien"></span><span class="rol" id="pm-rol"></span></div></div>
             <button type="button" id="m-nombre">Cambiar mi nombre</button>
             <button type="button" id="m-clave">Cambiar mi contraseña</button>
-            <button type="button" id="m-gestores" class="hidden">Contraseñas de los gestores</button>
+            <button type="button" id="m-gestores" class="hidden">Cuentas y permisos</button>
             <button type="button" id="salir">Salir</button>
           </div>
         </div>
@@ -447,7 +463,7 @@ a.enlace:hover{color:var(--verde)}
     <!-- HISTORIAL -->
     <section data-panel="historial" class="hidden">
       <div class="toolbar">
-        <select id="hi-tabla" aria-label="Qué"><option value="">Todos los cambios</option><option value="inscripciones">Inscripciones</option><option value="cursos">Cursos</option><option value="tecnicos">Técnicos</option><option value="centros">Talleres</option><option value="firmantes">Firmantes</option></select>
+        <select id="hi-tabla" aria-label="Qué"><option value="">Todos los cambios</option><option value="inscripciones">Inscripciones</option><option value="cursos">Cursos</option><option value="tecnicos">Técnicos</option><option value="centros">Talleres</option><option value="firmantes">Firmantes</option><option value="admins">Cuentas</option></select>
         <select id="hi-usuario" aria-label="Quién"><option value="">Todas las personas</option></select>
         <input id="hi-buscar" type="search" placeholder="Buscar en el historial" style="min-width:220px;flex:1">
         <span id="hi-filtro" class="hidden"></span>
@@ -739,13 +755,27 @@ a.enlace:hover{color:var(--verde)}
   </form>
 </dialog>
 
-<!-- Contraseñas de gestores -->
-<dialog id="dlg-gestores" class="peq">
-  <div class="dh"><div><h2>Contraseñas de los gestores</h2><div class="gris">Pon una contraseña temporal a quien la haya olvidado y pásasela tú. Después puede cambiarla desde su menú.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
-  <div class="db"><div class="caja scroll"><table>
-    <thead><tr><th>Gestor</th><th class="hide-m">Último acceso</th><th></th></tr></thead>
-    <tbody id="gs-lista"></tbody></table></div>
-    <div class="error" id="gs-err"></div>
+<!-- Cuentas y permisos -->
+<dialog id="dlg-gestores">
+  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas. <b>Gestor</b>: solo ve y gestiona su sede. El historial de cambios se da aparte.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="gris" id="cu-resumen"></span><button class="btn" type="button" id="cu-mostrar">+ Nueva cuenta</button></div>
+    <form id="cu-nueva" class="caja pad hidden" style="display:grid;gap:12px">
+      <b>Nueva cuenta</b>
+      <div class="grid2">
+        <label class="c">Nombre<input name="nombre" required placeholder="Nombre y apellidos"></label>
+        <label class="c">Correo<input name="email" type="email" required placeholder="persona@wortach.com"></label>
+        <label class="c">Tipo de cuenta<select name="sede"><option value="">Administrador</option><option value="Sevilla">Gestor · Sevilla</option><option value="Zaragoza">Gestor · Zaragoza</option><option value="Online">Gestor · Online</option></select></label>
+        <label class="c">Contraseña inicial<span style="display:flex;gap:6px;margin-top:5px"><input name="clave" required minlength="8" style="flex:1;font-family:ui-monospace,monospace"><button type="button" class="btn sec mini" id="cu-generar">Otra</button></span></label>
+      </div>
+      <label style="display:flex;gap:9px;align-items:center;font-size:14px;cursor:pointer"><input type="checkbox" name="ver_historial" style="accent-color:var(--verde);width:18px;height:18px"> Puede ver el historial de cambios</label>
+      <div class="error" id="cu-err"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn sec" id="cu-cancelar">Cancelar</button><button type="submit" class="btn">Crear cuenta</button></div>
+    </form>
+    <div id="cu-datos" class="cu-datos hidden"></div>
+    <div class="caja scroll"><table>
+      <thead><tr><th>Persona</th><th>Tipo de cuenta</th><th style="text-align:center">Historial</th><th>Acceso</th><th class="hide-m">Último acceso</th><th></th></tr></thead>
+      <tbody id="cu-lista"></tbody></table></div>
   </div>
   <div class="df"><button class="btn" type="button" data-close>Hecho</button></div>
 </dialog>
@@ -2008,8 +2038,9 @@ async function cargarNombres() {
   nombres.cur = new Map(cursos.map(x => [x.id, x]));
 }
 function valor(k, v) {
+  if (k === "sede" && (v === null || v === "")) return "Administrador (todas)";
   if (v === null || v === undefined || v === "") return "vacío";
-  if (k === "asistio") return v ? "sí" : "no";
+  if (k === "asistio" || typeof v === "boolean") return v ? "sí" : "no";
   if (k === "tecnico_id") return nombres.tec.get(v) || "técnico eliminado";
   if (k === "centro_id") return nombres.cen.get(v) || "taller eliminado";
   if (k === "curso_id") return nombres.cur.has(v) ? etiquetaCurso(nombres.cur.get(v)) : "curso eliminado";
@@ -2046,6 +2077,14 @@ function frase(h) {
     }
     case "tecnicos": return h.accion === "alta" ? `Registró al técnico ${nom}` : h.accion === "borrado" ? `Eliminó la ficha del técnico ${nom}` : `Modificó los datos del técnico ${nom}`;
     case "centros": return h.accion === "alta" ? `Registró el taller ${nom}` : h.accion === "borrado" ? `Eliminó el taller ${nom}` : ("token" in d ? `Cambió el enlace del taller ${nom}` : `Modificó los datos del taller ${nom}`);
+    case "admins": {
+      const q = `<b>${esc(x.nombre || x.email || "")}</b>`;
+      if (h.accion === "alta") return `Creó la cuenta de ${q} (${d.sede ? "Gestor · " + esc(d.sede) : "Administrador"})`;
+      if (h.accion === "borrado") return `Borró la cuenta de ${q}`;
+      if ("activo" in d) return `${d.activo ? "Activó" : "Desactivó"} la cuenta de ${q}`;
+      if ("sede" in d) return `Cambió el tipo de cuenta de ${q}`;
+      return `Cambió los permisos de ${q}`;
+    }
     case "firmantes": return h.accion === "alta" ? `Añadió al firmante ${nom}` : `Modificó al firmante ${nom}`;
   }
   return `${h.accion} en ${h.tabla}`;
@@ -2102,7 +2141,7 @@ const PROV_COD = {"Álava":"01","Albacete":"02","Alicante":"03","Almería":"04",
 const PROVINCIAS = Object.keys(PROV_COD).sort((a, b) => a.localeCompare(b, "es"));
 const opcionesProv = (v = "") => `<option value="">Sin provincia</option>` + PROVINCIAS.map(p => `<option ${p === v ? "selected" : ""}>${p}</option>`).join("");
 $$(".sel-prov").forEach(s => s.innerHTML = opcionesProv());
-CAMPOS.provincia = "provincia";
+CAMPOS.provincia = "provincia"; CAMPOS.ver_historial = "ver historial"; CAMPOS.activo = "acceso";
 
 function cargarMapa() {
   if (window.MAPA_PROVINCIAS) return Promise.resolve();
@@ -2347,26 +2386,106 @@ $("#f-clave").addEventListener("submit", async e => {
   if (error) return $("#fk-err").textContent = /different|same/i.test(error.message) ? "Tiene que ser distinta de la actual." : error.message;
   $("#dlg-clave").close(); toast("Contraseña cambiada");
 });
-$("#m-gestores").addEventListener("click", async () => {
-  abrirMenu(false); $("#gs-err").textContent = "";
-  const { data, error } = await sb.rpc("lista_gestores");
+/* ---------- cuentas y permisos (solo administradores) ---------- */
+let cuentas = [];
+const ROLES = [["", "Administrador"], ["Sevilla", "Gestor · Sevilla"], ["Zaragoza", "Gestor · Zaragoza"], ["Online", "Gestor · Online"]];
+const claveAleatoria = () => { const l = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint32Array(10)); return [...r].map(x => l[x % l.length]).join(""); };
+const urlPanel = () => new URL("admin.html", location.href).href;
+async function cargarCuentas() {
+  const { data, error } = await sb.rpc("lista_cuentas");
   if (error) return toast(error.message);
-  $("#gs-lista").innerHTML = data.map(g => `<tr><td><b>${esc(g.nombre || g.email)}</b><div class="gris" style="font-size:12.5px">${g.nombre ? esc(g.email) + " · " : ""}${g.sede ? `Gestor · ${esc(g.sede)}` : "Administrador"}</div></td>
-    <td class="hide-m gris" style="font-size:13px">${g.ultimo_acceso ? new Date(g.ultimo_acceso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : "Nunca ha entrado"}</td>
-    <td style="text-align:right">${g.email.toLowerCase() === miEmail ? `<span class="gris" style="font-size:13px">Tú</span>` : `<button class="btn sec mini" data-temp="${esc(g.email)}">Contraseña temporal</button>`}</td></tr>`).join("");
-  $("#dlg-gestores").showModal();
+  cuentas = data; pintarCuentas();
+}
+function pintarCuentas() {
+  const n = cuentas.length, act = cuentas.filter(c => c.activo).length;
+  $("#cu-resumen").textContent = `${n} cuenta${n === 1 ? "" : "s"} · ${act} activa${act === 1 ? "" : "s"}`;
+  $("#cu-lista").innerHTML = cuentas.map((c, k) => {
+    const yo = c.email.toLowerCase() === miEmail, nombre = c.nombre || c.email.split("@")[0];
+    return `<tr data-cu="${k}" class="${c.activo ? "" : "cu-off"}">
+      <td><div class="cu-quien"><span class="avatar" style="${c.activo ? "" : "background:var(--linea-2)"}">${esc(iniciales(nombre))}</span><div>
+        <input class="cu-nombre" data-campo="nombre" value="${esc(c.nombre || "")}" placeholder="${esc(nombre)}" aria-label="Nombre">
+        <span class="gris" style="font-size:12.5px;display:block">${esc(c.email)}${yo ? " · <b style=\"color:var(--verde-osc)\">tú</b>" : ""}</span></div></div></td>
+      <td><select class="mini" data-campo="sede" ${yo ? "disabled title=\"No puedes cambiar tu propio rol\"" : ""}>${ROLES.map(([v, t]) => `<option value="${v}" ${(c.sede || "") === v ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+      <td style="text-align:center"><input type="checkbox" data-campo="ver_historial" ${c.ver_historial ? "checked" : ""} aria-label="Ver historial" style="accent-color:var(--verde);width:18px;height:18px"></td>
+      <td><label class="interr"><input type="checkbox" data-campo="activo" ${c.activo ? "checked" : ""} ${yo ? "disabled" : ""}><span></span><em>${c.activo ? "Activa" : "Desactivada"}</em></label></td>
+      <td class="hide-m gris" style="font-size:12.5px">${c.ultimo_acceso ? new Date(c.ultimo_acceso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : (c.tiene_usuario ? "Nunca ha entrado" : "Sin usuario")}</td>
+      <td><div class="acc">${yo ? "" : `<button class="btn sec mini" data-temp="${k}">Contraseña</button><button class="btn peligro mini" data-borrar="${k}" title="Borrar cuenta">Borrar</button>`}</div></td></tr>`;
+  }).join("");
+}
+async function guardarCuenta(k, cambio) {
+  const c = { ...cuentas[k], ...cambio };
+  const { error } = await sb.rpc("actualizar_cuenta", { p_email: c.email, p_nombre: c.nombre || null, p_sede: c.sede || null, p_activo: c.activo, p_ver_historial: c.ver_historial });
+  if (error) { toast(error.message); pintarCuentas(); return; }
+  cuentas[k] = c; pintarCuentas(); toast("Cambios guardados");
+  if (c.email.toLowerCase() === miEmail) pintarPerfil({ ...miPerfil, nombre: c.nombre });
+}
+$("#m-gestores").addEventListener("click", async () => {
+  abrirMenu(false); $("#cu-nueva").classList.add("hidden"); $("#cu-datos").classList.add("hidden"); $("#cu-err").textContent = "";
+  await cargarCuentas(); $("#dlg-gestores").showModal();
 });
-$("#gs-lista").addEventListener("click", async e => {
-  const b = e.target.closest("[data-temp]"); if (!b) return;
-  const letras = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint32Array(10));
-  const sugerida = [...r].map(x => letras[x % letras.length]).join("");
-  const clave = prompt(`Contraseña temporal para ${b.dataset.temp} (mínimo 8 caracteres). Apúntala para pasársela:`, sugerida);
-  if (clave === null) return;
-  const { error } = await sb.rpc("restablecer_contrasena", { p_email: b.dataset.temp, p_clave: clave });
-  if (error) return $("#gs-err").textContent = error.message;
-  $("#gs-err").textContent = "";
-  b.outerHTML = `<span class="ok-msg" style="display:inline-block;padding:4px 10px">Cambiada</span>`;
-  toast("Contraseña temporal guardada");
+$("#cu-lista").addEventListener("change", e => {
+  const el = e.target.closest("[data-campo]"), tr = e.target.closest("[data-cu]"); if (!el || !tr) return;
+  const k = +tr.dataset.cu, campo = el.dataset.campo;
+  const v = el.type === "checkbox" ? el.checked : el.value.trim();
+  if (campo === "activo" && !v && !confirm(`¿Desactivar la cuenta de ${cuentas[k].nombre || cuentas[k].email}? No podrá entrar hasta que la vuelvas a activar.`)) return pintarCuentas();
+  guardarCuenta(k, { [campo]: v || (campo === "sede" ? null : v) });
+});
+$("#cu-lista").addEventListener("click", async e => {
+  const t = e.target.closest("[data-temp]"), bo = e.target.closest("[data-borrar]");
+  if (t) {
+    const c = cuentas[+t.dataset.temp];
+    const clave = prompt(`Contraseña temporal para ${c.nombre || c.email} (mínimo 8 caracteres). Apúntala para pasársela:`, claveAleatoria());
+    if (clave === null) return;
+    const { error } = await sb.rpc("restablecer_contrasena", { p_email: c.email, p_clave: clave });
+    if (error) return toast(error.message);
+    mostrarDatos(c.email, clave, "Contraseña cambiada. Pásale estos datos:");
+  }
+  if (bo) {
+    const c = cuentas[+bo.dataset.borrar];
+    if (!confirm(`¿Borrar la cuenta de ${c.nombre || c.email}?\n\nSe elimina su usuario y ya no podrá entrar. Lo que hizo queda en el historial. Si solo quieres quitarle el acceso un tiempo, mejor desactívala.`)) return;
+    bo.disabled = true;
+    const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "borrar", email: c.email } });
+    const msg = error ? await mensajeFuncion(error) : data?.error;
+    if (msg) { bo.disabled = false; return toast(msg); }
+    toast("Cuenta borrada"); cargarCuentas();
+  }
+});
+async function mensajeFuncion(error) {
+  try { const j = await error.context?.json?.(); if (j?.error) return j.error; } catch {}
+  return error.message || "No se ha podido completar";
+}
+function mostrarDatos(email, clave, titulo) {
+  const z = $("#cu-datos");
+  z.innerHTML = `<b>${esc(titulo)}</b><div class="cu-cred"><span>Dirección</span><code>${esc(urlPanel())}</code><span>Correo</span><code>${esc(email)}</code><span>Contraseña</span><code>${esc(clave)}</code></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn mini" id="cu-copiar">Copiar los datos</button><span class="gris" style="font-size:12.5px;align-self:center">Puede cambiar la contraseña desde su menú al entrar.</span></div>`;
+  z.classList.remove("hidden");
+  $("#cu-copiar").onclick = async () => {
+    const t = `Acceso a la gestión de adiestramientos WORTACH\nDirección: ${urlPanel()}\nCorreo: ${email}\nContraseña: ${clave}`;
+    try { await navigator.clipboard.writeText(t); toast("Datos copiados"); } catch { prompt("Copia los datos:", t); }
+  };
+  z.scrollIntoView({ block: "nearest" });
+}
+$("#cu-mostrar").addEventListener("click", () => {
+  const f = $("#cu-nueva"); f.reset(); f.clave.value = claveAleatoria(); $("#cu-err").textContent = "";
+  f.classList.remove("hidden"); $("#cu-datos").classList.add("hidden"); f.nombre.focus();
+});
+$("#cu-cancelar").addEventListener("click", () => $("#cu-nueva").classList.add("hidden"));
+$("#cu-generar").addEventListener("click", () => { $("#cu-nueva").clave.value = claveAleatoria(); });
+$("#cu-nueva").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, err = m => $("#cu-err").textContent = m;
+  const email = f.email.value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err("El correo no es válido.");
+  if (f.clave.value.length < 8) return err("La contraseña debe tener al menos 8 caracteres.");
+  const b = f.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
+  const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "crear", email, nombre: f.nombre.value.trim(), sede: f.sede.value || null, ver_historial: f.ver_historial.checked, clave: f.clave.value } });
+  b.disabled = false; b.textContent = "Crear cuenta";
+  const msg = error ? await mensajeFuncion(error) : data?.error;
+  if (msg) return err(msg);
+  err(""); f.classList.add("hidden");
+  if (data?.existia) mostrarDatos(email, "(la que ya tenía; ponle una temporal si no la recuerda)", "Ese correo ya tenía usuario: ahora tiene acceso a la gestión.");
+  else mostrarDatos(email, f.clave.value, "Cuenta creada. Pásale estos datos:");
+  cargarCuentas();
 });
 
 
