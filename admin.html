@@ -15,6 +15,7 @@
 <script src="certificados.js" defer></script>
 <script src="informes.js" defer></script>
 <script src="correos.js"></script>
+<script src="plantillas.js"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -151,8 +152,13 @@ dialog::backdrop{background:rgba(8,22,14,.55)}
 .df{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--linea);flex-wrap:wrap;position:sticky;bottom:0;background:var(--panel)}
 .x{background:none;border:0;font-size:26px;cursor:pointer;color:var(--gris);line-height:1;padding:0 4px}
 .grid2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-.jornadas{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
-.jornadas input{width:160px}
+.jornadas{display:grid;gap:8px;margin-top:6px}
+.jornada{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--hover);border-radius:10px;padding:8px 10px}
+.jornada b{font-size:13px;min-width:70px;color:var(--gris)}
+.jornada input[type=date]{width:160px}
+.jornada input[type=time]{width:108px}
+.jornada span{color:var(--gris);font-size:13px}
+.jornadas .botones{display:flex;gap:8px}
 #dlg-tec .db,#dlg-tall .db{grid-template-columns:minmax(0,1fr)}
 .resumen-c{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .resumen-c .cifra b{font-size:24px}
@@ -221,6 +227,28 @@ a.enlace:hover{color:var(--verde)}
 .filtro-chip{display:inline-flex;gap:6px;align-items:center;background:var(--verde-suave);color:var(--verde-osc);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600}
 .filtro-chip button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;line-height:1}
 .enlace-taller{background:var(--hover)}
+.pl-grid{display:grid;grid-template-columns:200px minmax(0,1fr) minmax(0,1.05fr);gap:18px;align-items:start}
+.pl-tipos{display:grid;gap:4px}
+.pl-tipos button{text-align:left;border:0;background:none;border-radius:9px;padding:9px 10px;cursor:pointer;font:inherit;font-size:14px;color:var(--tinta)}
+.pl-tipos button:hover{background:var(--hover)}
+.pl-tipos button[aria-current=true]{background:var(--verde-suave);color:var(--verde-osc);font-weight:600}
+.pl-tipos button small{display:block;font-size:11.5px;color:var(--gris);font-weight:400}
+.pl-vars{display:flex;flex-wrap:wrap;gap:6px}
+.pl-vars button{border:1px solid var(--linea-2);background:#fff;border-radius:999px;padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer;font-family:ui-monospace,monospace}
+.pl-vars button:hover{border-color:var(--verde);background:var(--verde-suave)}
+.pl-prev{border:1px solid var(--linea);border-radius:12px;overflow:hidden;background:#f2f4f1;position:sticky;top:0}
+.pl-asunto{background:#fff;border-bottom:1px solid var(--linea);padding:10px 12px;font-size:13.5px}
+.pl-asunto b{font-weight:600}
+#pl-frame{width:100%;height:560px;border:0;display:block}
+@media (max-width:1000px){.pl-grid{grid-template-columns:1fr}.pl-tipos{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}#pl-frame{height:460px}}
+.embudo{display:grid;gap:10px}
+.em-fila{display:grid;grid-template-columns:190px minmax(0,1fr) 120px;gap:12px;align-items:center}
+.em-fila span{font-size:14px}
+.em-barra{height:26px;border-radius:6px;background:var(--hover);overflow:hidden}
+.em-barra i{display:block;height:100%;background:var(--verde);border-radius:6px 4px 4px 6px}
+.em-fila b{font-variant-numeric:tabular-nums}
+.em-fila small{color:var(--gris);font-size:12.5px;display:block}
+@media (max-width:640px){.em-fila{grid-template-columns:1fr 80px}.em-fila .em-barra{grid-column:1/-1;grid-row:2}}
 .mapa-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start;margin-top:8px}
 .mapa svg{display:block;width:100%;max-width:520px;height:auto;margin:0 auto}
 .mapa path.prov{stroke:#fff;stroke-width:.7;transition:opacity .15s}
@@ -445,6 +473,11 @@ body.docente a.enlace{text-decoration:none;cursor:default}
         <div class="caja pad"><h3 class="es-t">Ocupación por mes <span id="es-anio-t"></span></h3><p class="gris es-s">Plazas ocupadas sobre el cupo de las convocatorias de cada mes.</p><div id="es-meses" class="graf"></div></div>
       </div>
       <div class="caja pad" style="margin-bottom:22px">
+        <h3 class="es-t">Del formulario a la inscripción <span id="em-anio"></span></h3>
+        <p class="gris es-s">Personas que abren el formulario público y hasta dónde llegan. Se cuenta sin guardar ningún dato personal, desde el 7 de octubre de 2026.</p>
+        <div id="es-embudo"></div>
+      </div>
+      <div class="caja pad" style="margin-bottom:22px">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
           <div><h3 class="es-t">De dónde vienen <span id="es-mapa-anio"></span></h3><p class="gris es-s">Plazas confirmadas según la provincia del taller.</p></div>
           <button class="btn sec mini hidden" id="es-sinprov"></button>
@@ -495,6 +528,7 @@ body.docente a.enlace{text-decoration:none;cursor:default}
       <div class="toolbar">
         <div id="stats-correo" class="stats" style="margin:0"></div>
         <span class="esp"></span>
+        <button class="btn sec" id="abrir-plantillas">Plantillas de correo</button>
         <button class="btn" id="procesar">Enviar pendientes ahora</button>
       </div>
       <p class="gris" style="margin-top:0">Los correos salen solos cada 15 minutos: confirmación, lista de espera, plaza asignada, recordatorio una semana antes y el día anterior, y cancelación.</p>
@@ -539,12 +573,13 @@ body.docente a.enlace{text-decoration:none;cursor:default}
       </div>
       <div>
         <label class="c">Primera jornada<input type="date" name="inicio" required></label>
-        <div class="c" style="margin-top:12px;font-size:13px;font-weight:500">Jornadas <span class="gris" style="font-weight:400">se rellenan solas; puedes ajustar cada fecha</span></div>
+        <div class="c" style="margin-top:12px;font-size:13px;font-weight:500">Jornadas y horario <span class="gris" style="font-weight:400">se rellenan solas; puedes ajustar la fecha y la hora de cada una</span></div>
         <div class="jornadas" id="jornadas"></div>
       </div>
       <div class="grid2">
         <label class="c">Cupo máximo<input type="number" name="cupo_max" min="1" value="10" required></label>
         <label class="c">Quórum mínimo<input type="number" name="quorum_min" min="0" value="6" required></label>
+        <label class="c">Horas lectivas <span class="gris" style="font-weight:400">salen en el certificado</span><input type="number" name="horas" min="1" max="200" required></label>
       </div>
       <label class="c">Docente <span class="gris" style="font-weight:400">firma los certificados y, si tiene cuenta de docente, ve el curso</span><select name="docente" id="fc-docente"><option value="">Sin asignar</option></select></label>
       <label class="c">Estado<select name="estado"><option value="abierto">Abierto: aparece en el formulario</option><option value="cerrado">Cerrado: no admite inscripciones</option><option value="cancelado">Cancelado: avisa a los inscritos</option></select></label>
@@ -756,6 +791,28 @@ body.docente a.enlace{text-decoration:none;cursor:default}
     </table></div>
   </div>
   <div class="df"><button class="btn" type="button" data-close>Hecho</button></div>
+</dialog>
+
+<!-- Plantillas de correo -->
+<dialog id="dlg-plant">
+  <div class="dh"><div><h2>Plantillas de correo</h2><div class="gris">Los textos de los correos que reciben los técnicos (y el centro en copia). El diseño, el logo y el cuadro con las fechas del curso se ponen solos.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db pl-grid">
+    <nav class="pl-tipos" id="pl-tipos" aria-label="Tipo de correo"></nav>
+    <form id="f-plant" style="display:grid;gap:12px;align-content:start">
+      <label class="c">Asunto<input name="asunto" required maxlength="160"></label>
+      <label class="c">Título grande<input name="titular" required maxlength="120"></label>
+      <label class="c">Mensaje <span class="gris" style="font-weight:400">va después de «Hola {nombre},»; deja una línea en blanco para separar párrafos</span><textarea name="mensaje" rows="5" required></textarea></label>
+      <label class="c">Nota final <span class="gris" style="font-weight:400">opcional, en gris debajo de las fechas</span><textarea name="nota" rows="3"></textarea></label>
+      <div><div style="font-size:13px;font-weight:500;margin-bottom:6px">Insertar dato <span class="gris" style="font-weight:400">se cambia por el valor de cada técnico y curso</span></div><div class="pl-vars" id="pl-vars"></div></div>
+      <div class="error" id="pl-err"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button type="submit" class="btn" id="pl-guardar">Guardar plantilla</button>
+        <button type="button" class="btn sec" id="pl-restaurar">Volver al texto original</button>
+        <span class="gris" style="font-size:12.5px" id="pl-info"></span>
+      </div>
+    </form>
+    <div class="pl-prev"><div class="pl-asunto" id="pl-asunto"></div><iframe id="pl-frame" title="Vista previa del correo"></iframe></div>
+  </div>
 </dialog>
 
 <!-- Cambiar mi contraseña -->
@@ -1143,7 +1200,7 @@ async function abrirCurso(id) {
   actual = cursos.find(c => c.id === id); if (!actual) return;
   $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
   $("#dc-titulo").textContent = textoFechas(actual.fechas);
-  $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${i === 0 ? "10:00–18:30" : "9:00–17:15"}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
+  $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${horarioDe(actual, i)}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
   $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado" || modoDocente);
   $("#dc-tb").innerHTML = `<tr><td colspan="8" class="vacio-t">Cargando…</td></tr>`;
   if (!$("#dlg-curso").open) $("#dlg-curso").showModal();
@@ -1366,7 +1423,7 @@ async function hojaFirmas(id) {
   table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:6px 8px;text-align:left;height:30px}th{background:#e4f1e9;font-size:11px}
   td:first-child,th:first-child{width:24px;text-align:center}.firma{width:150px}footer{margin-top:14px;color:#666;font-size:11px}</style></head><body>
   <header><div><h1>Hoja de firmas · Adiestramiento de ${TIPO[c.tipo].toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${c.sede}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
-  <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th>${c.fechas.map((f, i) => `<th class="firma">Firma ${i + 1}ª jornada<br>${DIAS[D(f).getDay()]} ${D(f).getDate()}/${D(f).getMonth() + 1} · ${i === 0 ? "10:00–18:30" : "9:00–17:15"}</th>`).join("")}</tr></thead>
+  <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th>${c.fechas.map((f, i) => `<th class="firma">Firma ${i + 1}ª jornada<br>${DIAS[D(f).getDay()]} ${D(f).getDate()}/${D(f).getMonth() + 1} · ${horarioDe(c, i)}</th>`).join("")}</tr></thead>
   <tbody>${filas}${vacias}</tbody></table>
   <footer>Formador: ______________________________ Firma: ____________________ · WORTACH Asistencia Técnica · asistencia@wortach.com · 954 360 572</footer>
   <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
@@ -1401,14 +1458,23 @@ $("#f-add").addEventListener("submit", async e => {
 /* ---------- crear / editar curso ---------- */
 let editando = null;
 const fc = $("#f-curso");
-function pintarJornadas(fechas) {
-  $("#jornadas").innerHTML = fechas.map((f, i) => `<input type="date" value="${f}" aria-label="Jornada ${i + 1}">`).join("") +
-    `<button type="button" class="btn sec mini" id="j-mas">Añadir jornada</button>` +
-    (fechas.length > 1 ? `<button type="button" class="btn sec mini" id="j-menos">Quitar jornada</button>` : "");
-  $("#j-mas").onclick = () => { const f = leerJornadas(); pintarJornadas([...f, addDias(f.at(-1), 1)]); };
-  if ($("#j-menos")) $("#j-menos").onclick = () => pintarJornadas(leerJornadas().slice(0, -1));
+function pintarJornadas(fechas, horarios) {
+  const hs = fechas.map((_, i) => (horarios && horarios[i]) || HORARIO_STD(i));
+  $("#jornadas").innerHTML = fechas.map((f, i) => `<div class="jornada" data-j="${i}"><b>${i + 1}ª jornada</b>
+      <input type="date" class="j-fecha" value="${f}" aria-label="Fecha de la jornada ${i + 1}">
+      <input type="time" class="j-ini" value="${hs[i][0]}" aria-label="Hora de inicio de la jornada ${i + 1}"><span>a</span>
+      <input type="time" class="j-fin" value="${hs[i][1]}" aria-label="Hora de fin de la jornada ${i + 1}"></div>`).join("") +
+    `<div class="botones"><button type="button" class="btn sec mini" id="j-mas">Añadir jornada</button>` +
+    (fechas.length > 1 ? `<button type="button" class="btn sec mini" id="j-menos">Quitar jornada</button>` : "") + `</div>`;
+  $("#j-mas").onclick = () => { const f = leerJornadas(), h = leerHorarios(); pintarJornadas([...f, addDias(f.at(-1), 1)], [...h, HORARIO_STD(1)]); };
+  if ($("#j-menos")) $("#j-menos").onclick = () => pintarJornadas(leerJornadas().slice(0, -1), leerHorarios().slice(0, -1));
 }
-const leerJornadas = () => $$("#jornadas input").map(i => i.value).filter(Boolean);
+const leerHorarios = () => $$("#jornadas .jornada").map(j => [j.querySelector(".j-ini").value || "09:00", j.querySelector(".j-fin").value || "17:15"]);
+const leerJornadas = () => $$("#jornadas .j-fecha").map(i => i.value).filter(Boolean);
+/* horario de cada jornada: el guardado en el curso o el habitual */
+const HORARIO_STD = i => i === 0 ? ["10:00", "18:30"] : ["09:00", "17:15"];
+const hora = h => String(h || "").replace(/^0(\d)/, "$1");
+const horarioDe = (c, i) => { const h = (c?.horarios && c.horarios[i]) || HORARIO_STD(i); return `${hora(h[0])}–${hora(h[1])}`; };
 function autoJornadas() {
   const ini = fc.inicio.value; if (!ini) return;
   const n = fc.tipo.value === "iniciacion" ? 4 : 2, out = [];
@@ -1417,9 +1483,11 @@ function autoJornadas() {
 }
 fc.inicio.addEventListener("change", autoJornadas);
 fc.tipo.addEventListener("change", autoJornadas);
+fc.tipo.addEventListener("change", () => { if (!fc.horas.dataset.tocado) fc.horas.value = HORAS[fc.tipo.value]; });
+fc.horas.addEventListener("input", () => fc.horas.dataset.tocado = "1");
 function abrirEdicion(c) {
   editando = c || null;
-  fc.reset(); $("#fe-err").textContent = "";
+  fc.reset(); $("#fe-err").textContent = ""; delete fc.horas.dataset.tocado; fc.horas.value = HORAS[fc.tipo.value];
   $("#fe-titulo").textContent = c ? "Editar curso" : "Nuevo curso";
   $("#fe-borrar").classList.toggle("hidden", !c);
   cargarFirmantes().then(() => {
@@ -1429,7 +1497,8 @@ function abrirEdicion(c) {
   if (c) {
     fc.tipo.value = c.tipo; fc.sede.value = c.sede; fc.inicio.value = c.fecha_inicio;
     fc.cupo_max.value = c.cupo_max; fc.quorum_min.value = c.quorum_min; fc.estado.value = c.estado; fc.notas.value = c.notas || "";
-    pintarJornadas(c.fechas);
+    fc.horas.value = c.horas || HORAS[c.tipo];
+    pintarJornadas(c.fechas, c.horarios);
   } else $("#jornadas").innerHTML = `<span class="gris" style="font-size:14px">Elige la primera jornada y se completan las demás (sin fines de semana).</span>`;
   $("#dlg-edit").showModal();
 }
@@ -1438,7 +1507,11 @@ fc.addEventListener("submit", async e => {
   e.preventDefault();
   const fechas = [...new Set(leerJornadas())].sort();
   if (!fechas.length) { $("#fe-err").textContent = "Indica al menos una jornada."; return; }
-  const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null, docente_id: fc.docente.value || null };
+  const jj = $$("#jornadas .jornada").map(j => ({ f: j.querySelector(".j-fecha").value, h: [j.querySelector(".j-ini").value || "09:00", j.querySelector(".j-fin").value || "17:15"] })).filter(x => x.f).sort((a, b) => a.f.localeCompare(b.f));
+  if (jj.some(x => x.h[1] <= x.h[0])) { $("#fe-err").textContent = "En alguna jornada la hora de fin es anterior a la de inicio."; return; }
+  const horarios = jj.map(x => x.h), habitual = horarios.every((h, i) => h[0] === HORARIO_STD(i)[0] && h[1] === HORARIO_STD(i)[1]);
+  const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null, docente_id: fc.docente.value || null,
+    horas: +fc.horas.value || HORAS[fc.tipo.value], horarios: habitual ? null : horarios };
   if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm("Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;
   const { error } = editando ? await sb.from("cursos").update(row).eq("id", editando.id) : await sb.from("cursos").insert(row);
   if (error) { $("#fe-err").textContent = error.message; return; }
@@ -2053,6 +2126,7 @@ function pintarEstadisticas() {
     <td class="hide-m" style="width:30%"><div style="height:8px;border-radius:4px;background:var(--verde);width:${Math.max(4, o.n / maxN * 100)}%"></div></td></tr>`).join("")
     || `<tr><td colspan="4" class="vacio-t">Sin inscripciones.</td></tr>`;
   pintarMapa(anio, r);
+  pintarEmbudo();
 }
 $("#es-anio").addEventListener("change", pintarEstadisticas);
 addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (!$("[data-panel=estadisticas]").classList.contains("hidden")) pintarEstadisticas(); }, 200); });
@@ -2361,7 +2435,7 @@ $("#f-copiar").addEventListener("submit", async e => {
   if (!sel.length) return;
   const estado = $("#cp-estado").value;
   const rows = sel.map(f => ({ tipo: f.c.tipo, sede: f.c.sede, fechas: fechasCopia(f), cupo_max: f.c.cupo_max, quorum_min: f.c.quorum_min, estado,
-    docente_id: f.c.docente_id || null, horas: f.c.horas || null, notas: null }));
+    docente_id: f.c.docente_id || null, horas: f.c.horas || null, horarios: f.c.horarios || null, notas: null }));
   const b = $("#cp-ok"); b.disabled = true; b.textContent = "Creando…";
   const { error } = await sb.from("cursos").insert(rows);
   b.disabled = false;
@@ -2623,6 +2697,83 @@ $("#m-nombre").addEventListener("click", async () => {
   if (error) return toast(error.message);
   pintarPerfil({ ...miPerfil, nombre: n.trim() }); toast("Nombre guardado");
 });
+
+
+/* ---------- plantillas de correo ---------- */
+let plantillas = {}, plTipo = "confirmacion", plCampo = null;
+async function abrirPlantillas() {
+  const { data, error } = await sb.from("plantillas_correo").select("*");
+  if (error) return toast("No se han podido cargar las plantillas");
+  plantillas = Object.fromEntries((data || []).map(p => [p.tipo, p]));
+  const { POR_DEFECTO, VARIABLES } = PlantillasCorreo;
+  $("#pl-tipos").innerHTML = Object.entries(POR_DEFECTO).map(([k, v]) => `<button type="button" data-pl="${k}">${esc(v.nombre)}<small>${plantillas[k] ? "Personalizada" : "Texto original"}</small></button>`).join("");
+  $("#pl-vars").innerHTML = VARIABLES.map(([v, t]) => `<button type="button" data-var="${v}" title="${esc(t)}">${v}</button>`).join("");
+  const soloVer = !esSuper;
+  $$("#f-plant input, #f-plant textarea").forEach(x => x.readOnly = soloVer);
+  ["#pl-guardar", "#pl-restaurar"].forEach(x => $(x).classList.toggle("hidden", soloVer));
+  elegirPlantilla(plTipo);
+  $("#dlg-plant").showModal();
+}
+function elegirPlantilla(t) {
+  plTipo = t; const f = $("#f-plant"), p = { ...PlantillasCorreo.POR_DEFECTO[t], ...(plantillas[t] || {}) };
+  $$("#pl-tipos button").forEach(b => b.setAttribute("aria-current", b.dataset.pl === t));
+  f.asunto.value = p.asunto; f.titular.value = p.titular; f.mensaje.value = p.mensaje; f.nota.value = p.nota || "";
+  const pp = plantillas[t];
+  $("#pl-info").textContent = pp ? `Cambiada ${new Date(pp.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}${pp.updated_by ? " por " + pp.updated_by.split("@")[0] : ""}` : "Texto original";
+  $("#pl-err").textContent = ""; vistaPlantilla();
+}
+function vistaPlantilla() {
+  const f = $("#f-plant");
+  const c = cursos.find(x => x.fecha_inicio >= hoy && x.estado !== "cancelado") || { tipo: "actualizacion", sede: "Sevilla", fechas: [addDias(hoy, 50), addDias(hoy, 51)] };
+  const { asunto, html } = PlantillasCorreo.componer(plTipo, { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value }, "ANA LÓPEZ RUIZ", c, new URL("./", location.href).href);
+  $("#pl-asunto").innerHTML = `<span class="gris">Asunto:</span> <b></b>`; $("#pl-asunto b").textContent = asunto;
+  $("#pl-frame").srcdoc = html;
+}
+$("#abrir-plantillas").addEventListener("click", abrirPlantillas);
+$("#pl-tipos").addEventListener("click", e => { const b = e.target.closest("[data-pl]"); if (b) elegirPlantilla(b.dataset.pl); });
+$("#f-plant").addEventListener("input", vistaPlantilla);
+$("#f-plant").addEventListener("focusin", e => { if (e.target.matches("input,textarea")) plCampo = e.target; });
+$("#pl-vars").addEventListener("click", e => {
+  const b = e.target.closest("[data-var]"); if (!b || !esSuper) return;
+  const c = plCampo || $("#f-plant").mensaje, a = c.selectionStart ?? c.value.length, z = c.selectionEnd ?? a;
+  c.value = c.value.slice(0, a) + b.dataset.var + c.value.slice(z); c.focus(); c.setSelectionRange(a + b.dataset.var.length, a + b.dataset.var.length);
+  vistaPlantilla();
+});
+$("#f-plant").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, fila = { tipo: plTipo, asunto: f.asunto.value.trim(), titular: f.titular.value.trim(), mensaje: f.mensaje.value.trim(), nota: f.nota.value.trim() || null };
+  const raras = [...(fila.asunto + fila.titular + fila.mensaje + (fila.nota || "")).matchAll(/\{(\w+)\}/g)].map(m => m[0]).filter(v => !PlantillasCorreo.VARIABLES.some(([x]) => x === v));
+  if (raras.length) return $("#pl-err").textContent = `No existe el dato ${raras[0]}. Usa los botones de «Insertar dato».`;
+  const { data, error } = await sb.from("plantillas_correo").upsert(fila).select().single();
+  if (error) return $("#pl-err").textContent = error.message;
+  plantillas[plTipo] = data; toast("Plantilla guardada: los próximos correos usarán este texto");
+  $$("#pl-tipos button").forEach(b => { if (b.dataset.pl === plTipo) b.querySelector("small").textContent = "Personalizada"; });
+  elegirPlantilla(plTipo);
+});
+$("#pl-restaurar").addEventListener("click", () => {
+  const f = $("#f-plant"), p = PlantillasCorreo.POR_DEFECTO[plTipo];
+  f.asunto.value = p.asunto; f.titular.value = p.titular; f.mensaje.value = p.mensaje; f.nota.value = p.nota || "";
+  vistaPlantilla(); toast("Texto original cargado: pulsa «Guardar plantilla» para aplicarlo");
+});
+
+/* ---------- embudo del formulario ---------- */
+async function pintarEmbudo() {
+  const anio = $("#es-anio").value, sede = miSede || $("#es-sede").value || null;
+  $("#em-anio").textContent = anio;
+  const { data, error } = await sb.rpc("embudo", { p_desde: `${anio}-01-01`, p_hasta: `${anio}-12-31`, p_sede: sede });
+  if (error) { $("#es-embudo").innerHTML = `<p class="gris">No se ha podido cargar.</p>`; return; }
+  const t = k => (data || []).reduce((s, r) => s + r[k], 0);
+  const pasos = [["visitas", "Abren el formulario", "visitas"], ["eligen", "Eligen una convocatoria", "eligen"], ["envian", "Pulsan enviar", "envian"], ["inscritos", "Quedan inscritos", "inscritos"]];
+  const v0 = t("visitas");
+  if (!v0) { $("#es-embudo").innerHTML = `<p class="gris" style="margin:0">Todavía no hay visitas registradas${anio < "2026" ? " en este año (se cuenta desde octubre de 2026)" : ""}.</p>`; return; }
+  $("#es-embudo").innerHTML = `<div class="embudo">${pasos.map(([k, txt], i) => {
+    const n = t(k), prev = i ? t(pasos[i - 1][0]) : n;
+    return `<div class="em-fila" data-tip="<b>${txt}</b><br>${n} persona${n === 1 ? "" : "s"}${i ? ` · ${prev ? Math.round(n / prev * 100) : 0} % del paso anterior` : ""}">
+      <span>${txt}</span><div class="em-barra"><i style="width:${Math.max(1.5, n / v0 * 100)}%;opacity:${1 - i * .15}"></i></div>
+      <div><b>${n}</b> <small>${i ? `${Math.round(n / v0 * 100)} % del total` : "personas"}</small></div></div>`;
+  }).join("")}</div>
+  <p class="gris" style="font-size:13px;margin:12px 0 0">${sede ? `Las visitas son del formulario completo; el resto, solo de ${esc(sede)}. ` : ""}De cada 10 que entran, ${Math.round(t("inscritos") / v0 * 10)} acaban inscribiendo a alguien.</p>`;
+}
 
 iniciar();
 

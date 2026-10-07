@@ -106,6 +106,16 @@ body.compacto .cab{padding-bottom:30px}
 .cab-conv{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;margin-bottom:3px}
 .cab-conv .tipo{margin-bottom:0}
 .nuevo{display:inline-flex;align-items:center;background:#d7261e;color:#fff;font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 10px;margin-left:8px;box-shadow:0 0 0 0 rgba(215,38,30,.5);animation:latido 2.4s ease-out infinite}
+.ultimas{display:inline-flex;align-items:center;background:var(--ambar-suave);color:#8a5600;border:1.5px solid #e2a63b;font-weight:700;font-size:12px;border-radius:999px;padding:2px 10px;margin-left:8px}
+.alternativas{border:2px solid var(--ambar);background:var(--ambar-suave);border-radius:14px;padding:14px 16px;margin:0 0 18px}
+.alternativas h3{margin:0 0 4px;font-size:16px}
+.alternativas p{margin:0 0 10px;font-size:14px;color:#6e4700}
+.alt-lista{display:grid;gap:8px}
+.alt{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;border-radius:10px;padding:10px 12px;border-left:5px solid var(--sc)}
+.alt b{display:block;font-size:15px}
+.alt span{font-size:13.5px;color:var(--gris)}
+.alt button{border:1.5px solid var(--verde);background:#fff;color:var(--verde-osc);font:inherit;font-weight:600;font-size:14px;border-radius:9px;padding:7px 12px;cursor:pointer}
+.alt button:hover{background:var(--verde);color:#fff}
 .elige-op .nuevo{margin-left:0;margin-top:4px;color:#fff;font-size:12px}
 @keyframes latido{0%{box-shadow:0 0 0 0 rgba(215,38,30,.45)}70%{box-shadow:0 0 0 9px rgba(215,38,30,0)}100%{box-shadow:0 0 0 0 rgba(215,38,30,0)}}
 @media (prefers-reduced-motion:reduce){.nuevo{animation:none}}
@@ -288,7 +298,7 @@ input.mayus{text-transform:uppercase}
       <div><h3>Plazas por orden de llegada</h3><p>Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y le avisamos por correo si se libera una plaza.</p></div>
       <div><h3>Quórum mínimo de 6</h3><p>Una convocatoria puede cambiar por cambios legislativos o si no reúne 6 asistentes. Si ocurre, os avisamos para reubicar la plaza.</p></div>
       <div><h3>Cargo 45 días antes</h3><p>WORTACH realiza el cargo al centro técnico 45 días antes de la primera jornada.</p></div>
-      <div><h3>Horarios</h3><div class="horario"><b>1ª jornada</b><span>10:00 a 18:30</span><b>Resto</b><span>9:00 a 17:15</span></div></div>
+      <div><h3>Horario habitual</h3><div class="horario"><b>1ª jornada</b><span>10:00 a 18:30</span><b>Resto</b><span>9:00 a 17:15</span></div><p style="margin-top:6px">El de cada convocatoria aparece al elegirla.</p></div>
     </section>
   </section>
 
@@ -297,6 +307,7 @@ input.mayus{text-transform:uppercase}
     <button class="volver" id="volver">‹ Cambiar de convocatoria</button>
     <div class="paso2">
       <form class="hoja" id="f" novalidate>
+        <div id="alternativas" class="alternativas hidden" aria-live="polite"></div>
         <h2>Datos de la inscripción</h2>
         <p>Todos los campos son obligatorios.</p>
         <fieldset>
@@ -447,7 +458,7 @@ function fila(c) {
   const b = bloqueFecha(c.fechas);
   return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}" style="--sc:${colorSede(c.sede)}" aria-label="${esc(nombreSede(c.sede))}, ${TIPO[c.tipo]}, ${frase(c.fechas)}">
     <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
-    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}</span>
+    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 2 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
       <span class="dias">${frase(c.fechas)}</span>
       <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : ` en la sede de ${esc(c.sede)}`}</span></span>
     <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
@@ -461,10 +472,10 @@ const icoSede = (s, t = 16) => s === "Online"
 $("#f-sede").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; filtro.sede = b.dataset.v; sedeElegida = b.dataset.v || "todas"; pintarFiltros(); pintar(); });
 $("#f-tipo").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; filtro.tipo = b.dataset.v; $$("#f-tipo button").forEach(x => x.setAttribute("aria-pressed", x === b)); pintar(); });
 $("#f-libres").addEventListener("change", e => { filtro.libres = e.target.checked; pintar(); });
-$("#lista").addEventListener("click", e => { const b = e.target.closest(".conv"); if (!b) return; sel = cursos.find(c => c.id === b.dataset.id); irPaso(2); });
+$("#lista").addEventListener("click", e => { const b = e.target.closest(".conv"); if (!b) return; sel = cursos.find(c => c.id === b.dataset.id); evento("elige_curso", sel); irPaso(2); });
 
 async function cargar() {
-  let { data, error } = await sb.rpc("convocatorias");
+  let { data, error } = await sb.rpc("convocatorias_publicas");
   if (error) ({ data, error } = await sb.rpc("cursos_disponibles"));
   if (error) { if (!cursos.length) $("#lista").innerHTML = `<div class="vacio">No se han podido cargar las convocatorias. Comprueba tu conexión y recarga la página.</div>`; return; }
   cursos = data;
@@ -486,8 +497,11 @@ function irPaso(n) {
 $("#volver").addEventListener("click", () => irPaso(1));
 
 /* ---------- paso 2 ---------- */
+const HORARIO_STD = i => i === 0 ? ["10:00", "18:30"] : ["09:00", "17:15"];
+const horasDe = (c, i) => (c.horarios && c.horarios[i]) || HORARIO_STD(i);
+const hora = h => String(h).replace(/^0(\d)/, "$1");
 function horarioJornadas(c) {
-  return c.fechas.map((f, i) => `<li><span>${fLarga(f)}</span><span>${i === 0 ? "10:00 – 18:30" : "9:00 – 17:15"}</span></li>`).join("");
+  return c.fechas.map((f, i) => { const [a, b] = horasDe(c, i); return `<li><span>${fLarga(f)}</span><span>${hora(a)} – ${hora(b)}</span></li>`; }).join("");
 }
 function pintarResumen() {
   const c = sel, cargo = D(restaDias(c.fecha_inicio, 45));
@@ -568,6 +582,7 @@ function actualizarAviso() {
     : `Quedan ${libres} plaza${libres > 1 ? "s" : ""}: ${libres === 1 ? "el primero tendrá plaza" : `los ${libres} primeros tendrán plaza`} y el resto quedará en lista de espera, por el orden de la lista.`;
   const dondeBtn = sel.sede === "Online" ? "online" : `en ${sel.sede}`;
   $("#enviar").textContent = libres <= 0 ? (n > 1 ? `Apuntar a los ${n} a la lista de espera` : "Apuntarse a la lista de espera") : (n > 1 ? `Reservar ${n} plazas ${dondeBtn}` : `Reservar plaza ${dondeBtn}`);
+  pintarAlternativas(n, libres);
   const cs = $("#confirma-sede"); cs.style.setProperty("--sc", colorSede(sel.sede));
   cs.innerHTML = `Vas a inscribir ${n > 1 ? `a <b style="color:inherit">${n} técnicos</b>` : "al técnico"} en el curso de ${TIPO[sel.tipo].toLowerCase()} ${sel.sede === "Online" ? "<b>ONLINE</b>" : `de <b>${esc(sel.sede.toUpperCase())}</b>`}, ${frase(sel.fechas)} de ${D(sel.fecha_inicio).getFullYear()}. Si no es la sede que buscas, <a href="#" id="cambiar-sede">cambia de convocatoria</a>.`;
   $("#cambiar-sede").onclick = ev => { ev.preventDefault(); irPaso(1); };
@@ -609,6 +624,7 @@ $("#f").addEventListener("submit", async e => {
   if (!f.acepto.checked) return err("Marca la casilla de conformidad para continuar.");
   err("");
   const btn = $("#enviar"), txt = btn.textContent; btn.disabled = true;
+  evento("envia", sel);
   const res = [];
   try {
     for (const [n, b] of bs.entries()) {
@@ -623,6 +639,7 @@ $("#f").addEventListener("submit", async e => {
   } catch { res.push(...bs.slice(res.length).map(b => ({ t: datosTec(b), b, error: "No se ha podido completar. Revisa la conexión." }))); }
   btn.disabled = false; btn.textContent = txt;
   const bien = res.filter(r => r.data);
+  if (bien.length) evento("inscrito", sel);
   if (!bien.length) {
     res.forEach(r => { const x = r.b.querySelector(".err-tec"); x.textContent = r.error; x.classList.remove("hidden"); });
     return err(bs.length > 1 ? "No se ha podido inscribir a ninguno. Revisa los avisos de cada técnico." : res[0].error);
@@ -671,7 +688,7 @@ function mostrarFinal(res, v) {
 function descargarIcs(c, v) {
   const p = n => String(n).padStart(2, "0");
   const ev = c.fechas.map((f, i) => {
-    const d = f.replace(/-/g, ""), [h0, h1] = i === 0 ? ["100000", "183000"] : ["090000", "171500"];
+    const d = f.replace(/-/g, ""), [h0, h1] = horasDe(c, i).map(h => h.replace(":", "").padStart(4, "0") + "00");
     return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
       `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
       `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
@@ -684,6 +701,34 @@ function descargarIcs(c, v) {
   a.download = `adiestramiento-wortach-${c.fecha_inicio}.ics`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+
+
+/* ---------- si no caben, otras convocatorias con plaza ---------- */
+function pintarAlternativas(n, libres) {
+  const z = $("#alternativas");
+  if (!sel || libres >= n) { z.classList.add("hidden"); return; }
+  const dias = c => Math.abs((D(c.fecha_inicio) - D(sel.fecha_inicio)) / 864e5);
+  const alts = cursos.filter(c => c.id !== sel.id && c.tipo === sel.tipo && c.libres > 0)
+    .sort((a, b) => (a.sede === sel.sede ? 0 : 1) - (b.sede === sel.sede ? 0 : 1) || dias(a) - dias(b)).slice(0, 3);
+  if (!alts.length) { z.classList.add("hidden"); return; }
+  z.innerHTML = `<h3>${libres <= 0 ? "Esta convocatoria está completa" : `Solo quedan ${libres} plaza${libres > 1 ? "s" : ""} en esta convocatoria`}</h3>
+    <p>${libres <= 0 ? "Puedes apuntarte a la lista de espera o elegir otra con plazas libres:" : "Los que no quepan irán a lista de espera. Estas otras tienen sitio:"}</p>
+    <div class="alt-lista">${alts.map(c => `<div class="alt" style="--sc:${colorSede(c.sede)}"><div><b>${esc(nombreSede(c.sede).toUpperCase())} · ${frase(c.fechas)}</b>
+      <span>${TIPO[c.tipo]} · ${c.libres} plaza${c.libres > 1 ? "s" : ""} libre${c.libres > 1 ? "s" : ""}${c.sede !== sel.sede ? " · otra sede" : ""}</span></div>
+      <button type="button" data-alt="${c.id}">Cambiar a esta</button></div>`).join("")}</div>`;
+  z.classList.remove("hidden");
+}
+$("#alternativas").addEventListener("click", e => {
+  const b = e.target.closest("[data-alt]"); if (!b) return;
+  sel = cursos.find(c => c.id === b.dataset.alt); if (!sel) return;
+  evento("elige_curso", sel);
+  pintarResumen(); $("#resumen").scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+
+/* ---------- embudo anónimo: cuántos entran, eligen y se inscriben (sin datos personales) ---------- */
+const SESION = (() => { try { let s = sessionStorage.getItem("wortach_sesion"); if (!s) { s = crypto.randomUUID(); sessionStorage.setItem("wortach_sesion", s); } return s; } catch { return crypto.randomUUID?.() || String(Math.random()).slice(2) + Date.now(); } })();
+function evento(tipo, c) { try { sb.rpc("registrar_evento", { p_sesion: SESION, p_evento: tipo, p_sede: c?.sede || null, p_curso: c?.id || null }).then(() => {}, () => {}); } catch {} }
+evento("visita");
 
 /* enlace personal del taller: ?t=… rellena los datos del centro */
 (async () => {
