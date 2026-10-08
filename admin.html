@@ -3017,7 +3017,7 @@ $("#cg-enviar").addEventListener("click", async () => {
 });
 
 /* ---------- copia de seguridad en Drive ---------- */
-async function abrirCopia() {
+async function abrirCopiaDrive() {
   abrirMenu(false);
   const { data } = await sb.rpc("estado_copia");
   $("#bk-estado").innerHTML = data
@@ -3072,7 +3072,7 @@ function instalar() {
 }
 `;
 }
-$("#m-copia").addEventListener("click", abrirCopia);
+$("#m-copia").addEventListener("click", abrirCopiaDrive);
 $("#bk-generar").addEventListener("click", async () => {
   if (!confirm("Se creará una clave nueva y la anterior (si había) dejará de funcionar. ¿Seguimos?")) return;
   const { data, error } = await sb.rpc("nueva_clave_copia");
