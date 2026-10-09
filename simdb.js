@@ -64,7 +64,7 @@
       { email: "zaragoza@ejemplo-practica.es", nombre: "Gestor Zaragoza (práctica)", sede: "Zaragoza", activo: true, ver_historial: false, docente_id: null, created_at: ahora() },
       { email: "docente@ejemplo-practica.es", nombre: "Docente (práctica)", sede: null, activo: true, ver_historial: false, docente_id: firmantes[0].id, created_at: ahora() },
     ];
-    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], ajustes: [{ clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }],
+    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], ajustes: [{ clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }, { clave: "envio_correos", valor: { activo: false, correo_pruebas: "practica@wortach.com" }, updated_at: ahora() }],
       avisos_descartados: [], admin_estado: [], duplicados_ignorados: [], provincias: [] };
   }
 
@@ -318,6 +318,8 @@
             if (b.accion === "crear") { if (db.admins.some(a => a.email === b.email)) return { data: { error: "Ya hay una cuenta con ese correo" }, error: null }; db.admins.push({ email: b.email, nombre: b.nombre, sede: b.tipo?.startsWith("sede:") ? b.tipo.slice(5) : null, docente_id: b.tipo?.startsWith("docente:") ? b.tipo.slice(8) : null, activo: true, ver_historial: !!b.ver_historial, created_at: ahora() }); return { data: { ok: true, existia: false }, error: null }; }
             if (b.accion === "borrar") { db.admins = db.admins.filter(a => a.email !== b.email); return { data: { ok: true }, error: null }; }
           }
+          if (n === "enviar-correos" && b.enviar) { if (b.enviar.a_pruebas) return { data: { error: "Modo práctica: aquí no se envía ningún correo." }, error: null }; const c = db.correos.find(x => x.id === b.enviar.id); if (c) { c.estado = "enviado"; c.enviado_at = ahora(); } return { data: { ok: true, para: "(modo práctica, no se envía)" }, error: null }; }
+          if (n === "enviar-correos" && !b.prueba && !db.ajustes.find(x => x.clave === "envio_correos")?.valor?.activo) return { data: { ok: false, motivo: "El envío automático está desactivado: los correos se quedan en cola" }, error: null };
           if (n === "enviar-correos" && b.prueba) return { data: { error: "Modo práctica: aquí no se envía ningún correo. En la gestión real te llegaría a tu bandeja." }, error: null };
           if (n === "enviar-correos") { db.correos.forEach(c => { if (c.estado === "pendiente") { c.estado = "enviado"; c.enviado_at = ahora(); } }); return { data: { ok: true, enviados: 0, motivo: "Modo práctica: se marcan como enviados sin enviar nada." }, error: null }; }
           return { data: { ok: true }, error: null };

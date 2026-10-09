@@ -121,6 +121,15 @@ h2.sec-t small{font-family:var(--f);font-weight:400;font-size:14px;color:var(--g
 /* tablas */
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .toolbar .esp{flex:1}
+.envio{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;border-radius:14px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--linea);background:var(--panel);border-left:5px solid var(--c)}
+.envio.off{--c:var(--rojo);background:var(--rojo-suave);border-color:#efc9c4}
+.envio.on{--c:var(--verde)}
+.envio .txt{flex:1 1 260px;min-width:0}
+.envio .txt b{display:block;font-size:15.5px}
+.envio .txt span{font-size:13.5px;color:var(--gris)}
+.envio .pr{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--gris)}
+.envio .pr input{border:1px solid var(--linea-2);border-radius:8px;padding:5px 9px;min-width:230px;background:var(--panel)}
+.acc-correo{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;font-size:12.5px;color:var(--gris);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--linea);white-space:nowrap;background:var(--panel);position:sticky;top:0}
@@ -559,7 +568,8 @@ tr.recien td{animation:recien 3s ease-out}
         <button class="btn sec" id="abrir-plantillas">Plantillas de correo</button>
         <button class="btn" id="procesar">Enviar pendientes ahora</button>
       </div>
-      <p class="gris" style="margin-top:0">Los correos salen solos cada 15 minutos: confirmación, lista de espera, plaza asignada, recordatorio una semana antes y el día anterior, y cancelación.</p>
+      <div id="envio-estado" class="envio off hidden" role="status"></div>
+      <p class="gris" style="margin-top:0">Con el envío activado, los correos salen solos cada 15 minutos: confirmación, lista de espera, plaza asignada, recordatorio una semana antes y el día anterior, y cancelación. Con el envío desactivado se quedan en cola y solo salen los que envíes a mano.</p>
       <div class="caja scroll"><table>
         <thead><tr><th>Creado</th><th>Correo</th><th>Destinatario</th><th class="hide-m">Curso</th><th>Estado</th></tr></thead>
         <tbody id="tb-correos"></tbody>
@@ -1683,7 +1693,44 @@ $("#csv-tec").addEventListener("click", () => csv(`tecnicos_${hoy}.csv`,
 /* ---------- correos ---------- */
 const TIPOCORREO = { confirmacion: "Confirmación", lista_espera: "Lista de espera", plaza_asignada: "Plaza asignada", recordatorio_7: "Recordatorio, 7 días", recordatorio_1: "Recordatorio, 1 día", cancelacion_curso: "Cancelación" };
 const ESTCORREO = { pendiente: ["Pendiente","b-warn"], enviado: ["Enviado","b-ok"], error: ["Error","b-bad"], descartado: ["Descartado","b-gris"] };
+let envioCfg = { activo: false, correo_pruebas: "" };
+async function cargarEnvio() {
+  const { data } = await sb.from("ajustes").select("valor").eq("clave", "envio_correos").maybeSingle();
+  envioCfg = { activo: data?.valor?.activo === true, correo_pruebas: data?.valor?.correo_pruebas || "" };
+  pintarEnvio();
+}
+function pintarEnvio() {
+  const z = $("#envio-estado"), on = envioCfg.activo;
+  z.className = "envio " + (on ? "on" : "off");
+  z.innerHTML = `<div class="txt"><b>${on ? "Envío de correos activado" : "Envío de correos desactivado"}</b>
+      <span>${on ? "Los correos de la cola salen solos cada 15 minutos." : "No sale ningún correo automático a nadie. Los que envíes a mano desde la lista sí se envían."}</span></div>
+    ${esSuper ? `<div class="pr"><label for="envio-pruebas">Pruebas a</label><input id="envio-pruebas" type="email" value="${esc(envioCfg.correo_pruebas)}" placeholder="tu correo de pruebas"><button class="btn sec mini" type="button" id="envio-pruebas-ok">Guardar</button></div>
+    <button class="btn ${on ? "peligro" : ""}" type="button" id="envio-toggle">${on ? "Desactivar envío de correos" : "Activar envío de correos"}</button>` : ""}`;
+  z.classList.remove("hidden");
+  $("#procesar").disabled = !on;
+  $("#procesar").title = on ? "" : "El envío está desactivado";
+}
+async function guardarEnvio(cambios, aviso) {
+  const valor = { ...envioCfg, ...cambios };
+  const { error } = await sb.from("ajustes").upsert({ clave: "envio_correos", valor });
+  if (error) return toast("No se ha podido guardar");
+  envioCfg = valor; pintarEnvio(); toast(aviso);
+}
+$("#envio-estado").addEventListener("click", async e => {
+  if (e.target.id === "envio-toggle") {
+    if (envioCfg.activo) return guardarEnvio({ activo: false }, "Envío desactivado: no sale ningún correo automático");
+    const { count } = await sb.from("correos").select("id", { count: "exact", head: true }).eq("estado", "pendiente");
+    if (!confirm(`¿Activar el envío de correos? ${count ? `Hay ${count} correo${count > 1 ? "s" : ""} pendiente${count > 1 ? "s" : ""} en cola que saldrá${count > 1 ? "n" : ""} a técnicos y centros reales en los próximos 15 minutos.` : "Los correos saldrán solos cada 15 minutos."}`)) return;
+    guardarEnvio({ activo: true }, "Envío activado");
+  }
+  if (e.target.id === "envio-pruebas-ok") {
+    const v = $("#envio-pruebas").value.trim();
+    if (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return toast("El correo de pruebas no es válido");
+    guardarEnvio({ correo_pruebas: v }, v ? `Las pruebas irán a ${v}` : "Las pruebas irán a tu propio correo");
+  }
+});
 async function cargarCorreos() {
+  cargarEnvio();
   const { data, error } = await sb.from("correos")
     .select("*, inscripciones(tecnicos(nombre,email), cursos(tipo,sede,fechas))").order("created_at", { ascending: false }).limit(300);
   if (error) return toast("No se han podido cargar los correos");
@@ -1694,9 +1741,22 @@ async function cargarCorreos() {
     return `<tr><td>${new Date(x.created_at).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</td>
       <td>${TIPOCORREO[x.tipo]}</td><td>${esc(t?.nombre)}<div class="gris" style="font-size:13px">${esc(t?.email || "sin correo")}</div></td>
       <td class="hide-m">${cu ? `${TIPO[cu.tipo]}, ${cu.sede}, ${textoFechas(cu.fechas)}` : ""}</td>
-      <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span></td></tr>`;
+      <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span>
+        ${esSuper && (x.estado === "pendiente" || x.estado === "error") ? `<div class="acc-correo"><button class="btn sec mini" type="button" data-correo-probar="${x.id}" title="Te llega a ti este mismo correo; sigue pendiente en la cola">Probar</button><button class="btn mini" type="button" data-correo-enviar="${x.id}" title="Se envía ya al técnico (y al centro en copia), aunque el envío esté desactivado">Enviar ya</button></div>` : ""}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Aún no se ha generado ningún correo.</td></tr>`;
 }
+$("#tb-correos").addEventListener("click", async e => {
+  const b = e.target.closest("[data-correo-probar],[data-correo-enviar]"); if (!b) return;
+  const id = b.dataset.correoProbar || b.dataset.correoEnviar, aPruebas = !!b.dataset.correoProbar;
+  if (!aPruebas && !confirm("¿Enviar este correo ya al técnico (y al centro en copia)? Sale aunque el envío automático esté desactivado.")) return;
+  const txt = b.textContent; b.disabled = true; b.textContent = "Enviando…";
+  const { data, error } = await sb.functions.invoke("enviar-correos", { body: { enviar: { id, a_pruebas: aPruebas } } });
+  b.disabled = false; b.textContent = txt;
+  const msg = error ? await mensajeFuncion(error) : data?.error;
+  if (msg) return toast(msg);
+  toast(aPruebas ? `Prueba enviada a ${data.para}; el correo sigue en cola` : `Enviado a ${data.para}`);
+  if (!aPruebas) cargarCorreos();
+});
 $("#procesar").addEventListener("click", async e => {
   e.target.disabled = true;
   const { data, error } = await sb.functions.invoke("enviar-correos");
