@@ -1,6 +1,6 @@
 # Cursos de adiestramiento de tacógrafos · WORTACH
 
-- `index.html`: formulario público (sin foto del DNI; pide el correo del centro técnico, que recibe copia de los avisos). Los centros técnicos ven las convocatorias con plazas en tiempo real y se inscriben (con lista de espera automática).
+- `index.html`: formulario público. La dirección que se comparte es https://www.wortach.com/wortachweb/curso-adiestramiento (la que sale en los correos y en la guía PDF); el enlace propio de cada taller (`taller.html`) sigue llevando a esta página con sus datos ya rellenos (sin foto del DNI; pide el correo del centro técnico, que recibe copia de los avisos). Los centros técnicos ven las convocatorias con plazas en tiempo real y se inscriben (con lista de espera automática).
 - `admin.html`: panel de gestión (requiere usuario autorizado). Sirve para cursos, inscritos, bajas, cambios de curso, asistencia, renovaciones por técnico y cola de correos.
 
 Backend: proyecto de Supabase **Cursos Adiestramiento Wortach** (`ylnwqtgyfeqihggjneba`).

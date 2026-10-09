@@ -1,6 +1,8 @@
 /* Correos a técnicos: textos por defecto, sustitución de {variables} y el diseño HTML.
    La función de envío del servidor (enviar-correos) usa exactamente lo mismo. */
 (function () {
+  // Enlace público del formulario de inscripción (lo que ve la gente en los correos como {web})
+  const FORMULARIO = "https://www.wortach.com/wortachweb/curso-adiestramiento";
   const POR_DEFECTO = {
     confirmacion: { nombre: "Plaza confirmada", asunto: "Plaza confirmada · Adiestramiento {curso}", titular: "Plaza confirmada",
       mensaje: "Tu plaza en el adiestramiento de tacógrafos ha quedado reservada.",
@@ -36,8 +38,9 @@
     const h0 = (curso.horarios && curso.horarios[0]) || HSTD(0);
     return { nombre, tipo, sede: curso.sede, curso: `${tipo} · ${curso.sede}`, anio: String(D(f[0]).getUTCFullYear()),
       fechas: f.map(fd).join(", ").replace(/, ([^,]*)$/, " y $1"), hora_inicio: hora(h0[0]),
-      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web };
+      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: FORMULARIO };
   }
+  // «web» (parámetro de componer) es solo la dirección desde la que se cargan el logo y los iconos
   // sustituye {variables}; en HTML escapa el texto y convierte {web} en enlace
   function rellenar(txt, v, html) {
     return String(txt || "").replace(/\{(\w+)\}|([^{]+|\{)/g, (m, k, lit) => {
@@ -73,5 +76,5 @@ ${p.nota ? `<p style="margin:18px 0 0;font-size:14px;line-height:1.55;color:#5a6
 </table></td></tr></table></body></html>`;
     return { asunto: rellenar(p.asunto, v, false), html };
   }
-  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, componer };
+  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, componer, FORMULARIO };
 })();
