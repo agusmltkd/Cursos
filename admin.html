@@ -1783,7 +1783,7 @@ function leerMarca(v) {
   if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)); }
   const d = new Date(v); return isNaN(d) ? null : d;
 }
-function leerFechasCurso(txt, marca) {
+function leerFechasCurso(txt, marca, anioArchivo) {
   let t = sinAcentos(txt).toUpperCase();
   const tipo = /INICIA/.test(t) ? "iniciacion" : "actualizacion";
   const anioTxt = (t.match(/\b(20\d\d)\b/) || [])[1];
@@ -1792,13 +1792,19 @@ function leerFechasCurso(txt, marca) {
   let pend = [], dm = [];
   for (const k of toks) {
     if (/^\d+$/.test(k)) pend.push(+k);
-    else if (MESNUM[k]) { pend.forEach(d => dm.push([d, MESNUM[k]])); pend = []; }
+    else if (MESNUM[k]) {
+      // «31, 1, 2 y 3 junio»: los días anteriores a la bajada son del mes anterior
+      const m = MESNUM[k], corte = pend.findIndex((d, i) => i > 0 && d < pend[i - 1]);
+      pend.forEach((d, i) => dm.push([d, corte > 0 && i < corte ? (m === 1 ? 12 : m - 1) : m])); pend = [];
+    }
   }
   if (!dm.length) return null;
-  let anio = anioTxt ? +anioTxt : (marca || new Date()).getFullYear();
-  if (!anioTxt && marca) {
+  // año: el que diga el texto; si no, el del nombre del archivo («Inscripciones2024.xlsx»); si no, se deduce de la fecha de inscripción
+  let anio = anioTxt ? +anioTxt : anioArchivo || (marca || new Date()).getFullYear();
+  if (!anioTxt && !anioArchivo && marca) {
+    // la inscripción se hace antes del curso: si esa fecha ya pasó al apuntarse, es del año siguiente
     const primera = new Date(anio, dm[0][1] - 1, dm[0][0]);
-    if (primera < new Date(marca.getTime() - 60 * 864e5)) anio++;
+    if (primera < new Date(marca.getTime() - 7 * 864e5)) anio++;
   }
   let prevMes = dm[0][1], y = anio;
   const fechas = dm.map(([d, m]) => { if (m < prevMes) y++; prevMes = m; return `${y}-${pad(m)}-${pad(d)}`; });
@@ -1813,7 +1819,9 @@ function columnas(cab) {
     tel_centro: busca(/telefono.*centro/, 3), nombre: busca(/nombre y apellidos/, 4), dni: busca(/^(?!.*foto).*dni/, 5),
     telefono: busca(/telefono.*asistente/, 7), email: busca(/correo.*asistente/, 8), lugar: busca(/^lugar/, 9),
     online: busca(/fecha.*online/, 10), sevilla: busca(/fecha.*sevilla/, 11), zaragoza: busca(/fecha.*zaragoza/, 12),
-    email_centro: busca(/correo.*centro/, 13)
+    email_centro: busca(/correo.*centro/, 13),
+    // formularios de 2021-2022: la iniciación iba en columnas aparte («FECHA SEVILLA», «FECHA ZARAGOZA»)
+    ini_sevilla: n.findIndex(h => h.trim() === "fecha sevilla"), ini_zaragoza: n.findIndex(h => h.trim() === "fecha zaragoza")
   };
 }
 $("#importar").addEventListener("click", () => {
@@ -1827,22 +1835,26 @@ $("#imp-file").addEventListener("change", async e => {
   try {
     await cargarXLSX();
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+    const anioArchivo = +((file.name.match(/(?:^|\D)(20\d\d)(?:\D|$)/) || [])[1] || 0) || null;
     const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: "" });
     const conCab = /marca|centro|dni/i.test(sinAcentos(filas[0]?.join(" ")));
     const col = columnas(conCab ? filas[0].map(String) : []);
     const cuerpo = filas.slice(conCab ? 1 : 0);
     importables = []; const problemas = [], avisos = []; let otrasSedes = 0;
+    avisos.push(anioArchivo ? `Año de los cursos: ${anioArchivo}, sacado del nombre del archivo (si las fechas no dicen otro). Si no es ese, cambia el nombre del archivo y vuelve a elegirlo.`
+      : "El nombre del archivo no lleva el año (por ejemplo «Inscripciones2026.xlsx»): se deduce de la fecha de cada inscripción. Revisa que la lista de cursos sea correcta.");
     cuerpo.forEach((r, i) => {
       const nfila = i + (conCab ? 2 : 1), val = k => String(r[col[k]] ?? "").trim();
       if (!r.some(x => String(x).trim())) return;
       const marca = leerMarca(r[col.marca]);
-      const sedes = [["Online", val("online")], ["Sevilla", val("sevilla")], ["Zaragoza", val("zaragoza")]].filter(x => x[1]);
+      const ini = k => col[k] >= 0 && val(k) ? val(k) + " (INICIACION)" : "";
+      const sedes = [["Online", val("online")], ["Sevilla", val("sevilla")], ["Zaragoza", val("zaragoza")], ["Sevilla", ini("ini_sevilla")], ["Zaragoza", ini("ini_zaragoza")]].filter(x => x[1]);
       let sede = sedes[0]?.[0], txt = sedes[0]?.[1];
       if (!sede) { const l = sinAcentos(val("lugar")).toLowerCase(); sede = l.includes("zarag") ? "Zaragoza" : l.includes("online") ? "Online" : l.includes("sevil") ? "Sevilla" : null; }
       if (!txt) { problemas.push(`Fila ${nfila}: no tiene fecha de curso elegida.`); return; }
       if (!sede) { problemas.push(`Fila ${nfila}: no se sabe la sede.`); return; }
       if (miSede && sede !== miSede) { otrasSedes++; return; }
-      const fc = leerFechasCurso(txt, marca);
+      const fc = leerFechasCurso(txt, marca, anioArchivo);
       if (!fc) { problemas.push(`Fila ${nfila}: no se entiende la fecha “${txt}”.`); return; }
       if (!val("nombre") || !val("dni")) { problemas.push(`Fila ${nfila}: falta el nombre o el DNI.`); return; }
       if (!val("centro")) { problemas.push(`Fila ${nfila}: falta el centro técnico.`); return; }
