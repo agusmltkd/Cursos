@@ -12,11 +12,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="certificados.js" defer></script>
-<script src="informes.js" defer></script>
-<script src="correos.js"></script>
-<script src="plantillas.js"></script>
-<script src="simdb.js"></script>
+<script src="certificados.js?v=20261011b" defer></script>
+<script src="informes.js?v=20261011b" defer></script>
+<script src="correos.js?v=20261011b"></script>
+<script src="plantillas.js?v=20261011b"></script>
+<script src="simdb.js?v=20261011b"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -2479,7 +2479,7 @@ CAMPOS.provincia = "provincia"; CAMPOS.ver_historial = "ver historial"; CAMPOS.a
 
 function cargarMapa() {
   if (window.MAPA_PROVINCIAS) return Promise.resolve();
-  return new Promise((ok, mal) => { const s = document.createElement("script"); s.src = "provincias.js"; s.onload = ok; s.onerror = mal; document.head.append(s); });
+  return new Promise((ok, mal) => { const s = document.createElement("script"); s.src = "provincias.js?v=20261011b"; s.onload = ok; s.onerror = mal; document.head.append(s); });
 }
 const ESCALA = ["#d6ecdf", "#a3d3b4", "#6db88a", "#379765", "#1c6b42"];
 function pintarMapa(anio, r) {
