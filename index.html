@@ -242,6 +242,13 @@ label.c input.bien{border-color:var(--verde)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 input.mayus{text-transform:uppercase}
+.sug-taller{margin-top:-6px;background:var(--verde-suave);border:1px solid color-mix(in srgb,var(--verde) 35%,#fff);border-radius:12px;padding:10px 12px;font-size:14px}
+.sug-taller p{margin:0 0 8px;color:var(--verde-osc);font-weight:600}
+.sug-taller .ops{display:flex;flex-wrap:wrap;gap:6px}
+.sug-taller .ops button{display:inline-grid;text-align:left;gap:1px;border:1px solid var(--linea-2);background:#fff;border-radius:10px;padding:7px 11px;font:inherit;font-size:14px;color:var(--tinta);cursor:pointer}
+.sug-taller .ops button:hover,.sug-taller .ops button:focus-visible{border-color:var(--verde);outline:2px solid color-mix(in srgb,var(--verde) 30%,transparent)}
+.sug-taller .ops span{font-size:12px;color:var(--gris)}
+.sug-taller .no{margin-top:8px;border:0;background:none;padding:2px 0;font:inherit;font-size:13px;color:var(--gris);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -314,7 +321,8 @@ input.mayus{text-transform:uppercase}
         <fieldset>
           <legend>Centro técnico <span class="recordado hidden" id="recordado">Recordado de tu última inscripción</span></legend>
           <div class="campos">
-            <label class="c ancho">Nombre del centro técnico<input name="centro" class="mayus" autocomplete="organization"></label>
+            <label class="c ancho">Nombre del centro técnico<input name="centro" class="mayus" autocomplete="off" aria-describedby="sug-taller"></label>
+            <div class="sug-taller ancho" id="sug-taller" role="region" aria-live="polite" hidden></div>
             <label class="c">Persona de contacto<input name="contacto" class="mayus" autocomplete="name"></label>
             <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" autocomplete="tel" inputmode="tel"></label>
             <label class="c">Provincia del centro<select name="provincia" id="provincia"><option value="">Elige la provincia</option></select></label>
@@ -751,6 +759,38 @@ document.addEventListener("input", e => {
   const s = i.selectionStart, f = i.selectionEnd, v = i.value.toLocaleUpperCase("es-ES");
   if (v !== i.value) { i.value = v; try { i.setSelectionRange(s, f); } catch {} }
 });
+
+/* sugerencias de talleres ya registrados, para no crear el mismo con otro nombre */
+(() => {
+  const inp = $("#f [name=centro]"), box = $("#sug-taller");
+  if (!inp || !box) return;
+  const norm = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[.,\-'"]/g, "").replace(/\s+/g, " ").trim();
+  let temp, pedido = 0, lista = [], elegido = "";
+  const ocultar = () => { box.hidden = true; box.innerHTML = ""; };
+  async function buscar() {
+    const q = inp.value.trim();
+    if (q.length < 3 || norm(q) === norm(elegido)) return ocultar();
+    const n = ++pedido, { data, error } = await sb.rpc("buscar_talleres", { p_q: q });
+    if (n !== pedido || inp.value.trim() !== q) return;            // ya ha seguido escribiendo
+    if (error || !data?.length || data.some(x => norm(x.nombre) === norm(q))) return ocultar();
+    lista = data;
+    box.innerHTML = `<p>¿Es alguno de estos? Ya está registrado:</p><div class="ops">${data.map((x, i) =>
+      `<button type="button" data-i="${i}"><b>${esc(x.nombre)}</b>${x.provincia ? `<span>${esc(x.provincia)}</span>` : ""}</button>`).join("")}</div>
+      <button type="button" class="no">No, es otro taller</button>`;
+    box.hidden = false;
+  }
+  inp.addEventListener("input", () => { clearTimeout(temp); if (norm(inp.value) !== norm(elegido)) elegido = ""; temp = setTimeout(buscar, 250); });
+  inp.addEventListener("keydown", e => { if (e.key === "Escape" && !box.hidden) { e.preventDefault(); ocultar(); } });
+  box.addEventListener("click", e => {
+    const b = e.target.closest("[data-i]");
+    if (b) {
+      const x = lista[+b.dataset.i];
+      inp.value = x.nombre.toLocaleUpperCase("es-ES"); elegido = inp.value;
+      const pv = $("#provincia"); if (x.provincia && !pv.value && [...pv.options].some(o => o.value === x.provincia)) pv.value = x.provincia;
+      ocultar(); $("#f [name=contacto]")?.focus();
+    } else if (e.target.closest(".no")) { elegido = inp.value; ocultar(); inp.focus(); }
+  });
+})();
 </script>
 </body>
 </html>

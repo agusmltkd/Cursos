@@ -765,7 +765,7 @@ tr.recien td{animation:recien 3s ease-out}
         <span><button class="btn sec mini" type="button" id="fl-csv">Exportar a Excel</button> <button class="btn sec mini" type="button" id="fl-mails">Copiar correos</button></span>
       </div>
       <div class="caja scroll"><table>
-        <thead><tr><th>Técnico</th><th>DNI</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th></tr></thead>
+        <thead><tr><th>Técnico</th><th>DNI</th><th class="hide-m">Último curso</th><th>Renovar antes de</th><th>Situación</th><th aria-label="Acciones"></th></tr></thead>
         <tbody id="fl-tecs"></tbody>
       </table></div>
     </div>
@@ -1915,7 +1915,7 @@ function dniValido(v) {
 const ESTINS = { confirmada: ["Realizado","b-ok"], lista_espera: ["En espera","b-warn"], cancelada: ["Baja","b-gris"] };
 let fichaTec = null, fichaTecIns = [];
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-corregir]")) return;
+  if (e.target.closest("[data-corregir],[data-quitar-tec]")) return;
   if (modoDocente && e.target.closest("[data-ficha-tec],[data-ficha-taller]")) { e.preventDefault(); e.stopPropagation(); return; }
   const t = e.target.closest("[data-ficha-tec]"); if (t) { e.preventDefault(); abrirTecnico(t.dataset.fichaTec); return; }
   const l = e.target.closest("[data-ficha-taller]"); if (l) { e.preventDefault(); e.stopPropagation(); abrirTaller(l.dataset.fichaTaller); }
@@ -2058,8 +2058,9 @@ async function abrirTaller(id) {
     <td>${x.dni_ok ? esc(x.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(x.dni)}</span>`}</td>
     <td class="hide-m">${x.ultimo_tipo ? TIPO[x.ultimo_tipo] + ", " + fcorta(x.ultima_fecha) : "—"}</td>
     <td>${x.proximo_curso ? `Inscrito el ${fcorta(x.proximo_curso)}` : fcorta(x.renovar_antes)}</td>
-    <td><span class="badge ${SIT[x.situacion][1]}">${SIT[x.situacion][0]}</span></td></tr>`).join("")
-    || `<tr><td colspan="5" class="vacio-t">Este taller no tiene técnicos${miSede ? " en tu sede" : ""}.</td></tr>`;
+    <td><span class="badge ${SIT[x.situacion][1]}">${SIT[x.situacion][0]}</span></td>
+    <td style="text-align:right">${modoDocente ? "" : `<button class="btn peligro mini" type="button" data-quitar-tec="${x.id}" title="Eliminar a ${esc(x.nombre)}">Eliminar</button>`}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="vacio-t">Este taller no tiene técnicos${miSede ? " en tu sede" : ""}.</td></tr>`;
   const lista = (ins.data || []).filter(i => i.cursos).sort((a, b) => b.cursos.fecha_inicio.localeCompare(a.cursos.fecha_inicio));
   $("#fl-ins").innerHTML = lista.map(i => {
     const c = i.cursos, celebrado = c.fecha_fin < hoy;
@@ -3171,6 +3172,37 @@ $("#m-practica").addEventListener("click", () => { abrirMenu(false); open("admin
 // en práctica llegan unas pocas inscripciones "desde la web" para ver el panel en directo
 if (PRACTICA && sb.simularWeb) { let n = 0; const llega = () => { if (n++ < 3) { sb.simularWeb(); setTimeout(llega, 150000); } }; setTimeout(llega, 30000); }
 if (PRACTICA) { $("#m-practica").classList.add("hidden"); $("#salir").textContent = "Salir del modo práctica"; $("#salir").onclick = e => { e.stopImmediatePropagation(); location.href = "./admin.html"; }; }
+
+/* ---------- eliminar un técnico desde la ficha del taller ---------- */
+$("#fl-tecs").addEventListener("click", async e => {
+  const b = e.target.closest("[data-quitar-tec]"); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = b.dataset.quitarTec, x = fichaTallTecs.find(t => t.id === id); if (!x) return;
+  const tr = b.closest("tr"), marcar = on => { tr.classList.toggle("pend", on); tr.querySelectorAll("button").forEach(z => z.disabled = on); };
+  marcar(true);
+  const { data: ins, error } = await sb.from("inscripciones").select("estado,cursos(fecha_fin,estado)").eq("tecnico_id", id);
+  if (error) { marcar(false); return toast("No se ha podido comprobar su historial"); }
+  const vivos = (ins || []).filter(i => i.cursos && i.cursos.estado !== "cancelado" && i.estado !== "cancelada");
+  const hechos = vivos.filter(i => i.estado === "confirmada" && i.cursos.fecha_fin < hoy).length;
+  const prox = vivos.filter(i => i.cursos.fecha_fin >= hoy).length;
+  if (hechos || prox) {
+    const msg = `Vas a eliminar a ${x.nombre} con todo su historial:\n`
+      + (hechos ? `\n· ${hechos} curso${hechos > 1 ? "s" : ""} realizado${hechos > 1 ? "s" : ""} (dejará de contar para su renovación)` : "")
+      + (prox ? `\n· su inscripción en ${prox} curso${prox > 1 ? "s" : ""} próximo${prox > 1 ? "s" : ""} (la plaza pasará al primero en lista de espera)` : "")
+      + `\n\nSi solo se ha cambiado de taller no hace falta eliminarlo: al inscribirlo con el taller nuevo se actualiza solo.\n\n¿Eliminarlo?`;
+    if (!confirm(msg)) { marcar(false); return; }
+  }
+  tr.classList.add("hidden");
+  conDeshacer(`Eliminando a ${x.nombre}`, async () => {
+    await ejecutar(sb.from("tecnicos").delete().eq("id", id), "No se ha podido eliminar el técnico");
+    fichaTallTecs = fichaTallTecs.filter(t => t.id !== id); tr.remove();
+    $("#fl-ntec").textContent = `(${fichaTallTecs.length})`;
+    toast(`${x.nombre} eliminado`);
+    if (!$('[data-panel=tecnicos]').classList.contains("hidden")) cargarTecnicos();
+    if (!$('[data-panel=talleres]').classList.contains("hidden")) cargarTalleres();
+    cargarCursos();
+  }, { alDeshacer: () => { tr.classList.remove("hidden"); marcar(false); } });
+});
 
 iniciar();
 
