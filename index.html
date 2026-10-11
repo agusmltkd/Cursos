@@ -693,7 +693,7 @@ function descargarIcs(c, v) {
     return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
       `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
       `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
-      `LOCATION:${c.sede === "Online" ? "Online" : "WORTACH " + c.sede}`,
+      `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[c.sede] || "Online"}`,
       `DESCRIPTION:Asistente: ${v.nombre}. Dudas: asistencia@wortach.com / 954 360 572`, "END:VEVENT"].join("\r\n");
   });
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//WORTACH//Adiestramientos//ES", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n");

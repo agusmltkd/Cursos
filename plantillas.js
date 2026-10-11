@@ -3,6 +3,13 @@
 (function () {
   // Enlace público del formulario de inscripción (lo que ve la gente en los correos como {web})
   const FORMULARIO = "https://www.wortach.com/wortachweb/curso-adiestramiento";
+  // Dónde se imparte cada sede (sale en los correos y en el calendario .ics)
+  const DIRECCIONES = {
+    Sevilla: { lineas: ["Calle Aviación 31, Local 11", "Sevilla"] },
+    Zaragoza: { lineas: ["Ciudad del Transporte", "C/ PB 134, San Juan de Mozarrifar", "50820 Zaragoza"] },
+  };
+  const direccion = sede => DIRECCIONES[sede] ? DIRECCIONES[sede].lineas.join(", ") : "";
+  const mapa = sede => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(direccion(sede));
   const POR_DEFECTO = {
     confirmacion: { nombre: "Plaza confirmada", asunto: "Plaza confirmada · Adiestramiento {curso}", titular: "Plaza confirmada",
       mensaje: "Tu plaza en el adiestramiento de tacógrafos ha quedado reservada.",
@@ -21,7 +28,7 @@
   };
   const VARIABLES = [
     ["{nombre}", "Nombre del técnico"], ["{curso}", "Tipo y sede (Actualización · Sevilla)"], ["{tipo}", "Actualización o Iniciación"], ["{sede}", "Sevilla, Zaragoza u Online"],
-    ["{fechas}", "Días del curso"], ["{anio}", "Año"], ["{hora_inicio}", "Hora de la 1ª jornada"], ["{cargo}", "Fecha del cargo (45 días antes)"], ["{web}", "Dirección de las convocatorias"],
+    ["{fechas}", "Días del curso"], ["{direccion}", "Dirección de la sede"], ["{anio}", "Año"], ["{hora_inicio}", "Hora de la 1ª jornada"], ["{cargo}", "Fecha del cargo (45 días antes)"], ["{web}", "Dirección de las convocatorias"],
   ];
   const COLOR = { confirmacion: "#268c56", plaza_asignada: "#268c56", recordatorio_7: "#268c56", recordatorio_1: "#268c56", lista_espera: "#a86b00", cancelacion_curso: "#b8372d" };
   const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -38,7 +45,7 @@
     const h0 = (curso.horarios && curso.horarios[0]) || HSTD(0);
     return { nombre, tipo, sede: curso.sede, curso: `${tipo} · ${curso.sede}`, anio: String(D(f[0]).getUTCFullYear()),
       fechas: f.map(fd).join(", ").replace(/, ([^,]*)$/, " y $1"), hora_inicio: hora(h0[0]),
-      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: FORMULARIO };
+      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: FORMULARIO, direccion: direccion(curso.sede) || "Online" };
   }
   // «web» (parámetro de componer) es solo la dirección desde la que se cargan el logo y los iconos
   // sustituye {variables}; en HTML escapa el texto y convierte {web} en enlace
@@ -69,6 +76,9 @@
 <p style="margin:0;font-size:17px;font-weight:bold;color:#16201b">${esc(v.curso)}</p>
 <p style="margin:2px 0 8px;font-size:14px;color:#1f7448">${anio} · ${fechas.length} jornadas</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${filas}</table>
+${DIRECCIONES[curso.sede] && tipo !== "cancelacion_curso" ? `<p style="margin:14px 0 0;font-size:13px;color:#1f7448;font-weight:bold;letter-spacing:.04em;text-transform:uppercase">Dónde</p>
+<p style="margin:2px 0 0;font-size:15px;line-height:1.5;color:#16201b">${DIRECCIONES[curso.sede].lineas.map(esc).join("<br>")}</p>
+<p style="margin:6px 0 0;font-size:14px"><a href="${esc(mapa(curso.sede))}" style="color:#268c56;font-weight:bold">Ver en el mapa</a></p>` : ""}
 </td></tr></table>
 ${p.nota ? `<p style="margin:18px 0 0;font-size:14px;line-height:1.55;color:#5a6660">${parrafos(p.nota)}</p>` : ""}
 </td></tr>
@@ -76,5 +86,5 @@ ${p.nota ? `<p style="margin:18px 0 0;font-size:14px;line-height:1.55;color:#5a6
 </table></td></tr></table></body></html>`;
     return { asunto: rellenar(p.asunto, v, false), html };
   }
-  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, componer, FORMULARIO };
+  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, componer, FORMULARIO, DIRECCIONES, direccion, mapa };
 })();
