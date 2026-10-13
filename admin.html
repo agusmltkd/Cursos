@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="certificados.js?v=20261011b" defer></script>
 <script src="informes.js?v=20261011b" defer></script>
+<script src="industria.js?v=20261013a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
 <script src="simdb.js?v=20261011b"></script>
@@ -587,6 +588,7 @@ tr.recien td{animation:recien 3s ease-out}
       <button class="btn" id="dc-add">Añadir asistente</button>
       <button class="btn" id="dc-cert">Generar certificados</button>
       <button class="btn sec" id="dc-firmas">Hoja de firmas</button>
+      <button class="btn sec" id="dc-industria" title="Planificación del proceso de adiestramiento para presentar a la comunidad autónoma">Comunicación a Industria</button>
       <button class="btn sec" id="dc-csv">Exportar a Excel</button>
       <button class="btn sec" id="dc-mails">Copiar correos</button>
       <span class="esp"></span>
@@ -658,6 +660,49 @@ tr.recien td{animation:recien 3s ease-out}
 <datalist id="dl-centros"></datalist>
 
 <!-- Certificados -->
+<dialog id="dlg-ind" style="width:min(960px,calc(100vw - 24px))">
+  <form id="f-ind">
+    <div class="dh"><div><h2>Comunicación a Industria</h2><div class="gris">Planificación del proceso de adiestramiento · <span id="in-sub"></span></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="db" style="display:grid;gap:14px">
+      <div id="in-aviso"></div>
+      <div class="grid2">
+        <label class="c">Tipo de proceso<input name="tipo" required></label>
+        <label class="c">Fechas de celebración<input name="fechas" required></label>
+      </div>
+      <label class="c">Lugar de celebración<input name="lugar" required></label>
+      <label class="c">Temario a desarrollar <span class="gris" style="font-weight:400">(un punto por línea)</span><textarea name="temario" rows="7" required></textarea></label>
+      <div class="caja pad" style="display:grid;gap:10px">
+        <div class="grid2">
+          <label class="c">Docente titular<select name="titular" id="in-titular" required></select></label>
+          <label class="c">DNI del titular<input name="titular_dni" placeholder="28.724.718-H"></label>
+        </div>
+        <label class="c">Currículo del titular<textarea name="titular_cv" rows="3"></textarea></label>
+      </div>
+      <div class="caja pad" style="display:grid;gap:10px">
+        <div class="grid2">
+          <label class="c">Docente sustituto<select name="sustituto" id="in-sustituto"></select></label>
+          <label class="c">DNI del sustituto<input name="sustituto_dni"></label>
+        </div>
+        <label class="c">Currículo del sustituto<textarea name="sustituto_cv" rows="3"></textarea></label>
+      </div>
+      <div class="grid2">
+        <label class="c">Aprobado por<select name="aprobador" id="in-aprobador" required></select></label>
+        <label class="c">DNI de quien aprueba<input name="aprobador_dni"></label>
+      </div>
+      <div class="grid2">
+        <label class="c">Organismo (comunidad autónoma)<input name="organismo" required></label>
+        <div class="grid2" style="gap:10px">
+          <label class="c">Fecha de presentación<input name="fecha" type="date" required></label>
+          <label class="c">Revisión<input name="revision" type="number" min="0" value="0" required></label>
+        </div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" name="guardar" checked style="accent-color:var(--verde);width:17px;height:17px"> Guardar el DNI y el currículo en la ficha de cada docente para la próxima vez</label>
+      <div class="error" id="in-err"></div>
+    </div>
+    <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit" id="in-ok">Descargar PDF</button></div>
+  </form>
+</dialog>
+
 <dialog id="dlg-cert">
   <form id="f-cert">
     <div class="dh"><div><h2>Generar certificados</h2><div class="gris" id="ce-sub"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
@@ -1169,7 +1214,7 @@ function aplicarDocente() {
   $(".marca span").textContent = "Mis cursos";
   document.title = "Mis cursos · Adiestramientos WORTACH";
   $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
-  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails"].forEach(x => $(x)?.classList.add("hidden"));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -1409,7 +1454,7 @@ $("#dc-firmas").addEventListener("click", () => hojaFirmas(actual.id));
 let firmantes = [], certAlumnos = [];
 const HORAS = { iniciacion: 30, actualizacion: 14 };
 async function cargarFirmantes() {
-  const { data, error } = await sb.from("firmantes").select("id,nombre,cargo,rol,firma").eq("activo", true).order("nombre");
+  const { data, error } = await sb.from("firmantes").select("id,nombre,cargo,rol,firma,dni,curriculo").eq("activo", true).order("nombre");
   if (error) throw new Error("No se han podido cargar los docentes");
   firmantes = data;
 }
@@ -3202,6 +3247,70 @@ $("#fl-tecs").addEventListener("click", async e => {
     if (!$('[data-panel=talleres]').classList.contains("hidden")) cargarTalleres();
     cargarCursos();
   }, { alDeshacer: () => { tr.classList.remove("hidden"); marcar(false); } });
+});
+
+/* ---------- comunicación a Industria (planificación del proceso de adiestramiento) ---------- */
+let cfgIndustria = null;
+async function abrirIndustria() {
+  try {
+    await cargarFirmantes();
+    if (!cfgIndustria) { const { data } = await sb.from("ajustes").select("valor").eq("clave", "comunicacion_industria").maybeSingle(); cfgIndustria = data?.valor || {}; }
+  } catch (e) { return toast(e.message); }
+  const c = actual, cfg = cfgIndustria, f = $("#f-ind");
+  $("#in-sub").textContent = `${TIPO[c.tipo]} · ${c.sede} · ${textoFechas(c.fechas)}`;
+  f.tipo.value = cfg.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${TIPO[c.tipo].toUpperCase()}`;
+  f.fechas.value = window.Industria ? Industria.fechasLargas(c.fechas) : textoFechas(c.fechas);
+  f.lugar.value = cfg.lugar?.[c.sede] || c.sede;
+  f.temario.value = (cfg.temario?.[c.tipo] || []).join("\n");
+  f.organismo.value = cfg.organismo?.[c.sede] || "";
+  f.fecha.value = hoy; f.revision.value = 0; $("#in-err").textContent = "";
+  const docs = firmantes.filter(x => x.rol === "docente"), aps = firmantes.filter(x => x.rol === "aprobador");
+  const opts = (l, sel, vacio) => (vacio ? `<option value="">${vacio}</option>` : "") + l.map(x => `<option value="${x.id}" ${x.id === sel ? "selected" : ""}>${esc(x.nombre)}</option>`).join("");
+  $("#in-titular").innerHTML = opts(docs, c.docente_id, c.docente_id ? null : "Elige el docente…");
+  const sust = cfg.sustituto_id && cfg.sustituto_id !== c.docente_id ? cfg.sustituto_id : "";
+  $("#in-sustituto").innerHTML = opts(docs, sust, "Sin sustituto");
+  $("#in-aprobador").innerHTML = opts(aps, aps[0]?.id);
+  rellenarPersona("titular"); rellenarPersona("sustituto"); rellenarPersona("aprobador");
+  const faltan = c.fecha_inicio > hoy ? diasHasta(c.fecha_inicio) : null;
+  $("#in-aviso").innerHTML = !c.docente_id ? `<div class="aviso" style="background:var(--ambar-suave);border-color:transparent;font-size:14px">El curso no tiene docente asignado: elígelo aquí abajo (no se cambia en el curso).</div>`
+    : faltan !== null && faltan < 21 ? `<div class="aviso" style="background:var(--ambar-suave);border-color:transparent;font-size:14px">Ojo: el curso empieza en ${faltan} día${faltan === 1 ? "" : "s"}.</div>` : "";
+  $("#dlg-ind").showModal();
+}
+function rellenarPersona(k) {
+  const f = $("#f-ind"), p = firmantes.find(x => x.id === f[k].value);
+  f[k + "_dni"].value = p?.dni || "";
+  if (f[k + "_cv"]) f[k + "_cv"].value = p?.curriculo || "";
+}
+["titular", "sustituto", "aprobador"].forEach(k => $("#f-ind")[k].addEventListener("change", () => rellenarPersona(k)));
+$("#dc-industria").addEventListener("click", abrirIndustria);
+$("#f-ind").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, b = $("#in-ok"), err = $("#in-err"); err.textContent = "";
+  const persona = k => { const p = firmantes.find(x => x.id === f[k].value); return p ? { id: p.id, nombre: p.nombre, dni: f[k + "_dni"].value.trim(), curriculo: f[k + "_cv"]?.value.trim() ?? p.curriculo } : null; };
+  const titular = persona("titular"), sustituto = persona("sustituto"), aprobador = persona("aprobador");
+  if (sustituto && sustituto.id === titular?.id) { err.textContent = "El sustituto no puede ser el mismo que el titular."; return; }
+  const sinDni = [titular, sustituto, aprobador].filter(p => p && !p.dni).map(p => p.nombre);
+  if (sinDni.length && !confirm(`Falta el DNI de ${sinDni.join(" y ")}. ¿Generar el documento igualmente?`)) return;
+  b.disabled = true; b.textContent = "Generando…";
+  try {
+    if (f.guardar.checked) {
+      for (const p of [titular, sustituto, aprobador].filter(Boolean)) {
+        const orig = firmantes.find(x => x.id === p.id), cambios = {};
+        if ((orig.dni || "") !== p.dni) cambios.dni = p.dni || null;
+        if (p.curriculo !== undefined && (orig.curriculo || "") !== (p.curriculo || "")) cambios.curriculo = p.curriculo || null;
+        if (Object.keys(cambios).length) { const { error } = await sb.from("firmantes").update(cambios).eq("id", p.id); if (!error) Object.assign(orig, cambios); }
+      }
+    }
+    const { blob, nombre } = await Industria.generar({
+      tipo: f.tipo.value.trim(), fechas: f.fechas.value.trim(), lugar: f.lugar.value.trim(),
+      temario: f.temario.value.split("\n").map(x => x.trim()).filter(Boolean),
+      titular, sustituto, aprobador, organismo: f.organismo.value.trim(), fecha_presentacion: f.fecha.value, revision: f.revision.value
+    }, actual);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    $("#dlg-ind").close(); toast("Documento descargado. Fírmalo con AutoFirma antes de presentarlo");
+  } catch (ex) { err.textContent = ex.message || "No se ha podido generar el documento"; }
+  b.disabled = false; b.textContent = "Descargar PDF";
 });
 
 iniciar();
