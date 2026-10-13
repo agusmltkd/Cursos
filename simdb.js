@@ -277,10 +277,11 @@
       duplicados_tecnicos: () => [],
       regenerar_enlace: p => { const c = db.centros.find(x => x.id === p.p_centro); if (c) c.token = uid(); return c?.token || null; },
       cuentas_lista: () => db.admins.map(a => ({ ...a, docente: db.firmantes.find(f => f.id === a.docente_id)?.nombre || null, ultimo_acceso: a.email === sim.email ? ahora() : null, tiene_usuario: true })),
+      cuentas_lista2: () => db.admins.map(a => ({ nivel: "admin", ...a, docente: db.firmantes.find(f => f.id === a.docente_id)?.nombre || null, ultimo_acceso: a.email === sim.email ? ahora() : null, tiene_usuario: true })),
       guardar_cuenta: p => {
         const a = db.admins.find(x => x.email === p.p_email); if (!a) return error("Esa cuenta no existe");
         if (p.p_email === sim.email && (p.p_tipo !== "admin" || !p.p_activo)) return error("No puedes quitarte a ti mismo el permiso de administrador ni desactivarte");
-        Object.assign(a, { nombre: p.p_nombre, activo: p.p_activo, ver_historial: p.p_ver_historial, sede: p.p_tipo.startsWith("sede:") ? p.p_tipo.slice(5) : null, docente_id: p.p_tipo.startsWith("docente:") ? p.p_tipo.slice(8) : null });
+        Object.assign(a, { nombre: p.p_nombre, activo: p.p_activo, ver_historial: p.p_ver_historial, nivel: p.p_tipo === "gestor" ? "gestor" : "admin", sede: p.p_tipo.startsWith("sede:") ? p.p_tipo.slice(5) : null, docente_id: p.p_tipo.startsWith("docente:") ? p.p_tipo.slice(8) : null });
         return null;
       },
       restablecer_contrasena: () => null,

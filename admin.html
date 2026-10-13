@@ -17,7 +17,7 @@
 <script src="industria.js?v=20261013a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
-<script src="simdb.js?v=20261011b"></script>
+<script src="simdb.js?v=20261013b"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -966,7 +966,7 @@ tr.recien td{animation:recien 3s ease-out}
 
 <!-- Cuentas y permisos -->
 <dialog id="dlg-gestores">
-  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas. <b>Gestor</b>: solo ve y gestiona su sede. <b>Docente</b>: solo ve los cursos que tiene asignados, marca asistencia y genera sus certificados.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas, copias y precios. <b>Gestor · todas las sedes</b>: trabaja con todas las sedes, sin esas funciones de administración. <b>Gestor</b> de una sede: solo ve y gestiona su sede. <b>Docente</b>: solo ve los cursos que tiene asignados, marca asistencia y genera sus certificados.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="db" style="display:grid;gap:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="gris" id="cu-resumen"></span><button class="btn" type="button" id="cu-mostrar">+ Nueva cuenta</button></div>
     <form id="cu-nueva" class="caja pad hidden" style="display:grid;gap:12px">
@@ -1195,15 +1195,16 @@ async function iniciar() {
   }
   const { data: perfil } = await sb.rpc("mi_perfil");
   pintarPerfil(perfil || { email: session.user.email });
-  const { data: sede } = await sb.rpc("admin_sede");
+  const [{ data: sede }, { data: superadmin }] = await Promise.all([sb.rpc("admin_sede"), sb.rpc("es_superadmin")]);
+  const esAdminTotal = !!superadmin && !sede && !modoDocente;
   if (sede) aplicarSede(sede);
-  else if (!modoDocente) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
+  else if (esAdminTotal) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
   const { data: ph } = await sb.rpc("puede_historial");
   puedeHist = !!ph; $("#tab-hist").classList.toggle("hidden", !puedeHist); $$(".solo-hist").forEach(b => b.classList.toggle("hidden", !puedeHist));
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
   await cargarCursos();
-  iniciarAvisos(session.user.email, !sede && !modoDocente);
-  $("#m-copia").classList.toggle("hidden", !(!sede && !modoDocente) || PRACTICA);
+  iniciarAvisos(session.user.email, esAdminTotal);
+  $("#m-copia").classList.toggle("hidden", !esAdminTotal || PRACTICA);
   tiempoReal();
 }
 
@@ -2418,7 +2419,8 @@ async function cargarNombres() {
   nombres.cur = new Map(cursos.map(x => [x.id, x]));
 }
 function valor(k, v) {
-  if (k === "sede" && (v === null || v === "")) return "Administrador (todas)";
+  if (k === "sede" && (v === null || v === "")) return "todas las sedes";
+  if (k === "nivel") return v === "gestor" ? "gestor" : "administrador";
   if (v === null || v === undefined || v === "") return "vacío";
   if (k === "asistio" || typeof v === "boolean") return v ? "sí" : "no";
   if (k === "tecnico_id") return nombres.tec.get(v) || "técnico eliminado";
@@ -2459,7 +2461,7 @@ function frase(h) {
     case "centros": return h.accion === "alta" ? `Registró el taller ${nom}` : h.accion === "borrado" ? `Eliminó el taller ${nom}` : ("token" in d ? `Cambió el enlace del taller ${nom}` : `Modificó los datos del taller ${nom}`);
     case "admins": {
       const q = `<b>${esc(x.nombre || x.email || "")}</b>`;
-      if (h.accion === "alta") return `Creó la cuenta de ${q} (${d.docente_id ? "Docente" : d.sede ? "Gestor · " + esc(d.sede) : "Administrador"})`;
+      if (h.accion === "alta") return `Creó la cuenta de ${q} (${d.docente_id ? "Docente" : d.sede ? "Gestor · " + esc(d.sede) : d.nivel === "gestor" ? "Gestor · todas las sedes" : "Administrador"})`;
       if (h.accion === "borrado") return `Borró la cuenta de ${q}`;
       if ("activo" in d) return `${d.activo ? "Activó" : "Desactivó"} la cuenta de ${q}`;
       if ("sede" in d || "docente_id" in d) return `Cambió el tipo de cuenta de ${q}`;
@@ -2777,15 +2779,15 @@ $("#f-clave").addEventListener("submit", async e => {
 });
 /* ---------- cuentas y permisos (solo administradores) ---------- */
 let cuentas = [];
-const tiposCuenta = () => [["admin", "Administrador"], ["sede:Sevilla", "Gestor · Sevilla"], ["sede:Zaragoza", "Gestor · Zaragoza"], ["sede:Online", "Gestor · Online"],
+const tiposCuenta = () => [["admin", "Administrador"], ["gestor", "Gestor · todas las sedes"], ["sede:Sevilla", "Gestor · Sevilla"], ["sede:Zaragoza", "Gestor · Zaragoza"], ["sede:Online", "Gestor · Online"],
   ...firmantes.filter(f => f.rol === "docente").map(f => [`docente:${f.id}`, `Docente · ${f.nombre}`])];
-const tipoDe = c => c.docente_id ? `docente:${c.docente_id}` : c.sede ? `sede:${c.sede}` : "admin";
+const tipoDe = c => c.docente_id ? `docente:${c.docente_id}` : c.sede ? `sede:${c.sede}` : c.nivel === "gestor" ? "gestor" : "admin";
 const opcionesTipo = v => tiposCuenta().map(([k, t]) => `<option value="${k}" ${k === v ? "selected" : ""}>${esc(t)}</option>`).join("");
 const claveAleatoria = () => { const l = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint32Array(10)); return [...r].map(x => l[x % l.length]).join(""); };
 const urlPanel = () => new URL("admin.html", location.href).href;
 async function cargarCuentas() {
   await cargarFirmantes().catch(() => {});
-  const { data, error } = await sb.rpc("cuentas_lista");
+  const { data, error } = await sb.rpc("cuentas_lista2");
   if (error) return toast(error.message);
   cuentas = data; pintarCuentas();
 }
@@ -2802,7 +2804,7 @@ function pintarCuentas() {
       <td style="text-align:center"><input type="checkbox" data-campo="ver_historial" ${c.ver_historial ? "checked" : ""} ${c.docente_id ? "disabled title=\"Los docentes no ven el historial\"" : ""} aria-label="Ver historial" style="accent-color:var(--verde);width:18px;height:18px"></td>
       <td><label class="interr"><input type="checkbox" data-campo="activo" ${c.activo ? "checked" : ""} ${yo ? "disabled" : ""}><span></span><em>${c.activo ? "Activa" : "Desactivada"}</em></label></td>
       <td class="hide-m gris" style="font-size:12.5px">${c.ultimo_acceso ? new Date(c.ultimo_acceso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) : (c.tiene_usuario ? "Nunca ha entrado" : "Sin usuario")}</td>
-      <td><div class="acc">${yo ? "" : `<button class="btn sec mini" data-temp="${k}">Contraseña</button><button class="btn peligro mini" data-borrar="${k}" title="Borrar cuenta">Borrar</button>`}</div></td></tr>`;
+      <td><div class="acc">${yo ? "" : `${c.tiene_usuario ? `<button class="btn sec mini" data-temp="${k}">Contraseña</button>` : `<button class="btn mini" data-acceso="${k}" title="Todavía no puede entrar: crea su contraseña">Crear acceso</button>`}<button class="btn peligro mini" data-borrar="${k}" title="Borrar cuenta">Borrar</button>`}</div></td></tr>`;
   }).join("");
 }
 async function guardarCuenta(k, cambio) {
@@ -2825,7 +2827,18 @@ $("#cu-lista").addEventListener("change", e => {
   guardarCuenta(k, { [campo]: v });
 });
 $("#cu-lista").addEventListener("click", async e => {
-  const t = e.target.closest("[data-temp]"), bo = e.target.closest("[data-borrar]");
+  const t = e.target.closest("[data-temp]"), bo = e.target.closest("[data-borrar]"), ac = e.target.closest("[data-acceso]");
+  if (ac) {
+    const c = cuentas[+ac.dataset.acceso];
+    const clave = prompt(`Contraseña temporal para ${c.nombre || c.email} (mínimo 8 caracteres). Apúntala para pasársela:`, claveAleatoria());
+    if (clave === null) return;
+    if (clave.length < 8) return toast("La contraseña debe tener al menos 8 caracteres");
+    ac.disabled = true; ac.textContent = "Creando…";
+    const { data, error } = await sb.functions.invoke("gestionar-cuentas", { body: { accion: "crear", email: c.email, nombre: c.nombre, tipo: tipoDe(c), ver_historial: c.ver_historial, clave } });
+    const msg = error ? await mensajeFuncion(error) : data?.error;
+    if (msg) { toast(msg); return cargarCuentas(); }
+    mostrarDatos(c.email, clave, "Acceso creado. Pásale estos datos:"); return cargarCuentas();
+  }
   if (t) {
     const c = cuentas[+t.dataset.temp];
     const clave = prompt(`Contraseña temporal para ${c.nombre || c.email} (mínimo 8 caracteres). Apúntala para pasársela:`, claveAleatoria());
@@ -2890,7 +2903,7 @@ $("#cu-nueva").addEventListener("submit", async e => {
 /* ---------- perfil ---------- */
 let miPerfil = {};
 const iniciales = n => String(n || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
-const rolDe = p => p.docente_id ? { txt: "Docente", cls: "b-ini" } : p.sede ? { txt: `Gestor · ${p.sede}`, cls: "b-azul" } : { txt: "Administrador", cls: "b-ok" };
+const rolDe = p => p.docente_id ? { txt: "Docente", cls: "b-ini" } : p.sede ? { txt: `Gestor · ${p.sede}`, cls: "b-azul" } : p.nivel === "gestor" ? { txt: "Gestor · todas las sedes", cls: "b-azul" } : { txt: "Administrador", cls: "b-ok" };
 function pintarPerfil(p) {
   miPerfil = p;
   const nombre = p.nombre || p.email.split("@")[0], rol = rolDe(p);
