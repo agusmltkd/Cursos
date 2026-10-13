@@ -1557,6 +1557,10 @@ async function hojaFirmas(id) {
   const c = cursos.find(x => x.id === id);
   const { data, error } = await sb.from("inscripciones").select("created_at, tecnicos(nombre,dni), centros(nombre)").eq("curso_id", id).eq("estado", "confirmada").order("created_at");
   if (error) return toast("No se ha podido preparar la hoja de firmas");
+  if (!firmantes.length) await cargarFirmantes().catch(() => {});
+  const aprobador = firmantes.find(x => x.rol === "aprobador");
+  // se presenta en la comunidad autónoma una vez acabado el curso: hoy, o el último día si aún no ha terminado
+  const fPres = [hoy, c.fechas.at(-1)].sort().at(-1).split("-").reverse().join("/");
   const base = location.href.replace(/[^/]*$/, "");
   const filas = data.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.tecnicos.nombre)}</td><td>${esc(i.tecnicos.dni)}</td><td>${esc(i.centros?.nombre || "")}</td>${c.fechas.map(() => "<td></td>").join("")}</tr>`).join("");
   const vacias = Array.from({ length: 3 }, (_, n) => `<tr><td>${data.length + n + 1}</td><td></td><td></td><td></td>${c.fechas.map(() => "<td></td>").join("")}</tr>`).join("");
@@ -1564,13 +1568,21 @@ async function hojaFirmas(id) {
   if (!w) return toast("Permite las ventanas emergentes para imprimir");
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Hoja de firmas ${c.sede} ${c.fecha_inicio}</title>
   <style>@page{size:A4 landscape;margin:14mm}body{font:12px/1.4 Arial,sans-serif;color:#111;margin:0}
-  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #268c56;padding-bottom:10px;margin-bottom:14px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #268c56;padding-bottom:8px;margin-bottom:10px}
   header img{height:36px}h1{font-size:18px;margin:0}p{margin:2px 0;color:#444}
-  table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:6px 8px;text-align:left;height:30px}th{background:#e4f1e9;font-size:11px}
-  td:first-child,th:first-child{width:24px;text-align:center}.firma{width:150px}footer{margin-top:14px;color:#666;font-size:11px}</style></head><body>
+  table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px 8px;text-align:left;height:28px}th{background:#e4f1e9;font-size:11px}
+  td:first-child,th:first-child{width:24px;text-align:center}.firma{width:150px}footer{margin-top:8px;color:#666;font-size:11px}
+  .aprob{margin-top:12px;break-inside:avoid;page-break-inside:avoid}.aprob table{border:1.5px solid #000}
+  .aprob td{border:1px solid #000;height:36px;text-align:center;vertical-align:top;padding:4px 8px;width:auto}
+  .aprob td:first-child{width:16%}.aprob .et{font-size:11px;width:16%}.aprob .val{font-weight:700;font-size:13px;vertical-align:middle}
+  .aprob .rev{text-align:right;font-size:13px;margin:2px 6px 0;color:#111}[contenteditable]:hover{outline:1px dashed #268c56}
+  .nota{margin:10px 0 0;font-size:11px;color:#268c56}@media print{.nota{display:none}}</style></head><body>
   <header><div><h1>Hoja de firmas · Adiestramiento de ${TIPO[c.tipo].toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${c.sede}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
   <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th>${c.fechas.map((f, i) => `<th class="firma">Firma ${i + 1}ª jornada<br>${DIAS[D(f).getDay()]} ${D(f).getDate()}/${D(f).getMonth() + 1} · ${horarioDe(c, i)}</th>`).join("")}</tr></thead>
   <tbody>${filas}${vacias}</tbody></table>
+  <div class="aprob"><table><tr><td class="et">Aprobado por:</td><td class="val" contenteditable>${esc((aprobador?.nombre || "").toLocaleUpperCase("es-ES"))}</td>
+  <td class="et">Fecha presentación CCAA:</td><td class="val" contenteditable>${fPres}</td></tr></table><p class="rev">Rev.: 0</p></div>
+  <p class="nota">Si necesitas otra fecha, haz clic sobre ella, cámbiala y vuelve a imprimir (Ctrl+P).</p>
   <footer>Formador: ______________________________ Firma: ____________________ · WORTACH Asistencia Técnica · asistencia@wortach.com · 954 360 572</footer>
   <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
   w.document.close();
