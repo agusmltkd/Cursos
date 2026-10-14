@@ -351,6 +351,7 @@ html.practica .cab{top:38px}
 @media (max-width:1160px){.vivo{font-size:0;padding:5px}.vivo::before{margin:0}}
 tr.recien td{animation:recien 3s ease-out}
 @keyframes recien{from{background:#fff3c4}to{background:transparent}}
+body.docente .col-cargo{display:none}
 /* cargos */
 .cg-tecs{font-size:12.5px;color:var(--gris);max-width:360px}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -465,7 +466,7 @@ tr.recien td{animation:recien 3s ease-out}
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
       <div class="caja scroll"><table>
-        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Plazas</th><th class="hide-m">En espera</th><th class="hide-m">Cargo</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Plazas</th><th class="hide-m">En espera</th><th class="hide-m col-cargo">Cargo</th><th>Estado</th></tr></thead>
         <tbody id="tb-cursos"></tbody>
       </table></div>
     </section>
@@ -1251,7 +1252,7 @@ function aplicarDocente() {
   $(".marca span").textContent = "Mis cursos";
   document.title = "Mis cursos · Adiestramientos WORTACH";
   $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
-  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert"].forEach(x => $(x)?.classList.add("hidden"));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert", "#abrir-cargos"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -1332,10 +1333,10 @@ function pintarPanel(anios) {
   const llenos = futuros.filter(c => c.espera > 0);
   const li = (c, extra) => `<li><a data-ver="${c.id}">${rango(c.fechas)} ${MESES[D(c.fecha_inicio).getMonth()].slice(0,3)}, ${TIPO[c.tipo]}, ${c.sede}</a><span>${extra}</span></li>`;
   let h = "";
-  if (cargos.length) h += `<div class="aviso"><h3><i style="background:var(--ambar)"></i>Cargos de estas semanas</h3><ul>${cargos.map(c => li(c, `${c.cargo < hoy ? "fue el " : c.cargo === hoy ? "hoy, " : ""}${fcorta(c.cargo)}, ${c.ocupadas} plazas`)).join("")}</ul></div>`;
+  if (cargos.length && !modoDocente) h += `<div class="aviso"><h3><i style="background:var(--ambar)"></i>Cargos de estas semanas</h3><ul>${cargos.map(c => li(c, `${c.cargo < hoy ? "fue el " : c.cargo === hoy ? "hoy, " : ""}${fcorta(c.cargo)}, ${c.ocupadas} plazas`)).join("")}</ul></div>`;
   if (quorum.length) h += `<div class="aviso"><h3><i style="background:var(--rojo)"></i>Sin quórum en los próximos 60 días</h3><ul>${quorum.map(c => li(c, `${c.ocupadas} de ${c.quorum_min}`)).join("")}</ul></div>`;
   if (llenos.length) h += `<div class="aviso"><h3><i style="background:var(--azul)"></i>Con lista de espera</h3><ul>${llenos.map(c => li(c, `${c.espera} esperando`)).join("")}</ul></div>`;
-  $("#avisos").innerHTML = h || `<div class="aviso vacio">Todo en orden: no hay cargos pendientes, cursos sin quórum ni listas de espera.</div>`;
+  $("#avisos").innerHTML = h || `<div class="aviso vacio">Todo en orden: no hay ${modoDocente ? "" : "cargos pendientes, "}cursos sin quórum ni listas de espera.</div>`;
 
   $("#cal-anio").textContent = anioPanel;
   const mesActual = hoy.slice(0,7);
@@ -1371,7 +1372,7 @@ function pintarCursos() {
       <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
       <td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
       <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}${c.ocupadas > c.cupo_max ? ` <span class="badge b-azul">+${c.ocupadas - c.cupo_max}</span>` : ""}</span></div></td>
-      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m">${pasado ? "—" : fcorta(c.cargo)}</td><td>${estadoBadge(c)}</td></tr>`;
+      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m col-cargo">${pasado ? "—" : fcorta(c.cargo)}</td><td>${estadoBadge(c)}</td></tr>`;
   }).join("") || `<tr><td colspan="7" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
 }
 $("#tb-cursos").addEventListener("keydown", e => { if (e.key === "Enter") { const tr = e.target.closest("tr[data-ver]"); if (tr) abrirCurso(tr.dataset.ver); } });
@@ -1401,7 +1402,7 @@ async function cargarInscritos() {
     <div class="cifra"><b>${conf} / ${actual.cupo_max}</b><span>plazas confirmadas${conf > actual.cupo_max ? `, ${conf - actual.cupo_max} por encima del cupo` : ""}</span></div>
     <div class="cifra"><b>${esp}</b><span>en lista de espera</span></div>
     <div class="cifra ${conf < actual.quorum_min ? "alerta" : ""}"><b>${actual.quorum_min}</b><span>quórum mínimo${conf < actual.quorum_min ? `, faltan ${actual.quorum_min - conf}` : ", alcanzado"}</span></div>
-    <div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`;
+    ${modoDocente ? "" : `<div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`}`;
   let n = 0;
   $("#dc-tb").innerHTML = inscritos.map(i => {
     const t = i.tecnicos, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
@@ -3104,6 +3105,7 @@ function periodoCargos() {
   const n = +v; return n < 0 ? [addDias(hoy, n), addDias(hoy, -1)] : [hoy, addDias(hoy, n)];
 }
 async function abrirCargos(periodo) {
+  if (modoDocente) return;
   if (periodo) $("#cg-periodo").value = periodo;
   await cargarAjustesCargos();
   ["#cg-precios-btn"].forEach(x => $(x).classList.toggle("hidden", !esSuper && !PRACTICA));
