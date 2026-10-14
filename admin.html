@@ -621,7 +621,7 @@ tr.recien td{animation:recien 3s ease-out}
         <label class="c">Quórum mínimo<input type="number" name="quorum_min" min="0" value="6" required></label>
         <label class="c">Horas lectivas <span class="gris" style="font-weight:400">salen en el certificado</span><input type="number" name="horas" min="1" max="200" required></label>
       </div>
-      <label class="c">Docente <span class="gris" style="font-weight:400">firma los certificados y, si tiene cuenta de docente, ve el curso</span><select name="docente" id="fc-docente"><option value="">Sin asignar</option></select></label>
+      <label class="c">Docente <span class="gris" style="font-weight:400">firma los certificados y, si tiene cuenta de docente, ve el curso y pasa lista</span><select name="docente" id="fc-docente"><option value="">Sin asignar</option></select></label>
       <label class="c">Estado<select name="estado"><option value="abierto">Abierto: aparece en el formulario</option><option value="cerrado">Cerrado: no admite inscripciones</option><option value="cancelado">Cancelado: avisa a los inscritos</option></select></label>
       <label class="c">Notas internas<textarea name="notas" rows="2"></textarea></label>
       <div class="error" id="fe-err"></div>
@@ -966,7 +966,7 @@ tr.recien td{animation:recien 3s ease-out}
 
 <!-- Cuentas y permisos -->
 <dialog id="dlg-gestores">
-  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas, copias y precios. <b>Gestor · todas las sedes</b>: trabaja con todas las sedes, sin esas funciones de administración. <b>Gestor</b> de una sede: solo ve y gestiona su sede. <b>Docente</b>: solo ve los cursos que tiene asignados, marca asistencia y genera sus certificados.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="dh"><div><h2>Cuentas y permisos</h2><div class="gris"><b>Administrador</b>: ve todas las sedes y gestiona cuentas, copias y precios. <b>Gestor · todas las sedes</b>: trabaja con todas las sedes, sin esas funciones de administración. <b>Gestor</b> de una sede: solo ve y gestiona su sede. <b>Docente</b>: solo ve los cursos que tiene asignados, marca la asistencia y saca la hoja de firmas. No genera certificados.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="db" style="display:grid;gap:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="gris" id="cu-resumen"></span><button class="btn" type="button" id="cu-mostrar">+ Nueva cuenta</button></div>
     <form id="cu-nueva" class="caja pad hidden" style="display:grid;gap:12px">
@@ -1251,7 +1251,7 @@ function aplicarDocente() {
   $(".marca span").textContent = "Mis cursos";
   document.title = "Mis cursos · Adiestramientos WORTACH";
   $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
-  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria"].forEach(x => $(x)?.classList.add("hidden"));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -2044,7 +2044,7 @@ async function abrirTecnico(id) {
     const est = c.estado === "cancelado" ? `<span class="badge b-bad">Curso cancelado</span>`
       : i.estado === "confirmada" ? (celebrado ? (i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : `<span class="badge b-ok">Realizado</span>`) : `<span class="badge b-azul">Inscrito</span>`)
       : `<span class="badge ${ESTINS[i.estado][1]}">${ESTINS[i.estado][0]}</span>`;
-    const cert = i.estado === "confirmada" && celebrado && i.asistio !== false && c.estado !== "cancelado";
+    const cert = !modoDocente && i.estado === "confirmada" && celebrado && i.asistio !== false && c.estado !== "cancelado";
     return `<tr><td><a class="enlace" data-ver="${c.id}"><b>${textoFechas(c.fechas)}</b></a></td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
       <td class="hide-m">${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}</td><td>${est}</td>
       <td style="text-align:right">${cert ? `<button class="btn sec mini" data-cert-ins="${i.id}">Certificado</button>` : ""}</td></tr>`;
@@ -2731,7 +2731,7 @@ async function calcularAvisos() {
   }
   if (modoDocente) {
     for (const c of vivos) { const d = diasHasta(c.fecha_inicio); if (d >= 0 && d <= 14) add({ clave: `prox:${c.id}`, nivel: "nuevo", titulo: d === 0 ? "Tu curso empieza hoy" : d === 1 ? "Tu curso empieza mañana" : `Tu curso empieza en ${d} días`, sub: `${etiquetaCurso(c)} · ${c.ocupadas} inscrito${c.ocupadas === 1 ? "" : "s"}`, curso: c.id, quitar: true }); }
-    avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:"));
+    avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:") && !a.clave.startsWith("cert:"));
     return pintarAvisos();
   }
   const [dni, prov, cor, nuevas, dup] = await Promise.all([
