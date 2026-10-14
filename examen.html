@@ -148,7 +148,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const D = s => new Date(s + "T12:00:00");
 const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
-const token = new URLSearchParams(location.search).get("c") || "";
+let token = new URLSearchParams(location.search).get("c") || "";
 let dniActual = "", preguntas = [];
 const clave = () => `wortach_examen_${token}_${dniActual}`;
 
@@ -171,13 +171,18 @@ function aviso(tit, txt, ico = "mal") {
   $("#s-aviso").classList.toggle("mal", ico === "mal"); mostrar("#s-aviso");
 }
 
+function cabecera(c) {
+  $("#titulo").textContent = `${TIPO[c.tipo] || "Adiestramiento"} · ${c.sede}`;
+  $("#sub").textContent = textoFechas(c.fechas);
+}
 async function iniciar() {
-  if (!/^[0-9a-f-]{36}$/i.test(token)) { $("#titulo").textContent = "Enlace no válido"; return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente."); }
+  // Sin código de curso (p. ej. incrustado en la web de WORTACH) el DNI basta: se busca su examen abierto
+  const sinCodigo = () => { token = ""; $("#titulo").textContent = "Examen final"; $("#sub").textContent = "Escribe tu DNI para empezar"; mostrar("#s-dni"); $("#dni").focus(); };
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return sinCodigo();
   const { data, error } = await sb.rpc("examen_publico", { p_token: token });
   if (error) { $("#titulo").textContent = "Sin conexión"; return aviso("No se ha podido cargar", "Comprueba la conexión del móvil y vuelve a intentarlo."); }
-  if (!data) { $("#titulo").textContent = "Enlace no válido"; return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente."); }
-  $("#titulo").textContent = `${TIPO[data.tipo] || "Adiestramiento"} · ${data.sede}`;
-  $("#sub").textContent = textoFechas(data.fechas);
+  if (!data) return sinCodigo();
+  cabecera(data);
   if (!data.abierto) return aviso("El examen está cerrado", "Espera a que el docente lo abra y vuelve a escanear el código.", "candado");
   mostrar("#s-dni"); $("#dni").focus();
 }
@@ -187,13 +192,14 @@ $("#f-dni").addEventListener("submit", async e => {
   const v = $("#dni").value.toUpperCase().replace(/[^0-9A-Z]/g, "");
   if (v.length < 8) { $("#dni-err").textContent = "Escribe el DNI o NIE completo, con su letra."; return; }
   const b = $("#dni-ok"); b.disabled = true; b.textContent = "Comprobando…"; $("#dni-err").textContent = "";
-  const { data, error } = await sb.rpc("examen_entrar", { p_token: token, p_dni: v });
+  const { data, error } = await sb.rpc("examen_entrar", { p_token: token || null, p_dni: v });
   b.disabled = false; b.textContent = "Empezar el examen";
   if (error) { $("#dni-err").textContent = "No se ha podido comprobar. Revisa la conexión y vuelve a intentarlo."; return; }
   if (data.estado === "cerrado") return aviso("El examen está cerrado", "El docente ha cerrado el examen de este curso.", "candado");
   if (data.estado === "no_existe") return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente.");
   if (data.estado === "no_inscrito") { $("#dni-err").textContent = "Ese DNI no figura con plaza en este curso. Revísalo o avisa al docente."; return; }
-  dniActual = v;
+  if (data.estado === "sin_examen") { $("#dni-err").textContent = "No hay ningún examen abierto ahora mismo para ese DNI. Revísalo o avisa al docente."; return; }
+  dniActual = v; if (data.token) token = data.token; if (data.curso) cabecera(data.curso);
   if (data.estado === "hecho") return resultado(data.resultado, data.nombre, true);
   preguntas = data.preguntas || [];
   $("#quien").textContent = data.nombre;

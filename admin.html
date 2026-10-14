@@ -787,6 +787,7 @@ body.docente .col-cargo{display:none}
     <form id="pr-ajustes" class="caja pad" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
       <label class="c" style="max-width:220px">Nota mínima para apto <span class="gris" style="font-weight:400">sobre 10</span><input name="nota_minima" type="number" min="0" max="10" step="0.5" required></label>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px;padding-bottom:10px"><input type="checkbox" name="mostrar_nota" style="accent-color:var(--verde);width:18px;height:18px"> Enseñar la nota al técnico al entregar</label>
+      <label class="c" style="flex:1 1 100%">Dirección del QR <span class="gris" style="font-weight:400">opcional; vacío = la de este panel. Ej.: https://www.wortach.com/wortachweb/examen</span><input name="enlace" type="url" placeholder="https://www.wortach.com/wortachweb/examen"></label>
     </form>
     <div id="pr-aviso"></div>
     <div id="pr-lista" style="display:grid;gap:12px"></div>
@@ -3501,7 +3502,8 @@ $("#f-ind").addEventListener("submit", async e => {
 /* ---------- examen del curso (QR, seguimiento en directo, acta) ---------- */
 const exDe = i => Array.isArray(i?.examenes) ? (i.examenes[0] || null) : (i?.examenes || null);
 const notaTxt = n => n == null ? "—" : Number(n).toLocaleString("es-ES", { maximumFractionDigits: 2 });
-const urlExamen = tk => new URL(`examen.html?c=${tk}`, location.href).href;
+let exEnlace = null;   // dirección pública del examen (p. ej. la de wortach.com); si no hay, la del panel
+const urlExamen = tk => exEnlace ? `${exEnlace}${exEnlace.includes("?") ? "&" : "?"}c=${tk}` : new URL(`examen.html?c=${tk}`, location.href).href;
 function qrSvg(texto) {
   if (!window.qrcode) return `<span>No se ha podido cargar el generador de QR</span>`;
   const q = qrcode(0, "M"); q.addData(texto); q.make();
@@ -3510,6 +3512,7 @@ function qrSvg(texto) {
 let exCurso = null, exEstado = null, exFilas = [], exTimer = null, exAbierta = new Set();
 async function abrirExamen() {
   exCurso = actual; exAbierta = new Set(); cargarAjustesExamen().catch(() => {});
+  if (!PRACTICA) { const { data } = await sb.rpc("examen_enlace"); exEnlace = data || null; }
   $("#ex-sub").textContent = `${TIPO[exCurso.tipo]} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
   $("#ex-preguntas").classList.toggle("hidden", !esSuper);
   $("#ex-lista").innerHTML = `<tr><td colspan="5" class="vacio-t">Cargando…</td></tr>`;
@@ -3652,7 +3655,7 @@ async function abrirPreguntas() {
   const [{ data, error }, aj] = await Promise.all([sb.from("examen_preguntas").select("*").order("orden").order("created_at"), cargarAjustesExamen()]);
   if (error) return toast("No se han podido cargar las preguntas");
   prLista = data.map(p => ({ ...p, opciones: [...(p.opciones || [])] })); prBorradas = [];
-  const f = $("#pr-ajustes"); f.nota_minima.value = aj.nota_minima ?? 5; f.mostrar_nota.checked = aj.mostrar_nota !== false;
+  const f = $("#pr-ajustes"); f.nota_minima.value = aj.nota_minima ?? 5; f.mostrar_nota.checked = aj.mostrar_nota !== false; f.enlace.value = aj.enlace || "";
   $("#pr-err").textContent = ""; pintarPreguntas(); $("#dlg-preg").showModal();
 }
 function pintarPreguntas() {
@@ -3704,8 +3707,10 @@ $("#pr-guardar").addEventListener("click", async e => {
     const nuevas = filas.filter(x => !x.id), viejas = filas.filter(x => x.id);
     if (viejas.length) await ejecutar(sb.from("examen_preguntas").upsert(viejas), "No se han podido guardar las preguntas");
     if (nuevas.length) await ejecutar(sb.from("examen_preguntas").insert(nuevas), "No se han podido guardar las preguntas nuevas");
-    await ejecutar(sb.from("ajustes").upsert({ clave: "examen", valor: { nota_minima: nm, mostrar_nota: f.mostrar_nota.checked } }), "No se ha podido guardar la nota mínima");
-    exNotaMin = nm; $("#dlg-preg").close(); toast("Preguntas guardadas");
+    const enlace = f.enlace.value.trim().replace(/[?&]+$/, "");
+    if (enlace && !/^https:\/\/\S+$/.test(enlace)) throw new Error("La dirección del QR debe empezar por https://");
+    await ejecutar(sb.from("ajustes").upsert({ clave: "examen", valor: { nota_minima: nm, mostrar_nota: f.mostrar_nota.checked, enlace: enlace || null } }), "No se ha podido guardar la nota mínima");
+    exNotaMin = nm; exEnlace = enlace || null; if ($("#dlg-examen").open) { $("#ex-qr").dataset.u = ""; pintarExamen(); } $("#dlg-preg").close(); toast("Preguntas guardadas");
   } catch (ex) { err.textContent = ex.message; }
   finally { b.disabled = false; b.textContent = "Guardar cambios"; }
 });
