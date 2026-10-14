@@ -1037,7 +1037,9 @@ tr.recien td{animation:recien 3s ease-out}
 const SUPABASE_URL = "https://ylnwqtgyfeqihggjneba.supabase.co";
 const SUPABASE_KEY = "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD";
 const PRACTICA = new URLSearchParams(location.search).has("practica");
-const sb = PRACTICA ? SimDB.crear() : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let cerrandoPagina = false;   // al cerrar la pestaña, las peticiones que queden van con keepalive para que no se corten
+const sb = PRACTICA ? SimDB.crear() : supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
+  { global: { fetch: (u, o = {}) => fetch(u, cerrandoPagina ? { ...o, keepalive: true } : o) } });
 if (PRACTICA) {
   document.documentElement.classList.add("practica");
   const b = document.createElement("div"); b.className = "banda-practica";
@@ -1108,15 +1110,22 @@ function toast(m) {
 }
 /* Acciones con «Deshacer»: no se ejecutan hasta que pasan unos segundos sin pulsar el botón */
 const pendientesDeshacer = new Set();
-function conDeshacer(texto, accion, { seg = 8, alDeshacer } = {}) {
+/* alCerrar: la misma acción como una sola petición directa a Supabase. Si se cierra la pestaña o se recarga
+   antes de que acabe la cuenta atrás, se envía al momento con keepalive, que el navegador termina aunque la página ya no exista. */
+function conDeshacer(texto, accion, { seg = 8, alDeshacer, alCerrar } = {}) {
   const t = document.createElement("div"); t.className = "toast deshacer"; t.setAttribute("role", "status");
   t.innerHTML = `<span></span><button type="button">Deshacer</button><i style="animation-duration:${seg}s"></i>`;
   t.querySelector("span").textContent = texto;
   let hecho = false;
   const p = {
+    alCerrar,
     ejecutar: async () => {
       if (hecho) return; hecho = true; clearTimeout(p.timer); pendientesDeshacer.delete(p); t.remove();
       try { await accion(); } catch (ex) { toast(ex?.message || "No se ha podido completar"); }
+    },
+    enviarYa: () => {
+      if (hecho || !alCerrar || !peticionAlCerrar(alCerrar)) return false;
+      hecho = true; clearTimeout(p.timer); pendientesDeshacer.delete(p); t.remove(); return true;
     }
   };
   p.timer = setTimeout(p.ejecutar, seg * 1000);
@@ -1126,11 +1135,38 @@ function conDeshacer(texto, accion, { seg = 8, alDeshacer } = {}) {
   };
   pendientesDeshacer.add(p); pila.append(t); alFrente();
 }
-addEventListener("beforeunload", e => {
-  if (!pendientesDeshacer.size) return;
-  [...pendientesDeshacer].forEach(p => p.ejecutar());
-  e.preventDefault(); e.returnValue = "";
-});
+/* Peticiones que sobreviven al cierre de la página */
+const PET = {
+  cambiar: (tabla, cambios, id) => ({ m: "PATCH", r: `/rest/v1/${tabla}?id=eq.${encodeURIComponent(id)}`, b: cambios }),
+  borrar: (tabla, id) => ({ m: "DELETE", r: `/rest/v1/${tabla}?id=eq.${encodeURIComponent(id)}` }),
+  insertar: (tabla, fila) => ({ m: "POST", r: `/rest/v1/${tabla}`, b: fila }),
+  rpc: (fn, args) => ({ m: "POST", r: `/rest/v1/rpc/${fn}`, b: args }),
+  funcion: (fn, cuerpo) => ({ m: "POST", r: `/functions/v1/${fn}`, b: cuerpo }),
+};
+function tokenSesion() {
+  try {
+    const s = JSON.parse(localStorage.getItem(`sb-${new URL(SUPABASE_URL).hostname.split(".")[0]}-auth-token`) || "null");
+    const ses = s?.currentSession || s;
+    return ses?.access_token && (!ses.expires_at || ses.expires_at * 1000 > Date.now() + 5000) ? ses.access_token : null;
+  } catch { return null; }
+}
+function peticionAlCerrar(pet) {
+  const tk = !PRACTICA && tokenSesion(); if (!tk) return false;
+  try {
+    fetch(SUPABASE_URL + pet.r, { method: pet.m, keepalive: true,
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + tk, "Content-Type": "application/json", ...(pet.r.startsWith("/rest/") ? { Prefer: "return=minimal" } : {}) },
+      body: pet.b === undefined ? undefined : JSON.stringify(pet.b) });
+    return true;
+  } catch { return false; }
+}
+// Al cerrar o recargar: lo pendiente se envía ya. Solo si algo no se puede enviar así, el navegador pregunta antes de salir.
+function vaciarPendientes() {
+  let quedan = false;
+  for (const p of [...pendientesDeshacer]) if (!p.enviarYa()) { cerrandoPagina = true; p.ejecutar(); quedan = true; }
+  return quedan;
+}
+addEventListener("beforeunload", e => { if (vaciarPendientes()) { e.preventDefault(); e.returnValue = ""; } });
+addEventListener("pagehide", vaciarPendientes);
 const ejecutar = async (q, msg) => { const { data, error } = await q; if (error) throw new Error(msg || error.message); return data; };
 function csv(nombre, cab, filas) {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -1400,14 +1436,14 @@ $("#dc-tb").addEventListener("click", async e => {
     conDeshacer(`Baja de ${i.tecnicos.nombre}${i.estado === "confirmada" ? " (su plaza pasará al primero en espera)" : ""}`, async () => {
       await ejecutar(sb.from("inscripciones").update({ estado: "cancelada" }).eq("id", i.id), "No se ha podido dar de baja");
       toast("Baja registrada"); if ($("#dlg-curso").open && actual?.id === i.curso_id) await cargarInscritos(); cargarCursos();
-    }, { alDeshacer: () => marcar(false) });
+    }, { alDeshacer: () => marcar(false), alCerrar: PET.cambiar("inscripciones", { estado: "cancelada" }, i.id) });
   }
   if (b.dataset.act === "borrar") {
     marcar(true);
     conDeshacer(`Eliminando el registro de ${i.tecnicos.nombre}`, async () => {
       await ejecutar(sb.from("inscripciones").delete().eq("id", i.id), "No se ha podido eliminar");
       toast("Registro eliminado"); if ($("#dlg-curso").open && actual?.id === i.curso_id) await cargarInscritos(); cargarCursos();
-    }, { alDeshacer: () => marcar(false) });
+    }, { alDeshacer: () => marcar(false), alCerrar: PET.borrar("inscripciones", i.id) });
   }
   if (b.dataset.act === "plaza") {
     const conf = inscritos.filter(x => x.estado === "confirmada").length;
@@ -1419,7 +1455,7 @@ $("#dc-tb").addEventListener("click", async e => {
       const data = await ejecutar(sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false }));
       toast(data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada");
       if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos(); cargarCursos();
-    }, { alDeshacer: () => marcar(false) });
+    }, { alDeshacer: () => marcar(false), alCerrar: PET.rpc("dar_plaza", { p_ins: i.id, p_directo: false }) });
   }
   if (b.dataset.act === "mover") {
     moviendo = i;
@@ -1438,7 +1474,7 @@ $("#f-mover").addEventListener("submit", async e => {
     const data = await ejecutar(sb.rpc("mover_inscripcion", { p_ins: m.id, p_curso: destino.id }));
     toast(data.estado === "confirmada" ? "Cambiado de curso con plaza confirmada" : "Cambiado de curso, en lista de espera");
     await cargarCursos(); if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos();
-  }, { alDeshacer: () => tr?.classList.remove("pend") });
+  }, { alDeshacer: () => tr?.classList.remove("pend"), alCerrar: destino && PET.rpc("mover_inscripcion", { p_ins: m.id, p_curso: destino.id }) });
 });
 $("#dc-csv").addEventListener("click", () => {
   csv(`inscritos_${actual.sede}_${actual.fecha_inicio}.csv`,
@@ -1548,7 +1584,7 @@ $("#dc-cancelar").addEventListener("click", async () => {
   conDeshacer(`Cancelando el curso del ${textoFechas(c.fechas)} en ${c.sede}`, async () => {
     await ejecutar(sb.from("cursos").update({ estado: "cancelado" }).eq("id", c.id), "No se ha podido cancelar el curso");
     toast("Curso cancelado"); cargarCursos();
-  }, { seg: 10 });
+  }, { seg: 10, alCerrar: PET.cambiar("cursos", { estado: "cancelado" }, c.id) });
 });
 $("#dc-editar").addEventListener("click", () => abrirEdicion(actual));
 
@@ -1684,7 +1720,7 @@ $("#fe-borrar").addEventListener("click", async () => {
   conDeshacer(`Eliminando el curso del ${textoFechas(c.fechas)} en ${c.sede}`, async () => {
     await ejecutar(sb.from("cursos").delete().eq("id", c.id), "No se ha podido eliminar el curso");
     toast("Curso eliminado"); cargarCursos();
-  });
+  }, { alCerrar: PET.borrar("cursos", c.id) });
 });
 
 /* ---------- técnicos ---------- */
@@ -2151,7 +2187,7 @@ $("#fl-unir-ok").addEventListener("click", async () => {
     await ejecutar(sb.from("centros").delete().eq("id", origen.id));
     toast(`Talleres unidos: ${data.inscripciones} inscripciones movidas`);
     await cargarTalleres(); abrirTaller(destino.id);
-  }, { seg: 10, alDeshacer: () => abrirTaller(origen.id) });
+  }, { seg: 10, alDeshacer: () => abrirTaller(origen.id), alCerrar: PET.rpc("unir_centros", { p_origen: origen.id, p_destino: destino.id }) });
 });
 $("#fl-csv").addEventListener("click", () => csv(`tecnicos_${(fichaTall.nombre || "taller").replace(/[^\wÁÉÍÓÚÑ]+/gi, "_")}.csv`,
   ["Nombre","DNI","Último curso","Fecha último curso","Renovar antes de","Próximo curso","Situación","Correo","Teléfono"],
@@ -2400,7 +2436,7 @@ $("[data-panel=duplicados]").addEventListener("click", async e => {
     return conDeshacer(`«${d.a_nombre}» y «${d.b_nombre}» no son el mismo`, async () => {
       await ejecutar(sb.from("duplicados_ignorados").insert({ tipo: esT ? "taller" : "tecnico", a: d.a, b: d.b }));
       toast("Marcados como distintos"); cargarDuplicados();
-    }, { alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
+    }, { alCerrar: PET.insertar("duplicados_ignorados", { tipo: esT ? "taller" : "tecnico", a: d.a, b: d.b }), alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
   }
   const [keep, drop] = b.dataset.quedar === "a" ? [d.a, d.b] : [d.b, d.a];
   const [nk, nd] = b.dataset.quedar === "a" ? [d.a_nombre, d.b_nombre] : [d.b_nombre, d.a_nombre];
@@ -2415,7 +2451,7 @@ $("[data-panel=duplicados]").addEventListener("click", async e => {
       await ejecutar(sb.from("tecnicos").delete().eq("id", drop));
     }
     toast("Unidos"); cargarDuplicados();
-  }, { seg: 10, alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
+  }, { seg: 10, alCerrar: PET.rpc(esT ? "unir_centros" : "unir_tecnicos", { p_origen: drop, p_destino: keep }), alDeshacer: () => { card.classList.remove("pend"); card.querySelectorAll("button").forEach(x => x.disabled = false); } });
 });
 
 /* ---------- historial ---------- */
@@ -2835,7 +2871,7 @@ $("#cu-lista").addEventListener("change", e => {
   const el = e.target.closest("[data-campo]"), tr = e.target.closest("[data-cu]"); if (!el || !tr) return;
   const k = +tr.dataset.cu, campo = el.dataset.campo;
   const v = el.type === "checkbox" ? el.checked : el.value.trim();
-  if (campo === "activo" && !v) return conDeshacer(`Desactivando la cuenta de ${cuentas[k].nombre || cuentas[k].email}`, () => guardarCuenta(k, { activo: false }), { alDeshacer: pintarCuentas });
+  if (campo === "activo" && !v) return conDeshacer(`Desactivando la cuenta de ${cuentas[k].nombre || cuentas[k].email}`, () => guardarCuenta(k, { activo: false }), { alDeshacer: pintarCuentas, alCerrar: PET.rpc("guardar_cuenta", { p_email: cuentas[k].email, p_nombre: cuentas[k].nombre || null, p_tipo: tipoDe(cuentas[k]), p_activo: false, p_ver_historial: cuentas[k].ver_historial }) });
   guardarCuenta(k, { [campo]: v });
 });
 $("#cu-lista").addEventListener("click", async e => {
@@ -2868,7 +2904,7 @@ $("#cu-lista").addEventListener("click", async e => {
       const msg = error ? await mensajeFuncion(error) : data?.error;
       if (msg) { toast(msg); return cargarCuentas(); }
       toast("Cuenta borrada"); cargarCuentas();
-    }, { seg: 10, alDeshacer: pintarCuentas });
+    }, { seg: 10, alDeshacer: pintarCuentas, alCerrar: PET.funcion("gestionar-cuentas", { accion: "borrar", email: c.email }) });
   }
 });
 async function mensajeFuncion(error) {
@@ -3271,7 +3307,7 @@ $("#fl-tecs").addEventListener("click", async e => {
     if (!$('[data-panel=tecnicos]').classList.contains("hidden")) cargarTecnicos();
     if (!$('[data-panel=talleres]').classList.contains("hidden")) cargarTalleres();
     cargarCursos();
-  }, { alDeshacer: () => { tr.classList.remove("hidden"); marcar(false); } });
+  }, { alCerrar: PET.borrar("tecnicos", id), alDeshacer: () => { tr.classList.remove("hidden"); marcar(false); } });
 });
 
 /* ---------- comunicación a Industria (planificación del proceso de adiestramiento) ---------- */
