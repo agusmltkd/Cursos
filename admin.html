@@ -15,9 +15,10 @@
 <script src="certificados.js?v=20261011b" defer></script>
 <script src="informes.js?v=20261011b" defer></script>
 <script src="industria.js?v=20261013a" defer></script>
+<script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
-<script src="simdb.js?v=20261013b"></script>
+<script src="simdb.js?v=20261014a"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -352,6 +353,33 @@ html.practica .cab{top:38px}
 tr.recien td{animation:recien 3s ease-out}
 @keyframes recien{from{background:#fff3c4}to{background:transparent}}
 body.docente .col-cargo{display:none}
+/* examen */
+.ex-cab{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start}
+.ex-qr{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:12px;aspect-ratio:1;display:grid;place-items:center;text-align:center;color:var(--gris);font-size:13.5px}
+.ex-qr svg{width:100%;height:auto;display:block}
+.ex-qr.cerrado svg{opacity:.18}
+.ex-est{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.ex-est b{font-family:var(--f-tit);font-stretch:112%;font-size:20px}
+.ex-url{font:13px ui-monospace,monospace;color:var(--gris);word-break:break-all;margin:6px 0 0}
+.ex-det td{background:var(--hover);font-size:13.5px}
+.ex-det ol{margin:4px 0;padding-left:20px}
+.ex-det li{margin:3px 0}
+.ex-det .bien{color:var(--verde-osc)} .ex-det .mal{color:var(--rojo)}
+#dlg-pantalla{width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0;margin:0;background:#fff}
+#dlg-pantalla .in{height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:5vw;align-items:center;padding:4vh 6vw}
+#dlg-pantalla .qr svg{width:100%;height:auto;max-height:86vh;display:block}
+#dlg-pantalla h2{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(28px,4.4vw,64px);line-height:1.05;margin:0 0 2vh}
+#dlg-pantalla p{font-size:clamp(17px,1.8vw,28px);color:var(--gris);margin:0 0 1.6vh}
+#dlg-pantalla .cuenta{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(40px,6vw,96px);color:var(--verde);line-height:1;margin-top:4vh}
+#dlg-pantalla .x{position:absolute;top:18px;right:22px}
+.pr-item{border:1px solid var(--linea);border-radius:14px;padding:14px;display:grid;gap:10px;background:#fff}
+.pr-item.off{opacity:.6}
+.pr-item.sin{border-color:var(--ambar);box-shadow:0 0 0 3px var(--ambar-suave)}
+.pr-cab{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pr-op{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.pr-op label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--gris);cursor:pointer;white-space:nowrap}
+.pr-op input[type=radio]{accent-color:var(--verde);width:18px;height:18px}
+@media (max-width:720px){.ex-cab{grid-template-columns:1fr}.ex-qr{max-width:260px}#dlg-pantalla .in{grid-template-columns:1fr}}
 /* cargos */
 .cg-tecs{font-size:12.5px;color:var(--gris);max-width:360px}
 .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -517,6 +545,11 @@ body.docente .col-cargo{display:none}
         <div id="es-embudo"></div>
       </div>
       <div class="caja pad" style="margin-bottom:22px">
+        <h3 class="es-t">Examen y satisfacción <span id="es-ex-anio"></span></h3>
+        <p class="gris es-s">Exámenes hechos en la plataforma y encuesta de satisfacción del final del examen.</p>
+        <div id="es-examen"></div>
+      </div>
+      <div class="caja pad" style="margin-bottom:22px">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
           <div><h3 class="es-t">De dónde vienen <span id="es-mapa-anio"></span></h3><p class="gris es-s">Plazas confirmadas según la provincia del taller.</p></div>
           <button class="btn sec mini hidden" id="es-sinprov"></button>
@@ -588,6 +621,7 @@ body.docente .col-cargo{display:none}
     <div class="toolbar">
       <button class="btn" id="dc-add">Añadir asistente</button>
       <button class="btn" id="dc-cert">Generar certificados</button>
+      <button class="btn sec" id="dc-examen">Examen</button>
       <button class="btn sec" id="dc-firmas">Hoja de firmas</button>
       <button class="btn sec" id="dc-industria" title="Planificación del proceso de adiestramiento para presentar a la comunidad autónoma">Comunicación a Industria</button>
       <button class="btn sec" id="dc-csv">Exportar a Excel</button>
@@ -702,6 +736,64 @@ body.docente .col-cargo{display:none}
     </div>
     <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit" id="in-ok">Descargar PDF</button></div>
   </form>
+</dialog>
+
+<!-- Examen del curso -->
+<dialog id="dlg-examen" style="width:min(1000px,calc(100vw - 24px))">
+  <div class="dh"><div><h2>Examen</h2><div class="gris" id="ex-sub"></div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:16px">
+    <div class="ex-cab">
+      <div class="ex-qr" id="ex-qr"></div>
+      <div>
+        <div class="ex-est" id="ex-estado"></div>
+        <p class="gris" id="ex-ayuda" style="margin:0 0 12px"></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="button" id="ex-abrir">Abrir el examen</button>
+          <button class="btn sec" type="button" id="ex-proyectar">Mostrar en pantalla grande</button>
+          <button class="btn sec" type="button" id="ex-copiar">Copiar enlace</button>
+        </div>
+        <p class="ex-url hidden" id="ex-url"></p>
+        <div class="resumen-c" id="ex-cifras" style="margin:16px 0 0"></div>
+      </div>
+    </div>
+    <div class="caja scroll"><table>
+      <thead><tr><th>Técnico</th><th>Examen</th><th>Nota</th><th class="hide-m">Satisfacción</th><th></th></tr></thead>
+      <tbody id="ex-lista"></tbody></table></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn sec" type="button" id="ex-acta">Acta de evaluación</button>
+      <button class="btn sec hidden" type="button" id="ex-preguntas">Preguntas del examen</button>
+      <span class="gris" style="font-size:13px">La lista se actualiza sola mientras esta ventana está abierta.</span>
+    </div>
+  </div>
+</dialog>
+<dialog id="dlg-pantalla" aria-label="Código QR del examen">
+  <button class="x" type="button" data-close aria-label="Cerrar">×</button>
+  <div class="in">
+    <div class="qr" id="pt-qr"></div>
+    <div>
+      <img src="icons/logo.png" alt="WORTACH" style="height:44px;margin-bottom:3vh">
+      <h2>Examen del adiestramiento</h2>
+      <p id="pt-curso"></p>
+      <p>1. Abre la cámara del móvil y apunta al código.<br>2. Escribe tu DNI o NIE.<br>3. Contesta y pulsa «Entregar».</p>
+      <div class="cuenta" id="pt-cuenta"></div><p id="pt-cuenta-t" style="margin-top:.6vh"></p>
+    </div>
+  </div>
+</dialog>
+
+<!-- Preguntas del examen -->
+<dialog id="dlg-preg" style="width:min(900px,calc(100vw - 24px))">
+  <div class="dh"><div><h2>Preguntas del examen</h2><div class="gris">Marca la respuesta correcta de cada pregunta. Los cambios se aplican a los exámenes que se hagan a partir de ahora; los ya entregados no cambian.</div></div><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="db" style="display:grid;gap:14px">
+    <form id="pr-ajustes" class="caja pad" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+      <label class="c" style="max-width:220px">Nota mínima para apto <span class="gris" style="font-weight:400">sobre 10</span><input name="nota_minima" type="number" min="0" max="10" step="0.5" required></label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px;padding-bottom:10px"><input type="checkbox" name="mostrar_nota" style="accent-color:var(--verde);width:18px;height:18px"> Enseñar la nota al técnico al entregar</label>
+    </form>
+    <div id="pr-aviso"></div>
+    <div id="pr-lista" style="display:grid;gap:12px"></div>
+    <div><button class="btn sec" type="button" id="pr-nueva">+ Nueva pregunta</button></div>
+    <div class="error" id="pr-err"></div>
+  </div>
+  <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="button" id="pr-guardar">Guardar cambios</button></div>
 </dialog>
 
 <dialog id="dlg-cert">
@@ -1391,7 +1483,7 @@ async function abrirCurso(id) {
 }
 async function cargarInscritos() {
   const { data, error } = await sb.from("inscripciones")
-    .select("*, tecnicos(nombre,dni,telefono,email), centros(nombre,email)").eq("curso_id", actual.id).order("created_at");
+    .select("*, tecnicos(nombre,dni,telefono,email), centros(nombre,email), examenes(nota,apto)").eq("curso_id", actual.id).order("created_at");
   if (error) return toast("No se han podido cargar los inscritos");
   const orden = { confirmada: 0, lista_espera: 1, cancelada: 2 };
   inscritos = data.sort((a, b) => orden[a.estado] - orden[b.estado] || a.created_at.localeCompare(b.created_at));
@@ -1411,7 +1503,7 @@ async function cargarInscritos() {
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}"><b>${esc(t.nombre)}</b></a><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
       <td>${esc(t.dni)}</td><td>${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
-      <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}</td>
+      <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">${modoDocente ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
@@ -1507,11 +1599,12 @@ $("#dc-cert").addEventListener("click", async () => {
   pintarDocentes(actual.docente_id);
   f.horas.value = actual.horas || HORAS[actual.tipo];
   certAlumnos = inscritos.filter(i => i.estado === "confirmada");
+  const conExamen = certAlumnos.some(exDe);
   $("#ce-aviso").innerHTML = actual.fecha_fin >= hoy
     ? `<div class="aviso" style="background:var(--ambar-suave);border-color:transparent;font-size:14px">Este curso aún no ha terminado (última jornada: ${fcorta(actual.fecha_fin)}). Puedes generarlos igualmente.</div>` : "";
-  $("#ce-lista").innerHTML = certAlumnos.map(i => `<tr><td style="width:36px"><input type="checkbox" data-i="${i.id}" ${i.asistio === false ? "" : "checked"} style="accent-color:var(--verde);width:17px;height:17px"></td>
+  $("#ce-lista").innerHTML = certAlumnos.map(i => `<tr><td style="width:36px"><input type="checkbox" data-i="${i.id}" ${i.asistio === false || exDe(i)?.apto === false ? "" : "checked"} style="accent-color:var(--verde);width:17px;height:17px"></td>
     <td><b>${esc(i.tecnicos.nombre)}</b><div class="gris" style="font-size:13px">${esc(i.tecnicos.dni)} · ${esc(i.centros?.nombre || "")}</div></td>
-    <td style="text-align:right">${i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : i.asistio ? `<span class="badge b-ok">Asistió</span>` : ""}${dniValido(i.tecnicos.dni) ? "" : ` <span class="badge b-bad">DNI no válido</span>`}</td></tr>`).join("")
+    <td style="text-align:right">${exDe(i) ? `<span class="badge ${exDe(i).apto ? "b-ok" : "b-bad"}">${exDe(i).apto ? "Apto" : "No apto"} ${notaTxt(exDe(i).nota)}</span> ` : conExamen ? `<span class="badge b-gris">Sin examen</span> ` : ""}${i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : i.asistio ? `<span class="badge b-ok">Asistió</span>` : ""}${dniValido(i.tecnicos.dni) ? "" : ` <span class="badge b-bad">DNI no válido</span>`}</td></tr>`).join("")
     || `<tr><td class="vacio-t">No hay técnicos con plaza confirmada.</td></tr>`;
   contarCert();
   $("#dlg-cert").showModal();
@@ -2290,6 +2383,7 @@ async function cargarEstadisticas() {
   if (!cursos.length) await cargarCursos();
   try {
     insStats = await todas(() => sb.from("inscripciones").select("tecnico_id,centro_id,curso_id,estado,asistio,centros(nombre,provincia)"));
+    exStats = await todas(() => sb.from("examenes").select("id,nota,apto,satisfaccion,repetiria,detalle,inscripciones(curso_id)")).catch(() => []);
     cargarMapa().then(() => pintarEstadisticas()).catch(() => {}); botonSinProv();
   } catch { return toast("No se han podido cargar las estadísticas"); }
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0, 4)))].sort().reverse();
@@ -2385,6 +2479,32 @@ function pintarEstadisticas() {
     || `<tr><td colspan="4" class="vacio-t">Sin inscripciones.</td></tr>`;
   pintarMapa(anio, r);
   pintarEmbudo();
+  pintarExamenEst(anio, sede);
+}
+let exStats = [];
+function pintarExamenEst(anio, sede) {
+  $("#es-ex-anio").textContent = anio;
+  const porId = new Map(cursos.map(c => [c.id, c]));
+  const xs = exStats.filter(x => { const c = porId.get(x.inscripciones?.curso_id); return c && c.fecha_inicio.startsWith(anio) && (!sede || c.sede === sede); });
+  if (!xs.length) { $("#es-examen").innerHTML = `<p class="gris" style="margin:0">Todavía no hay exámenes hechos con la plataforma en ${anio}${sede ? " en " + sede : ""}.</p>`; return; }
+  const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
+  const aptos = xs.filter(x => x.apto).length, media = xs.reduce((t, x) => t + +x.nota, 0) / xs.length;
+  const sat = xs.filter(x => x.satisfaccion), satM = sat.length ? sat.reduce((t, x) => t + x.satisfaccion, 0) / sat.length : null;
+  const rep = xs.filter(x => x.repetiria != null), si = rep.filter(x => x.repetiria).length;
+  const fallos = new Map();
+  for (const x of xs) for (const d of x.detalle || []) { const o = fallos.get(d.texto) || { n: 0, mal: 0 }; o.n++; if (d.elegida !== d.correcta) o.mal++; fallos.set(d.texto, o); }
+  const peores = [...fallos.entries()].filter(([, o]) => o.mal).sort((a, b) => b[1].mal / b[1].n - a[1].mal / a[1].n).slice(0, 5);
+  const dist = Array.from({ length: 10 }, (_, k) => sat.filter(x => x.satisfaccion === k + 1).length);
+  $("#es-examen").innerHTML = `<div class="cifras" style="margin:6px 0 14px">
+      <div class="cifra"><b>${xs.length}</b><span>exámenes</span></div>
+      <div class="cifra"><b>${pct(aptos, xs.length)}</b><span>aptos</span><small>${xs.length - aptos} no aptos</small></div>
+      <div class="cifra"><b>${notaTxt(Math.round(media * 100) / 100)}</b><span>nota media</span></div>
+      <div class="cifra"><b>${satM == null ? "—" : notaTxt(Math.round(satM * 10) / 10)}</b><span>satisfacción media</span><small>sobre 10</small></div>
+      <div class="cifra"><b>${pct(si, rep.length)}</b><span>repetiría con WORTACH</span><small>${si} de ${rep.length}</small></div></div>
+    <div class="es-grid" style="margin:0">
+      <div><h4 style="margin:0 0 4px;font-size:14px">Puntuación de la formación</h4>${barras(dist.map((v, k) => ({ l: String(k + 1), v, etq: v || null, tip: `<b>${k + 1} de 10</b><br>${v} respuesta${v === 1 ? "" : "s"}` })), { alto: 170, ancho: Math.round($("#es-examen").clientWidth / 2) || 420 })}</div>
+      <div><h4 style="margin:0 0 8px;font-size:14px">Preguntas que más se fallan</h4>${peores.length ? `<table>${peores.map(([t, o]) => `<tr><td style="font-size:13.5px">${esc(t)}</td><td style="white-space:nowrap;text-align:right"><b>${pct(o.mal, o.n)}</b><div class="gris" style="font-size:12px">${o.mal} de ${o.n}</div></td></tr>`).join("")}</table>` : `<p class="gris">Nadie ha fallado ninguna pregunta.</p>`}</div>
+    </div>`;
 }
 $("#es-anio").addEventListener("change", pintarEstadisticas);
 addEventListener("resize", () => { clearTimeout(window.__rz); window.__rz = setTimeout(() => { if (!$("[data-panel=estadisticas]").classList.contains("hidden")) pintarEstadisticas(); }, 200); });
@@ -2725,6 +2845,8 @@ async function calcularAvisos() {
     if (df < 0 && df >= -30 && c.ocupadas > 0)
       add({ clave: `cert:${c.id}`, nivel: "tarea", titulo: "Generar los certificados", sub: `${et} · terminó hace ${-df} día${df === -1 ? "" : "s"}`, curso: c.id, quitar: true });
   }
+  const { data: exAb } = await sb.from("examen_cursos").select("curso_id").eq("abierto", true);
+  for (const e of exAb || []) { const c = cursos.find(x => x.id === e.curso_id); if (c && diasHasta(c.fecha_fin) < 0) add({ clave: `examen:${c.id}`, nivel: "tarea", titulo: "Examen sin cerrar", sub: `${etiquetaCurso(c)} · el curso ya terminó`, curso: c.id, quitar: true }); }
   const conCargo = vivos.filter(c => { const dc = diasHasta(c.cargo); return dc >= 0 && dc <= 7 && c.ocupadas > 0; });
   if (conCargo.length && !modoDocente) {
     const n = conCargo.reduce((s, c) => s + c.ocupadas, 0), prox = conCargo.map(c => c.cargo).sort()[0];
@@ -3374,6 +3496,218 @@ $("#f-ind").addEventListener("submit", async e => {
     $("#dlg-ind").close(); toast("Documento descargado. Fírmalo con AutoFirma antes de presentarlo");
   } catch (ex) { err.textContent = ex.message || "No se ha podido generar el documento"; }
   b.disabled = false; b.textContent = "Descargar PDF";
+});
+
+/* ---------- examen del curso (QR, seguimiento en directo, acta) ---------- */
+const exDe = i => Array.isArray(i?.examenes) ? (i.examenes[0] || null) : (i?.examenes || null);
+const notaTxt = n => n == null ? "—" : Number(n).toLocaleString("es-ES", { maximumFractionDigits: 2 });
+const urlExamen = tk => new URL(`examen.html?c=${tk}`, location.href).href;
+function qrSvg(texto) {
+  if (!window.qrcode) return `<span>No se ha podido cargar el generador de QR</span>`;
+  const q = qrcode(0, "M"); q.addData(texto); q.make();
+  return q.createSvgTag({ cellSize: 8, margin: 2, scalable: true, alt: "Código QR del examen" });
+}
+let exCurso = null, exEstado = null, exFilas = [], exTimer = null, exAbierta = new Set();
+async function abrirExamen() {
+  exCurso = actual; exAbierta = new Set(); cargarAjustesExamen().catch(() => {});
+  $("#ex-sub").textContent = `${TIPO[exCurso.tipo]} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
+  $("#ex-preguntas").classList.toggle("hidden", !esSuper);
+  $("#ex-lista").innerHTML = `<tr><td colspan="5" class="vacio-t">Cargando…</td></tr>`;
+  $("#dlg-examen").showModal();
+  await refrescarExamen();
+  clearInterval(exTimer); exTimer = setInterval(() => { if ($("#dlg-examen").open) refrescarExamen(true); else clearInterval(exTimer); }, 4000);
+}
+$("#dlg-examen").addEventListener("close", () => clearInterval(exTimer));
+async function refrescarExamen(silencioso) {
+  const id = exCurso.id;
+  const [e, l] = await Promise.all([
+    sb.from("examen_cursos").select("*").eq("curso_id", id).maybeSingle(),
+    sb.from("inscripciones").select("id,estado,asistio,created_at,tecnicos(nombre,dni),centros(nombre),examenes(*)").eq("curso_id", id).eq("estado", "confirmada").order("created_at")
+  ]);
+  if (l.error) { if (!silencioso) toast("No se ha podido cargar el examen"); return; }
+  if (exCurso?.id !== id) return;
+  exEstado = e.data || null; exFilas = l.data || [];
+  pintarExamen();
+}
+function pintarExamen() {
+  const ab = !!exEstado?.abierto, tk = exEstado?.token, fin = exCurso.fecha_fin < addDias(hoy, -2);
+  const hechos = exFilas.filter(exDe), aptos = hechos.filter(i => exDe(i).apto);
+  $("#ex-estado").innerHTML = `<b>${ab && !fin ? "Examen abierto" : "Examen cerrado"}</b><span class="badge ${ab && !fin ? "b-ok" : "b-gris"}">${ab && !fin ? "Pueden entrar con el QR" : "Nadie puede entrar"}</span>`;
+  $("#ex-ayuda").textContent = ab && !fin
+    ? "Proyecta el código y que cada técnico lo escanee con el móvil. Cuando terminen todos, cierra el examen."
+    : fin ? "El curso terminó hace más de dos días: el examen ya no admite entregas."
+    : "Ábrelo cuando vaya a empezar. Solo pueden entrar los técnicos con plaza en este curso, con su DNI.";
+  if (PRACTICA) $("#ex-ayuda").textContent += " En el modo práctica el código no funciona en el móvil: las entregas se simulan solas.";
+  $("#ex-abrir").textContent = ab ? "Cerrar el examen" : "Abrir el examen";
+  $("#ex-abrir").className = ab ? "btn peligro" : "btn";
+  $("#ex-abrir").disabled = fin && !ab;
+  $("#ex-proyectar").disabled = $("#ex-copiar").disabled = !tk;
+  const qr = $("#ex-qr");
+  if (tk) { const u = urlExamen(tk); if (qr.dataset.u !== u) { qr.innerHTML = qrSvg(u); qr.dataset.u = u; } $("#ex-url").textContent = u; $("#ex-url").classList.remove("hidden"); }
+  else { qr.innerHTML = "El código QR aparece al abrir el examen"; delete qr.dataset.u; $("#ex-url").classList.add("hidden"); }
+  qr.classList.toggle("cerrado", !!tk && !(ab && !fin));
+  const media = hechos.length ? hechos.reduce((s, i) => s + +exDe(i).nota, 0) / hechos.length : null;
+  const sat = hechos.filter(i => exDe(i).satisfaccion), satM = sat.length ? sat.reduce((s, i) => s + exDe(i).satisfaccion, 0) / sat.length : null;
+  $("#ex-cifras").innerHTML = `
+    <div class="cifra"><b>${hechos.length} / ${exFilas.length}</b><span>entregados</span></div>
+    <div class="cifra"><b>${aptos.length}</b><span>aptos${hechos.length - aptos.length ? `, ${hechos.length - aptos.length} no aptos` : ""}</span></div>
+    <div class="cifra"><b>${notaTxt(media == null ? null : Math.round(media * 100) / 100)}</b><span>nota media</span></div>
+    <div class="cifra"><b>${satM == null ? "—" : notaTxt(Math.round(satM * 10) / 10)}</b><span>satisfacción media</span></div>`;
+  const L = "abcdefgh";
+  $("#ex-lista").innerHTML = exFilas.map(i => {
+    const x = exDe(i), t = i.tecnicos || {};
+    const fila = `<tr data-ins="${i.id}"><td><b>${esc(t.nombre)}</b><div class="gris" style="font-size:13px">${esc(t.dni)} · ${esc(i.centros?.nombre || "")}</div></td>
+      <td>${x ? `<span class="badge ${x.apto ? "b-ok" : "b-bad"}">${x.apto ? "Apto" : "No apto"}</span><div class="gris" style="font-size:12px">${new Date(x.enviado_at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</div>` : `<span class="badge b-gris">Pendiente</span>${i.asistio === false ? `<div class="gris" style="font-size:12px">no asistió</div>` : ""}`}</td>
+      <td>${x ? `<b>${notaTxt(x.nota)}</b> <span class="gris" style="font-size:13px">${x.aciertos}/${x.total}</span>` : "—"}</td>
+      <td class="hide-m">${x?.satisfaccion ? `${x.satisfaccion}/10${x.repetiria === true ? " · repetiría" : x.repetiria === false ? " · no repetiría" : ""}` : "—"}</td>
+      <td><div class="acc">${x ? `<button class="btn sec mini" type="button" data-ex-ver="${i.id}">${exAbierta.has(i.id) ? "Ocultar" : "Respuestas"}</button><button class="btn sec mini" type="button" data-ex-repetir="${i.id}" title="Borra su examen para que pueda hacerlo otra vez">Repetir</button>` : ""}</div></td></tr>`;
+    const det = x && exAbierta.has(i.id) ? `<tr class="ex-det"><td colspan="5"><ol>${(x.detalle || []).map(d => {
+      const ok = d.elegida === d.correcta, op = k => k == null ? "sin contestar" : `${L[k]}) ${esc((d.opciones || [])[k] ?? "")}`;
+      return `<li><b>${esc(d.texto)}</b><br><span class="${ok ? "bien" : "mal"}">${ok ? "✓" : "✗"} ${op(d.elegida)}</span>${ok ? "" : ` <span class="gris">· correcta: ${op(d.correcta)}</span>`}</li>`; }).join("")}</ol></td></tr>` : "";
+    return fila + det;
+  }).join("") || `<tr><td colspan="5" class="vacio-t">Este curso no tiene técnicos con plaza.</td></tr>`;
+  if ($("#dlg-pantalla").open) pintarPantalla();
+}
+$("#ex-lista").addEventListener("click", e => {
+  const v = e.target.closest("[data-ex-ver]"), r = e.target.closest("[data-ex-repetir]");
+  if (v) { const id = v.dataset.exVer; exAbierta.has(id) ? exAbierta.delete(id) : exAbierta.add(id); pintarExamen(); }
+  if (r) {
+    const i = exFilas.find(x => x.id === r.dataset.exRepetir); if (!i) return;
+    if (!confirm(`¿Borrar el examen de ${i.tecnicos.nombre} para que pueda repetirlo? Su nota actual se pierde.`)) return;
+    r.closest("tr").classList.add("pend");
+    conDeshacer(`Borrando el examen de ${i.tecnicos.nombre}`, async () => {
+      await ejecutar(sb.rpc("examen_repetir", { p_ins: i.id }), "No se ha podido borrar el examen");
+      toast("Puede volver a hacer el examen"); await refrescarExamen(); if (actual?.id === exCurso.id && $("#dlg-curso").open) cargarInscritos();
+    }, { alDeshacer: () => r.closest("tr")?.classList.remove("pend"), alCerrar: PET.rpc("examen_repetir", { p_ins: i.id }) });
+  }
+});
+$("#ex-abrir").addEventListener("click", async e => {
+  const abrir = !exEstado?.abierto, b = e.currentTarget; b.disabled = true;
+  const { data, error } = await sb.rpc("examen_estado", { p_curso: exCurso.id, p_abrir: abrir });
+  b.disabled = false;
+  if (error) return toast(error.message);
+  exEstado = { ...(exEstado || {}), ...data }; pintarExamen();
+  toast(abrir ? "Examen abierto: ya pueden escanear el código" : "Examen cerrado");
+  if (abrir && PRACTICA && sb.simularExamen) sb.simularExamen(exCurso.id);
+  calcularAvisos?.();
+});
+$("#ex-copiar").addEventListener("click", async () => {
+  const u = urlExamen(exEstado.token);
+  try { await navigator.clipboard.writeText(u); toast("Enlace copiado"); } catch { prompt("Copia el enlace:", u); }
+});
+function pintarPantalla() {
+  const u = urlExamen(exEstado.token), q = $("#pt-qr");
+  if (q.dataset.u !== u) { q.innerHTML = qrSvg(u); q.dataset.u = u; }
+  $("#pt-curso").textContent = `${TIPO[exCurso.tipo]} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
+  const n = exFilas.filter(exDe).length;
+  $("#pt-cuenta").textContent = `${n} / ${exFilas.length}`;
+  $("#pt-cuenta-t").textContent = exEstado.abierto ? "exámenes entregados" : "El examen está cerrado";
+}
+$("#ex-proyectar").addEventListener("click", () => {
+  pintarPantalla(); $("#dlg-pantalla").showModal();
+  try { $("#dlg-pantalla").requestFullscreen?.().catch(() => {}); } catch {}
+});
+$("#dlg-pantalla").addEventListener("close", () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); });
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && $("#dlg-pantalla").open) $("#dlg-pantalla").close(); });
+$("#dc-examen").addEventListener("click", abrirExamen);
+
+/* Acta de evaluación: una página para imprimir o guardar en PDF */
+$("#ex-acta").addEventListener("click", async () => {
+  await refrescarExamen();
+  if (!firmantes.length) await cargarFirmantes().catch(() => {});
+  const c = exCurso, docente = firmantes.find(f => f.id === c.docente_id), aprobador = firmantes.find(f => f.rol === "aprobador");
+  const hechos = exFilas.filter(exDe), aptos = hechos.filter(i => exDe(i).apto).length;
+  const base = location.href.replace(/[^/]*$/, "");
+  const filas = exFilas.map((i, n) => { const x = exDe(i); return `<tr><td>${n + 1}</td><td>${esc(i.tecnicos.nombre)}</td><td>${esc(i.tecnicos.dni)}</td><td>${esc(i.centros?.nombre || "")}</td>
+    <td class="c">${x ? `${x.aciertos} / ${x.total}` : "—"}</td><td class="c">${x ? notaTxt(x.nota) : "—"}</td><td class="c"><b>${x ? (x.apto ? "APTO" : "NO APTO") : "NO PRESENTADO"}</b></td></tr>`; }).join("");
+  const w = window.open("", "_blank"); if (!w) return toast("Permite las ventanas emergentes para imprimir");
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Acta de evaluación ${c.sede} ${c.fecha_inicio}</title>
+  <style>@page{size:A4;margin:16mm}body{font:12px/1.45 Arial,sans-serif;color:#111;margin:0}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #268c56;padding-bottom:10px;margin-bottom:14px}
+  header img{height:38px}h1{font-size:18px;margin:0}p{margin:2px 0;color:#444}
+  .datos{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0 0 14px}.datos b{color:#111}
+  table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px 7px;text-align:left}th{background:#e4f1e9;font-size:11px}td.c,th.c{text-align:center}
+  td:first-child{width:22px;text-align:center}.res{margin:12px 0 26px;font-size:13px}
+  .firmas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}.firmas div{border-top:1px solid #333;padding-top:6px;min-height:70px}
+  footer{margin-top:24px;color:#666;font-size:10.5px}</style></head><body>
+  <header><div><h1>Acta de evaluación · Adiestramiento de ${TIPO[c.tipo].toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${esc(c.sede)}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
+  <div class="datos"><span>Docente:</span><b>${esc(docente?.nombre || "—")}</b><span>Horas lectivas:</span><b>${c.horas || HORAS[c.tipo]}</b><span>Nota mínima para apto:</span><b>${exNotaMin == null ? "—" : notaTxt(exNotaMin)} sobre 10</b></div>
+  <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th><th class="c">Aciertos</th><th class="c">Nota</th><th class="c">Resultado</th></tr></thead><tbody>${filas}</tbody></table>
+  <p class="res">Presentados: <b>${hechos.length}</b> de ${exFilas.length} · Aptos: <b>${aptos}</b> · No aptos: <b>${hechos.length - aptos}</b></p>
+  <div class="firmas"><div>El docente<br><b>${esc(docente?.nombre || "")}</b></div><div>Aprobado por<br><b>${esc((aprobador?.nombre || "").toLocaleUpperCase("es-ES"))}</b></div></div>
+  <footer>WORTACH Asistencia Técnica · asistencia@wortach.com · 954 360 572 · Generado el ${new Date().toLocaleDateString("es-ES")}</footer>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+});
+let exNotaMin = null;
+async function cargarAjustesExamen() {
+  const { data } = await sb.from("ajustes").select("valor").eq("clave", "examen").maybeSingle();
+  exNotaMin = data?.valor?.nota_minima ?? null; return data?.valor || { nota_minima: 5, mostrar_nota: true };
+}
+
+/* Preguntas del examen (solo administradores) */
+let prLista = [], prBorradas = [];
+$("#ex-preguntas").addEventListener("click", abrirPreguntas);
+async function abrirPreguntas() {
+  const [{ data, error }, aj] = await Promise.all([sb.from("examen_preguntas").select("*").order("orden").order("created_at"), cargarAjustesExamen()]);
+  if (error) return toast("No se han podido cargar las preguntas");
+  prLista = data.map(p => ({ ...p, opciones: [...(p.opciones || [])] })); prBorradas = [];
+  const f = $("#pr-ajustes"); f.nota_minima.value = aj.nota_minima ?? 5; f.mostrar_nota.checked = aj.mostrar_nota !== false;
+  $("#pr-err").textContent = ""; pintarPreguntas(); $("#dlg-preg").showModal();
+}
+function pintarPreguntas() {
+  const sin = prLista.filter(p => p.activa && p.correcta == null).length;
+  $("#pr-aviso").innerHTML = sin ? `<div class="aviso" style="background:var(--ambar-suave);border-color:transparent;font-size:14px">Falta marcar la respuesta correcta en <b>${sin}</b> pregunta${sin > 1 ? "s" : ""}. Mientras falte, no se puede abrir ningún examen.</div>` : "";
+  const L = "abcdefgh";
+  $("#pr-lista").innerHTML = prLista.map((p, k) => `<div class="pr-item ${p.activa ? "" : "off"} ${p.activa && p.correcta == null ? "sin" : ""}" data-k="${k}">
+    <div class="pr-cab"><b>Pregunta ${k + 1}</b><span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-f="activa" ${p.activa ? "checked" : ""} style="accent-color:var(--verde)"> En el examen</label>
+      <button type="button" class="btn sec mini" data-mv="-1" ${k ? "" : "disabled"} aria-label="Subir">↑</button><button type="button" class="btn sec mini" data-mv="1" ${k < prLista.length - 1 ? "" : "disabled"} aria-label="Bajar">↓</button>
+      <button type="button" class="btn peligro mini" data-quitar-p>Eliminar</button></span></div>
+    <textarea data-f="texto" rows="2" placeholder="Enunciado de la pregunta">${esc(p.texto)}</textarea>
+    ${p.opciones.map((o, j) => `<div class="pr-op"><b style="width:18px">${L[j]})</b><input data-op="${j}" value="${esc(o)}" placeholder="Respuesta ${L[j]}">
+      <span style="display:flex;gap:8px;align-items:center"><label><input type="radio" name="ok-${k}" data-ok="${j}" ${p.correcta === j ? "checked" : ""}> Correcta</label>${p.opciones.length > 2 ? `<button type="button" class="btn sec mini" data-quitar-op="${j}" aria-label="Quitar respuesta">×</button>` : ""}</span></div>`).join("")}
+    ${p.opciones.length < 6 ? `<div><button type="button" class="btn sec mini" data-mas-op>+ Respuesta</button></div>` : ""}
+  </div>`).join("") || `<div class="vacio-t">No hay preguntas.</div>`;
+}
+$("#pr-lista").addEventListener("input", e => {
+  const it = e.target.closest("[data-k]"); if (!it) return; const p = prLista[+it.dataset.k];
+  if (e.target.dataset.f === "texto") p.texto = e.target.value;
+  if (e.target.dataset.op != null) p.opciones[+e.target.dataset.op] = e.target.value;
+});
+$("#pr-lista").addEventListener("change", e => {
+  const it = e.target.closest("[data-k]"); if (!it) return; const p = prLista[+it.dataset.k];
+  if (e.target.dataset.f === "activa") { p.activa = e.target.checked; pintarPreguntas(); }
+  if (e.target.dataset.ok != null) { p.correcta = +e.target.dataset.ok; pintarPreguntas(); }
+});
+$("#pr-lista").addEventListener("click", e => {
+  const it = e.target.closest("[data-k]"); if (!it) return; const k = +it.dataset.k, p = prLista[k];
+  const mv = e.target.closest("[data-mv]"), qo = e.target.closest("[data-quitar-op]");
+  if (mv) { const j = k + +mv.dataset.mv; [prLista[k], prLista[j]] = [prLista[j], prLista[k]]; pintarPreguntas(); }
+  if (qo) { const j = +qo.dataset.quitarOp; p.opciones.splice(j, 1); if (p.correcta === j) p.correcta = null; else if (p.correcta > j) p.correcta--; pintarPreguntas(); }
+  if (e.target.closest("[data-mas-op]")) { p.opciones.push(""); pintarPreguntas(); }
+  if (e.target.closest("[data-quitar-p]") && confirm("¿Eliminar esta pregunta del banco? Si solo quieres quitarla un tiempo, desmarca «En el examen».")) { if (p.id) prBorradas.push(p.id); prLista.splice(k, 1); pintarPreguntas(); }
+});
+$("#pr-nueva").addEventListener("click", () => { prLista.push({ texto: "", opciones: ["", "", ""], correcta: null, activa: true }); pintarPreguntas(); $("#pr-lista").lastElementChild?.scrollIntoView({ block: "center" }); $("#pr-lista").lastElementChild?.querySelector("textarea")?.focus(); });
+$("#pr-guardar").addEventListener("click", async e => {
+  const err = $("#pr-err"), f = $("#pr-ajustes"); err.textContent = "";
+  for (const [k, p] of prLista.entries()) {
+    p.texto = p.texto.trim(); p.opciones = p.opciones.map(o => o.trim());
+    if (!p.texto) return err.textContent = `Falta el enunciado de la pregunta ${k + 1}.`;
+    if (p.opciones.some(o => !o)) return err.textContent = `Hay una respuesta vacía en la pregunta ${k + 1}: escríbela o quítala.`;
+  }
+  const nm = +f.nota_minima.value; if (!(nm >= 0 && nm <= 10)) return err.textContent = "La nota mínima debe estar entre 0 y 10.";
+  const b = e.currentTarget; b.disabled = true; b.textContent = "Guardando…";
+  try {
+    for (const id of prBorradas) await ejecutar(sb.from("examen_preguntas").delete().eq("id", id), "No se ha podido eliminar una pregunta");
+    const filas = prLista.map((p, k) => ({ ...(p.id ? { id: p.id } : {}), orden: k + 1, texto: p.texto, opciones: p.opciones, correcta: p.correcta ?? null, activa: p.activa, updated_at: new Date().toISOString() }));
+    const nuevas = filas.filter(x => !x.id), viejas = filas.filter(x => x.id);
+    if (viejas.length) await ejecutar(sb.from("examen_preguntas").upsert(viejas), "No se han podido guardar las preguntas");
+    if (nuevas.length) await ejecutar(sb.from("examen_preguntas").insert(nuevas), "No se han podido guardar las preguntas nuevas");
+    await ejecutar(sb.from("ajustes").upsert({ clave: "examen", valor: { nota_minima: nm, mostrar_nota: f.mostrar_nota.checked } }), "No se ha podido guardar la nota mínima");
+    exNotaMin = nm; $("#dlg-preg").close(); toast("Preguntas guardadas");
+  } catch (ex) { err.textContent = ex.message; }
+  finally { b.disabled = false; b.textContent = "Guardar cambios"; }
 });
 
 iniciar();

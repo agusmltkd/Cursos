@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Examen · Adiestramiento de tacógrafos WORTACH</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --verde:#268c56; --verde-osc:#1f7448; --verde-suave:#e4f1e9;
+  --papel:#f2f4f1; --panel:#fff; --tinta:#16201b; --gris:#5a6660; --linea:#d9dfdb; --linea-2:#c3ccc7;
+  --ambar:#a86b00; --ambar-suave:#fbf0d9; --rojo:#b8372d; --rojo-suave:#fbe7e4;
+  --f-tit:"Archivo","Arial Black",system-ui,sans-serif; --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);font:17px/1.5 var(--f)}
+.hidden{display:none!important}
+.env{max-width:720px;margin:0 auto;padding:0 16px}
+.cab{background:#fff;border-top:5px solid var(--verde);border-bottom:1px solid var(--linea);position:relative;overflow:hidden}
+.barra{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 6px}
+.barra img{height:32px;width:auto;display:block}
+.tit{padding:8px 0 20px}
+.tit .et{font-size:14px;color:var(--verde-osc);font-weight:600}
+.tit h1{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:clamp(25px,6vw,36px);line-height:1.08;margin:4px 0 4px;letter-spacing:-.01em}
+.tit p{margin:0;color:var(--gris);font-size:15.5px}
+.simb{position:absolute;right:-80px;top:-30px;width:300px;opacity:.07;pointer-events:none}
+main.env{padding:20px 16px 70px}
+.caja{background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:20px;margin-bottom:16px}
+h2{font-family:var(--f-tit);font-stretch:112%;font-size:20px;margin:0 0 6px}
+label.c{display:block;font-weight:600;font-size:15px;margin:14px 0 6px}
+input[type=text]{width:100%;font:inherit;font-size:20px;letter-spacing:.04em;text-transform:uppercase;padding:13px 14px;border:1.5px solid var(--linea-2);border-radius:12px;background:#fff;color:var(--tinta)}
+input[type=text]:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-suave)}
+.btn{border:0;border-radius:12px;padding:15px 20px;font:600 17px var(--f);cursor:pointer;background:var(--verde);color:#fff;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px}
+.btn:hover{background:var(--verde-osc)}
+.btn:disabled{opacity:.6;cursor:default}
+.gris{color:var(--gris)}
+.error{color:var(--rojo);font-size:15px;margin-top:10px;min-height:1px}
+.aviso{text-align:center;padding:34px 20px}
+.aviso .ico{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--verde-suave);color:var(--verde-osc)}
+.aviso.mal .ico{background:var(--rojo-suave);color:var(--rojo)}
+.aviso h2{font-size:24px}
+.aviso p{color:var(--gris);margin:6px 0 0}
+/* progreso */
+.progreso{position:sticky;top:0;z-index:5;background:rgba(242,244,241,.96);backdrop-filter:blur(4px);padding:10px 0 12px;margin:-20px 0 14px}
+.progreso .txt{display:flex;justify-content:space-between;font-size:14px;color:var(--gris);margin-bottom:6px}
+.progreso .txt b{color:var(--tinta)}
+.barra-p{height:8px;border-radius:99px;background:#dfe5e1;overflow:hidden}
+.barra-p i{display:block;height:100%;width:0;background:var(--verde);border-radius:99px;transition:width .25s}
+/* preguntas */
+.preg{background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:18px;margin-bottom:14px;scroll-margin-top:80px}
+fieldset.preg{min-width:0;margin:0 0 14px}
+.preg.falta{border-color:var(--ambar);box-shadow:0 0 0 3px var(--ambar-suave)}
+.preg .num{font:700 13px var(--f);color:var(--verde-osc);letter-spacing:.04em;text-transform:uppercase}
+.preg h3{font-size:17.5px;font-weight:600;margin:4px 0 12px;line-height:1.4}
+.op{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--linea);border-radius:12px;padding:12px 14px;margin-top:8px;cursor:pointer;background:#fff;transition:border-color .12s,background .12s}
+.op:hover{border-color:var(--linea-2)}
+.op input{position:absolute;opacity:0;pointer-events:none}
+.op .l{flex:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--linea-2);display:grid;place-items:center;font:700 14px var(--f);color:var(--gris)}
+.op:has(input:checked){border-color:var(--verde);background:var(--verde-suave)}
+.op:has(input:checked) .l{background:var(--verde);border-color:var(--verde);color:#fff}
+.op:has(input:focus-visible){box-shadow:0 0 0 3px var(--verde-suave)}
+.op span:last-child{padding-top:2px}
+.sec-t{font-family:var(--f-tit);font-stretch:112%;font-size:19px;margin:26px 0 4px}
+.escala{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:10px}
+.escala label,.sino label{position:relative;cursor:pointer}
+.escala input,.sino input{position:absolute;opacity:0;pointer-events:none}
+.escala span,.sino span{display:grid;place-items:center;height:46px;border:1.5px solid var(--linea);border-radius:10px;font-weight:600;background:#fff}
+.escala input:checked + span,.sino input:checked + span{background:var(--verde);border-color:var(--verde);color:#fff}
+.escala input:focus-visible + span,.sino input:focus-visible + span{box-shadow:0 0 0 3px var(--verde-suave)}
+.escala-l{display:flex;justify-content:space-between;font-size:13px;color:var(--gris);margin-top:6px}
+.sino{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;max-width:320px}
+@media (max-width:420px){.escala{grid-template-columns:repeat(5,1fr)}}
+.nota{font-family:var(--f-tit);font-stretch:112%;font-weight:800;font-size:54px;line-height:1;margin:6px 0 2px}
+.res-apto .nota{color:var(--verde)} .res-no .nota{color:var(--rojo)}
+.pie{display:flex;gap:12px;align-items:center;flex-wrap:wrap;color:var(--gris);font-size:14px;border-top:1px solid var(--linea);padding-top:16px;margin-top:20px}
+.pie img{height:22px}
+</style>
+</head>
+<body>
+<header class="cab">
+  <svg class="simb" viewBox="0 0 223 247" aria-hidden="true" fill="none" stroke="#268c56" stroke-width="16"><path d="M8 8H112A103 103 0 0 1 215 111V239H8Z"/><circle cx="111.5" cy="127" r="96"/><path d="M111.5 8V239M8 127H215"/></svg>
+  <div class="env">
+    <div class="barra"><img src="icons/logo.png" alt="WORTACH, el mundo del tacógrafo" width="125" height="32"></div>
+    <div class="tit"><div class="et">Examen del adiestramiento de tacógrafos</div><h1 id="titulo">Cargando…</h1><p id="sub"></p></div>
+  </div>
+</header>
+
+<main class="env">
+  <!-- Aviso (cerrado, enlace mal, etc.) -->
+  <section id="s-aviso" class="caja aviso hidden"><div class="ico" id="av-ico"></div><h2 id="av-tit"></h2><p id="av-txt"></p></section>
+
+  <!-- Identificarse -->
+  <section id="s-dni" class="hidden">
+    <form id="f-dni" class="caja" novalidate>
+      <h2>Identifícate</h2>
+      <p class="gris" style="margin:0">Escribe tu DNI o NIE, el mismo con el que te inscribieron en el curso.</p>
+      <label class="c" for="dni">DNI o NIE</label>
+      <input type="text" id="dni" name="dni" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="12345678Z" required>
+      <div class="error" id="dni-err" role="alert"></div>
+      <button class="btn" type="submit" id="dni-ok">Empezar el examen</button>
+    </form>
+  </section>
+
+  <!-- Examen -->
+  <section id="s-examen" class="hidden">
+    <div class="progreso"><div class="txt"><span id="quien"></span><span><b id="n-resp">0</b> de <span id="n-tot">0</span></span></div><div class="barra-p"><i id="barra"></i></div></div>
+    <form id="f-examen" novalidate>
+      <div id="preguntas"></div>
+      <h2 class="sec-t">Encuesta de satisfacción</h2>
+      <p class="gris" style="margin:0 0 12px;font-size:15px">No cuenta para la nota. Nos ayuda a mejorar.</p>
+      <div class="preg" id="p-satis">
+        <h3>En base a la formación recibida, puntúa del 1 al 10 tu grado de satisfacción.</h3>
+        <div class="escala" id="escala"></div>
+        <div class="escala-l"><span>Nada satisfecho</span><span>Muy satisfecho</span></div>
+      </div>
+      <div class="preg" id="p-repetiria">
+        <h3>¿Volverías a recibir tu formación con WORTACH?</h3>
+        <div class="sino"><label><input type="radio" name="repetiria" value="si"><span>Sí</span></label><label><input type="radio" name="repetiria" value="no"><span>No</span></label></div>
+      </div>
+      <div class="error" id="ex-err" role="alert"></div>
+      <button class="btn" type="submit" id="ex-ok">Entregar el examen</button>
+      <p class="gris" style="font-size:14px;text-align:center;margin:10px 0 0">Una vez entregado no se puede cambiar.</p>
+    </form>
+  </section>
+
+  <!-- Resultado -->
+  <section id="s-fin" class="caja aviso hidden"></section>
+
+  <div class="pie"><img src="icons/logo.png" alt="WORTACH"><span>Asistencia Técnica · 954 360 572</span></div>
+</main>
+
+<script>
+const SUPABASE_URL = "https://ylnwqtgyfeqihggjneba.supabase.co";
+const SUPABASE_KEY = "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const D = s => new Date(s + "T12:00:00");
+const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
+const token = new URLSearchParams(location.search).get("c") || "";
+let dniActual = "", preguntas = [];
+const clave = () => `wortach_examen_${token}_${dniActual}`;
+
+function textoFechas(f) {
+  const d = f.map(D);
+  if (d.every(x => x.getMonth() === d[0].getMonth())) {
+    const n = d.map(x => x.getDate());
+    return (n.length > 1 ? n.slice(0, -1).join(", ") + " y " + n.at(-1) : n[0]) + ` de ${MESES[d[0].getMonth()]} de ${d[0].getFullYear()}`;
+  }
+  return d.map(x => `${x.getDate()} de ${MESES[x.getMonth()]}`).join(", ") + ` de ${d[0].getFullYear()}`;
+}
+function mostrar(id) { ["#s-aviso", "#s-dni", "#s-examen", "#s-fin"].forEach(s => $(s).classList.toggle("hidden", s !== id)); scrollTo(0, 0); }
+const ICO = {
+  ok: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+  mal: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>`,
+  candado: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`
+};
+function aviso(tit, txt, ico = "mal") {
+  $("#av-ico").innerHTML = ICO[ico]; $("#av-tit").textContent = tit; $("#av-txt").textContent = txt;
+  $("#s-aviso").classList.toggle("mal", ico === "mal"); mostrar("#s-aviso");
+}
+
+async function iniciar() {
+  if (!/^[0-9a-f-]{36}$/i.test(token)) { $("#titulo").textContent = "Enlace no válido"; return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente."); }
+  const { data, error } = await sb.rpc("examen_publico", { p_token: token });
+  if (error) { $("#titulo").textContent = "Sin conexión"; return aviso("No se ha podido cargar", "Comprueba la conexión del móvil y vuelve a intentarlo."); }
+  if (!data) { $("#titulo").textContent = "Enlace no válido"; return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente."); }
+  $("#titulo").textContent = `${TIPO[data.tipo] || "Adiestramiento"} · ${data.sede}`;
+  $("#sub").textContent = textoFechas(data.fechas);
+  if (!data.abierto) return aviso("El examen está cerrado", "Espera a que el docente lo abra y vuelve a escanear el código.", "candado");
+  mostrar("#s-dni"); $("#dni").focus();
+}
+
+$("#f-dni").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("#dni").value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if (v.length < 8) { $("#dni-err").textContent = "Escribe el DNI o NIE completo, con su letra."; return; }
+  const b = $("#dni-ok"); b.disabled = true; b.textContent = "Comprobando…"; $("#dni-err").textContent = "";
+  const { data, error } = await sb.rpc("examen_entrar", { p_token: token, p_dni: v });
+  b.disabled = false; b.textContent = "Empezar el examen";
+  if (error) { $("#dni-err").textContent = "No se ha podido comprobar. Revisa la conexión y vuelve a intentarlo."; return; }
+  if (data.estado === "cerrado") return aviso("El examen está cerrado", "El docente ha cerrado el examen de este curso.", "candado");
+  if (data.estado === "no_existe") return aviso("Este enlace no funciona", "Escanea de nuevo el código QR que te muestra el docente.");
+  if (data.estado === "no_inscrito") { $("#dni-err").textContent = "Ese DNI no figura con plaza en este curso. Revísalo o avisa al docente."; return; }
+  dniActual = v;
+  if (data.estado === "hecho") return resultado(data.resultado, data.nombre, true);
+  preguntas = data.preguntas || [];
+  $("#quien").textContent = data.nombre;
+  pintarExamen();
+  mostrar("#s-examen");
+});
+
+function pintarExamen() {
+  const L = "abcdefgh";
+  $("#preguntas").innerHTML = preguntas.map((p, i) => `<fieldset class="preg" id="q-${p.id}" style="margin-inline:0">
+      <legend class="hidden">Pregunta ${i + 1}</legend>
+      <div class="num">Pregunta ${i + 1} de ${preguntas.length}</div><h3>${esc(p.texto)}</h3>
+      ${(p.opciones || []).map((o, k) => `<label class="op"><input type="radio" name="p-${p.id}" value="${k}"><span class="l">${L[k]}</span><span>${esc(o)}</span></label>`).join("")}
+    </fieldset>`).join("");
+  $("#escala").innerHTML = Array.from({ length: 10 }, (_, k) => `<label><input type="radio" name="satis" value="${k + 1}"><span>${k + 1}</span></label>`).join("");
+  $("#n-tot").textContent = preguntas.length;
+  // si se recarga la página, recupera lo que ya había marcado
+  try { const g = JSON.parse(sessionStorage.getItem(clave()) || "{}"); for (const [n, v] of Object.entries(g)) { const el = document.querySelector(`input[name="${CSS.escape(n)}"][value="${CSS.escape(v)}"]`); if (el) el.checked = true; } } catch {}
+  progreso();
+}
+function respuestas() { return Object.fromEntries(preguntas.map(p => [p.id, document.querySelector(`input[name="p-${p.id}"]:checked`)]).filter(([, el]) => el).map(([id, el]) => [id, +el.value])); }
+function progreso() {
+  const n = Object.keys(respuestas()).length;
+  $("#n-resp").textContent = n; $("#barra").style.width = (preguntas.length ? n * 100 / preguntas.length : 0) + "%";
+}
+$("#f-examen").addEventListener("change", e => {
+  const q = e.target.closest(".preg"); q?.classList.remove("falta");
+  progreso();
+  try { const g = JSON.parse(sessionStorage.getItem(clave()) || "{}"); g[e.target.name] = e.target.value; sessionStorage.setItem(clave(), JSON.stringify(g)); } catch {}
+});
+
+$("#f-examen").addEventListener("submit", async e => {
+  e.preventDefault();
+  const r = respuestas(), err = $("#ex-err"); err.textContent = "";
+  const sin = preguntas.filter(p => !(p.id in r));
+  const satis = document.querySelector('input[name="satis"]:checked');
+  const rep = document.querySelector('input[name="repetiria"]:checked');
+  document.querySelectorAll(".preg.falta").forEach(x => x.classList.remove("falta"));
+  if (!satis) { $("#p-satis").classList.add("falta"); $("#p-satis").scrollIntoView({ behavior: "smooth", block: "center" }); err.textContent = "Puntúa la formación del 1 al 10 antes de entregar."; return; }
+  if (sin.length) {
+    sin.forEach(p => $(`#q-${p.id}`).classList.add("falta"));
+    if (!confirm(`Te ${sin.length === 1 ? "queda 1 pregunta" : `quedan ${sin.length} preguntas`} sin contestar y ${sin.length === 1 ? "contará" : "contarán"} como ${sin.length === 1 ? "fallo" : "fallos"}. ¿Entregar igualmente?`)) { $(`#q-${sin[0].id}`).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  } else if (!confirm("¿Entregar el examen? Después no se puede cambiar.")) return;
+  const b = $("#ex-ok"); b.disabled = true; b.textContent = "Entregando…";
+  const { data, error } = await sb.rpc("examen_enviar", { p_token: token, p_dni: dniActual, p_respuestas: r, p_satisfaccion: +satis.value, p_repetiria: rep ? rep.value === "si" : null });
+  b.disabled = false; b.textContent = "Entregar el examen";
+  if (error) { err.textContent = /cerrado/i.test(error.message) ? "El docente ha cerrado el examen. Avísale para que lo vuelva a abrir." : (error.message || "No se ha podido entregar. Revisa la conexión y vuelve a intentarlo."); return; }
+  try { sessionStorage.removeItem(clave()); } catch {}
+  resultado(data.estado === "ok" && "nota" in data ? data : null, $("#quien").textContent, data.estado === "hecho");
+});
+
+function resultado(r, nombre, yaHecho) {
+  const f = $("#s-fin");
+  if (r && r.nota != null) {
+    const apto = !!r.apto, nota = Number(r.nota).toLocaleString("es-ES", { maximumFractionDigits: 2 });
+    f.className = `caja aviso ${apto ? "res-apto" : "res-no mal"}`;
+    f.innerHTML = `<div class="ico">${apto ? ICO.ok : ICO.mal}</div>
+      <h2>${apto ? "Apto" : "No apto"}</h2>
+      <div class="nota">${nota}</div>
+      <p>${r.aciertos} de ${r.total} respuestas correctas</p>
+      <p style="margin-top:14px">${esc(nombre || "")}${yaHecho ? " · Ya habías entregado este examen." : " · Examen entregado. Gracias."}</p>
+      ${apto ? "" : `<p style="margin-top:10px">Habla con el docente.</p>`}`;
+  } else {
+    f.className = "caja aviso";
+    f.innerHTML = `<div class="ico">${ICO.ok}</div><h2>${yaHecho ? "Ya lo habías entregado" : "Examen entregado"}</h2><p>${esc(nombre || "")}. Gracias. El docente te dirá el resultado.</p>`;
+  }
+  mostrar("#s-fin");
+}
+iniciar();
+</script>
+</body>
+</html>

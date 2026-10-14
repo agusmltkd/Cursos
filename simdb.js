@@ -64,7 +64,23 @@
       { email: "zaragoza@ejemplo-practica.es", nombre: "Gestor Zaragoza (práctica)", sede: "Zaragoza", activo: true, ver_historial: false, docente_id: null, created_at: ahora() },
       { email: "docente@ejemplo-practica.es", nombre: "Docente (práctica)", sede: null, activo: true, ver_historial: false, docente_id: firmantes[0].id, created_at: ahora() },
     ];
-    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], ajustes: [{ clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }, { clave: "envio_correos", valor: { activo: false, correo_pruebas: "practica@wortach.com" }, updated_at: ahora() }],
+    // examen: preguntas de ejemplo (no son las reales) y resultados de los cursos recientes
+    const examen_preguntas = [
+      ["Pregunta de ejemplo: ¿cada cuánto hay que renovar el adiestramiento?", ["Cada año", "Cada tres años", "Nunca"], 0],
+      ["Pregunta de ejemplo: ¿qué documento firman los técnicos cada jornada?", ["El certificado", "La hoja de firmas", "La factura"], 1],
+      ["Pregunta de ejemplo: ¿quién firma los certificados?", ["El taller", "El técnico", "El docente y el responsable que aprueba"], 2],
+      ["Pregunta de ejemplo: ¿cuántas jornadas tiene la actualización?", ["Dos", "Cuatro", "Una"], 0],
+      ["Pregunta de ejemplo: ¿cuándo se hace el cargo al taller?", ["El día del curso", "45 días antes", "Un año después"], 1],
+    ].map(([texto, opciones, correcta], k) => ({ id: uid(), orden: k + 1, texto, opciones, correcta, activa: true, created_at: ahora() }));
+    const examenes = [];
+    for (const i of inscripciones) {
+      const c = cursos.find(x => x.id === i.curso_id);
+      if (i.estado !== "confirmada" || i.asistio === false || c.fecha_fin >= hoy || c.fecha_fin < mas(hoy, -130)) continue;
+      const det = examen_preguntas.map(p => ({ texto: p.texto, opciones: p.opciones, correcta: p.correcta, elegida: rnd() < 0.8 ? p.correcta : (p.correcta + 1) % 3 }));
+      const ok = det.filter(d => d.elegida === d.correcta).length, nota = Math.round(ok * 1000 / det.length) / 100;
+      examenes.push({ id: uid(), inscripcion_id: i.id, aciertos: ok, total: det.length, nota, apto: nota >= 5, detalle: det, satisfaccion: 6 + Math.floor(rnd() * 5), repetiria: rnd() < 0.92, enviado_at: c.fecha_fin + "T17:40:00Z" });
+    }
+    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], examen_preguntas, examenes, examen_cursos: [], ajustes: [{ clave: "examen", valor: { nota_minima: 5, mostrar_nota: true }, updated_at: ahora() }, { clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }, { clave: "envio_correos", valor: { activo: false, correo_pruebas: "practica@wortach.com" }, updated_at: ahora() }],
       avisos_descartados: [], admin_estado: [], duplicados_ignorados: [], provincias: [] };
   }
 
@@ -289,6 +305,14 @@
       nueva_clave_copia: () => "clave-de-practica-no-sirve-para-nada",
       estado_copia: () => null,
       importar_inscripciones: () => error("En el modo práctica no se importan archivos."),
+      examen_estado: p => {
+        if (p.p_abrir && db.examen_preguntas.some(q => q.activa && q.correcta == null)) return error("Falta marcar la respuesta correcta en alguna pregunta. Un administrador debe hacerlo en «Preguntas del examen».");
+        let e = db.examen_cursos.find(x => x.curso_id === p.p_curso);
+        if (!e) { e = { curso_id: p.p_curso, token: uid(), abierto: false }; db.examen_cursos.push(e); }
+        e.abierto = !!p.p_abrir; e[p.p_abrir ? "abierto_at" : "cerrado_at"] = ahora();
+        return { abierto: e.abierto, token: e.token };
+      },
+      examen_repetir: p => { db.examenes = db.examenes.filter(x => x.inscripcion_id !== p.p_ins); return null; },
     };
     const ESPERA = () => new Promise(r => setTimeout(r, 120));
     // un taller "se inscribe" desde la web, para ver el panel en directo
@@ -299,8 +323,21 @@
       const t = db.tecnicos.find(x => !db.inscripciones.some(i => i.tecnico_id === x.id && i.curso_id === c.id && i.estado !== "cancelada"));
       if (t) inscribir(c.id, t, db.centros.find(x => x.id === t.centro_id), "web");
     };
+    // con el examen abierto, los técnicos de práctica van entregando uno a uno
+    sim.simularExamen = curso => {
+      const paso = () => {
+        const e = db.examen_cursos.find(x => x.curso_id === curso); if (!e || !e.abierto) return;
+        const i = db.inscripciones.find(x => x.curso_id === curso && x.estado === "confirmada" && !db.examenes.some(y => y.inscripcion_id === x.id)); if (!i) return;
+        const det = db.examen_preguntas.filter(q => q.activa && q.correcta != null).map(q => ({ texto: q.texto, opciones: q.opciones, correcta: q.correcta, elegida: Math.random() < 0.8 ? q.correcta : (q.correcta + 1) % q.opciones.length }));
+        const ok = det.filter(d => d.elegida === d.correcta).length, nota = det.length ? Math.round(ok * 1000 / det.length) / 100 : 0;
+        db.examenes.push({ id: uid(), inscripcion_id: i.id, aciertos: ok, total: det.length, nota, apto: nota >= (db.ajustes.find(a => a.clave === "examen")?.valor?.nota_minima ?? 5), detalle: det, satisfaccion: 7 + Math.floor(Math.random() * 4), repetiria: true, enviado_at: ahora() });
+        setTimeout(paso, 5000);
+      };
+      setTimeout(paso, 4000);
+    };
     return {
       simularWeb: sim.simularWeb,
+      simularExamen: sim.simularExamen,
       __practica: true,
       from: t => new Consulta(sim, t),
       rpc: async (n, p = {}) => { await ESPERA(); const f = RPC[n]; if (!f) return { data: null, error: null }; const r = f(p); return r && typeof r === "object" && "error" in r && "data" in r ? r : { data: r === undefined ? null : r, error: null }; },
