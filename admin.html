@@ -1498,7 +1498,7 @@ async function cargarInscritos() {
     ${modoDocente ? "" : `<div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`}`;
   let n = 0;
   $("#dc-tb").innerHTML = inscritos.map(i => {
-    const t = i.tecnicos, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
+    const t = i.tecnicos || { nombre: "(sin datos)", dni: "" }, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
     return `<tr data-id="${i.id}" style="${i.estado === "cancelada" ? "opacity:.55" : ""}">
       <td class="gris">${i.estado === "confirmada" ? ++n : ""}</td>
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}"><b>${esc(t.nombre)}</b></a><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
