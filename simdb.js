@@ -330,6 +330,7 @@
         const i = db.inscripciones.find(x => x.curso_id === curso && x.estado === "confirmada" && !db.examenes.some(y => y.inscripcion_id === x.id)); if (!i) return;
         const det = db.examen_preguntas.filter(q => q.activa && q.correcta != null).map(q => ({ texto: q.texto, opciones: q.opciones, correcta: q.correcta, elegida: Math.random() < 0.8 ? q.correcta : (q.correcta + 1) % q.opciones.length }));
         const ok = det.filter(d => d.elegida === d.correcta).length, nota = det.length ? Math.round(ok * 1000 / det.length) / 100 : 0;
+        i.asistio = true;
         db.examenes.push({ id: uid(), inscripcion_id: i.id, aciertos: ok, total: det.length, nota, apto: nota >= (db.ajustes.find(a => a.clave === "examen")?.valor?.nota_minima ?? 5), detalle: det, satisfaccion: 7 + Math.floor(Math.random() * 4), repetiria: true, enviado_at: ahora() });
         setTimeout(paso, 5000);
       };
