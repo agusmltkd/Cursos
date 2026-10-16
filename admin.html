@@ -1395,7 +1395,8 @@ $$("nav.tabs button").forEach(b => b.addEventListener("click", () => abrirTab(b.
 /* ---------- datos de cursos ---------- */
 let cursos = [], anioPanel = hoy.slice(0,4), porRenovar = 0;
 async function cargarCursos() {
-  const { data, error } = await sb.from("cursos").select("*, inscripciones(estado,asistio,examenes(apto)), examen_cursos(abierto,cerrado_at), curso_tramites(tramite,hecho_at,hecho_por)").order("fecha_inicio");
+  let { data, error } = await sb.from("cursos").select("*, inscripciones(estado,asistio,examenes(apto)), examen_cursos(abierto,cerrado_at), curso_tramites(tramite,hecho_at,hecho_por)").order("fecha_inicio");
+  if (error) ({ data, error } = await sb.from("cursos").select("*, inscripciones(estado,asistio)").order("fecha_inicio"));   // por si falla lo de examen y trámites, que al menos carguen los cursos
   if (error) return toast("No se han podido cargar los cursos");
   cursos = data.map(c => ({ ...c,
     ocupadas: c.inscripciones.filter(i => i.estado === "confirmada").length,
