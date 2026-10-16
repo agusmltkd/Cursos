@@ -80,7 +80,7 @@
       const ok = det.filter(d => d.elegida === d.correcta).length, nota = Math.round(ok * 1000 / det.length) / 100;
       examenes.push({ id: uid(), inscripcion_id: i.id, aciertos: ok, total: det.length, nota, apto: nota >= 5, detalle: det, satisfaccion: 6 + Math.floor(rnd() * 5), repetiria: rnd() < 0.92, enviado_at: c.fecha_fin + "T17:40:00Z" });
     }
-    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], examen_preguntas, examenes, examen_cursos: [], ajustes: [{ clave: "examen", valor: { nota_minima: 5, mostrar_nota: true }, updated_at: ahora() }, { clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }, { clave: "envio_correos", valor: { activo: false, correo_pruebas: "practica@wortach.com" }, updated_at: ahora() }],
+    return { cursos, centros, tecnicos, inscripciones, firmantes, correos, admins, auditoria: [], plantillas_correo: [], examen_preguntas, examenes, examen_cursos: [], curso_tramites: [], ajustes: [{ clave: "examen", valor: { nota_minima: 5, mostrar_nota: true }, updated_at: ahora() }, { clave: "cargos", valor: { precio_actualizacion: 180, precio_iniciacion: 420, iva: 21, correo_contabilidad: "contabilidad@ejemplo-practica.es" }, updated_at: ahora() }, { clave: "envio_correos", valor: { activo: false, correo_pruebas: "practica@wortach.com" }, updated_at: ahora() }],
       avisos_descartados: [], admin_estado: [], duplicados_ignorados: [], provincias: [] };
   }
 
@@ -141,7 +141,7 @@
     return true;
   };
   const parseOr = s => partir(s).map(p => { const m = p.match(/^(.+?)\.(eq|neq|cs|gt|lt|is)\.(.*)$/); if (!m) return ["eq", "__", "__"]; let [, c, op, v] = m; if (op === "cs") v = v.replace(/^\{|\}$/g, "").split(","); if (op === "is" && v === "null") v = null; return [op, c, v]; });
-  const CLAVES = { plantillas_correo: ["tipo"], ajustes: ["clave"], avisos_descartados: ["email", "clave"], admin_estado: ["email"], admins: ["email"] };
+  const CLAVES = { curso_tramites: ["curso_id", "tramite"], examen_cursos: ["curso_id"], plantillas_correo: ["tipo"], ajustes: ["clave"], avisos_descartados: ["email", "clave"], admin_estado: ["email"], admins: ["email"] };
 
   class Consulta {
     constructor(sim, tabla) { this.sim = sim; this.t = tabla; this.f = []; this.ord = []; this.op = "select"; this.sel = "*"; }

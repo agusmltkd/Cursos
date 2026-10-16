@@ -18,7 +18,7 @@
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
-<script src="simdb.js?v=20261016a"></script>
+<script src="simdb.js?v=20261016b"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -352,7 +352,24 @@ html.practica .cab{top:38px}
 @media (max-width:1160px){.vivo{font-size:0;padding:5px}.vivo::before{margin:0}}
 tr.recien td{animation:recien 3s ease-out}
 @keyframes recien{from{background:#fff3c4}to{background:transparent}}
-body.docente .col-cargo{display:none}
+body.docente .col-cargo,body.docente .col-tram{display:none}
+.tr-mini{display:flex;align-items:center;gap:8px;font-size:13px}.tr-barra{width:56px;height:7px;border-radius:9px;background:var(--linea);overflow:hidden;display:inline-block}.tr-barra i{display:block;height:100%;background:var(--verde)}
+.tr-av{font-size:12px;margin-top:2px;white-space:nowrap}.tr-av.mal{color:var(--rojo)}.tr-av.aviso{color:var(--ambar)}
+.tram{border:1px solid var(--linea);border-radius:16px;padding:14px 16px;margin:0 0 16px;background:#fff}
+.tram-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tram-cab b{font-family:var(--f-tit);font-stretch:112%;font-size:16px}.tram-n{display:flex;align-items:center;font-size:14px;color:var(--gris)}
+.tram-barra{width:160px;height:8px;border-radius:9px;background:var(--linea);overflow:hidden;margin-left:12px}.tram-barra i{display:block;height:100%;background:var(--verde)}
+.tram-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.paso{border:1px solid var(--linea);border-radius:12px;padding:10px 12px;display:grid;gap:4px;align-content:start;position:relative;background:#fff}
+.paso .ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff}
+.paso.ok{background:var(--verde-suave);border-color:#cfe5d8}.paso.ok .ic{background:var(--verde)}
+.paso.pend .ic{background:#fff;border:2px solid var(--linea-2);color:var(--gris)}
+.paso.aviso{background:var(--ambar-suave);border-color:#f0dcae}.paso.aviso .ic{background:var(--ambar)}
+.paso.mal{background:var(--rojo-suave);border-color:#f0c4be}.paso.mal .ic{background:var(--rojo)}
+.paso h5{margin:2px 0 0;font-size:13.5px}.paso small{color:var(--gris);font-size:12px;line-height:1.35}
+.paso .auto{position:absolute;top:10px;right:10px;font-size:10.5px;color:var(--gris);border:1px solid var(--linea);border-radius:99px;padding:0 6px;background:#fff}
+.paso .acc-p{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+@media (max-width:1100px){.tram-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:640px){.tram-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* examen */
 .ex-cab{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start}
 .ex-qr{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:12px;aspect-ratio:1;display:grid;place-items:center;text-align:center;color:var(--gris);font-size:13.5px}
@@ -494,7 +511,7 @@ body.docente .col-cargo{display:none}
         <button class="btn" id="nuevo-curso">Nuevo curso</button>
       </div>
       <div class="caja scroll"><table>
-        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Plazas</th><th class="hide-m">En espera</th><th class="hide-m col-cargo">Cargo</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th>Plazas</th><th class="hide-m">En espera</th><th class="hide-m col-cargo">Cargo</th><th class="hide-m col-tram">Trámites</th><th>Estado</th></tr></thead>
         <tbody id="tb-cursos"></tbody>
       </table></div>
     </section>
@@ -618,6 +635,7 @@ body.docente .col-cargo{display:none}
   <div class="dh"><div><span id="dc-tipo"></span><h2 id="dc-titulo" style="margin-top:6px"></h2><div class="gris" id="dc-sub"></div></div><button class="x" data-close aria-label="Cerrar">×</button></div>
   <div class="db">
     <div class="resumen-c" id="dc-resumen"></div>
+    <div id="dc-tramites"></div>
     <div class="toolbar">
       <button class="btn" id="dc-add">Añadir asistente</button>
       <button class="btn" id="dc-cert">Generar certificados</button>
@@ -1377,7 +1395,7 @@ $$("nav.tabs button").forEach(b => b.addEventListener("click", () => abrirTab(b.
 /* ---------- datos de cursos ---------- */
 let cursos = [], anioPanel = hoy.slice(0,4), porRenovar = 0;
 async function cargarCursos() {
-  const { data, error } = await sb.from("cursos").select("*, inscripciones(estado)").order("fecha_inicio");
+  const { data, error } = await sb.from("cursos").select("*, inscripciones(estado,asistio,examenes(apto)), examen_cursos(abierto,cerrado_at), curso_tramites(tramite,hecho_at,hecho_por)").order("fecha_inicio");
   if (error) return toast("No se han podido cargar los cursos");
   cursos = data.map(c => ({ ...c,
     ocupadas: c.inscripciones.filter(i => i.estado === "confirmada").length,
@@ -1465,8 +1483,8 @@ function pintarCursos() {
       <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
       <td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
       <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}${c.ocupadas > c.cupo_max ? ` <span class="badge b-azul">+${c.ocupadas - c.cupo_max}</span>` : ""}</span></div></td>
-      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m col-cargo">${pasado ? "—" : fcorta(c.cargo)}</td><td>${estadoBadge(c)}</td></tr>`;
-  }).join("") || `<tr><td colspan="7" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
+      <td class="hide-m">${c.espera || "—"}</td><td class="hide-m col-cargo">${pasado ? "—" : fcorta(c.cargo)}</td><td class="hide-m col-tram">${celdaTramites(c)}</td><td>${estadoBadge(c)}</td></tr>`;
+  }).join("") || `<tr><td colspan="8" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
 }
 $("#tb-cursos").addEventListener("keydown", e => { if (e.key === "Enter") { const tr = e.target.closest("tr[data-ver]"); if (tr) abrirCurso(tr.dataset.ver); } });
 
@@ -1496,6 +1514,7 @@ async function cargarInscritos() {
     <div class="cifra"><b>${esp}</b><span>en lista de espera</span></div>
     <div class="cifra ${conf < actual.quorum_min ? "alerta" : ""}"><b>${actual.quorum_min}</b><span>quórum mínimo${conf < actual.quorum_min ? `, faltan ${actual.quorum_min - conf}` : ", alcanzado"}</span></div>
     ${modoDocente ? "" : `<div class="cifra"><b style="font-size:20px">${fcorta(actual.cargo)}</b><span>cargo${dCargo > 0 ? `, en ${dCargo} días` : dCargo === 0 ? ", hoy" : ""}</span></div>`}`;
+  pintarTramites();
   let n = 0;
   $("#dc-tb").innerHTML = inscritos.map(i => {
     const t = i.tecnicos || { nombre: "(sin datos)", dni: "" }, est = { confirmada: `<span class="badge b-ok">Confirmada</span>`, lista_espera: `<span class="badge b-warn">En espera</span>`, cancelada: `<span class="badge b-gris">Baja</span>` }[i.estado];
@@ -1670,6 +1689,7 @@ $("#f-cert").addEventListener("submit", async e => {
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     $("#dlg-cert").close(); toast(alumnos.length === 1 ? "Certificado descargado" : `${alumnos.length} certificados descargados`);
     descartar(`cert:${actual.id}`);
+    if (!modoDocente && await marcarTramite(actual.id, "certificados")) refrescarTramites();
   } catch (ex) { $("#ce-err").textContent = ex.message || "No se han podido generar los certificados."; }
   finally { btn.disabled = false; btn.textContent = txt; }
 });
@@ -2854,9 +2874,11 @@ async function calcularAvisos() {
 
     if (!c.docente_id && c.ocupadas > 0 && d <= 30 && diasHasta(c.fecha_fin) >= -30)
       add({ clave: `docente:${c.id}`, nivel: "tarea", titulo: "Curso sin docente asignado", sub: `${et} · hace falta para los certificados`, curso: c.id, quitar: true });
-    const df = diasHasta(c.fecha_fin);
-    if (df < 0 && df >= -30 && c.ocupadas > 0)
-      add({ clave: `cert:${c.id}`, nivel: "tarea", titulo: "Generar los certificados", sub: `${et} · terminó hace ${-df} día${df === -1 ? "" : "s"}`, curso: c.id, quitar: true });
+    if (!modoDocente && tramitesVivos(c)) {
+      const e = estadoTramites(c), mal = e.filter(x => x.estado === "mal"), ind = e.find(x => x.k === "industria" && x.estado === "aviso");
+      if (mal.length) add({ clave: `tram:${c.id}:${mal.map(x => x.k).join(",")}`, nivel: mal.some(x => x.k === "industria") ? "urgente" : "tarea", titulo: `Trámites atrasados: ${mal.map(x => x.t.toLowerCase()).join(", ")}`, sub: et, curso: c.id, quitar: true });
+      if (ind) add({ clave: `tramind:${c.id}`, nivel: "tarea", titulo: "Presentar la comunicación a Industria", sub: `${et} · ${ind.detalle}`, curso: c.id, quitar: true });
+    }
   }
   const { data: exAb } = await sb.from("examen_cursos").select("curso_id").eq("abierto", true);
   for (const e of exAb || []) { const c = cursos.find(x => x.id === e.curso_id); if (c && diasHasta(c.fecha_fin) < 0) add({ clave: `examen:${c.id}`, nivel: "tarea", titulo: "Examen sin cerrar", sub: `${etiquetaCurso(c)} · el curso ya terminó`, curso: c.id, quitar: true }); }
@@ -3324,6 +3346,8 @@ $("#cg-pdf").addEventListener("click", () => {
 });
 $("#cg-enviar").addEventListener("click", async () => {
   if (!filasCargos.length) return toast("No hay cargos en este periodo");
+  for (const id of new Set(filasCargos.map(f => f.curso.id))) await marcarTramite(id, "cobro");
+  cargarCursos();
   const txt = textoCargos(), [d, h] = periodoCargos(), para = ajCargos.correo_contabilidad || "";
   try { await navigator.clipboard.writeText(txt); } catch {}
   const asunto = `Cargos de adiestramientos del ${fcorta(d)} al ${fcorta(h)}`;
@@ -3725,6 +3749,95 @@ $("#pr-guardar").addEventListener("click", async e => {
     exNotaMin = nm; exEnlace = enlace || null; if ($("#dlg-examen").open) { $("#ex-qr").dataset.u = ""; pintarExamen(); } $("#dlg-preg").close(); toast("Preguntas guardadas");
   } catch (ex) { err.textContent = ex.message; }
   finally { b.disabled = false; b.textContent = "Guardar cambios"; }
+});
+
+/* ---------- trámites de cada curso ---------- */
+const TRAMITES = [
+  { k: "industria", t: "Comunicación a Industria", plazo: c => addDias(c.fecha_inicio, -21), hecho: "Presentada", boton: "Marcar presentada" },
+  { k: "cobro", t: "Cobro a los talleres", plazo: c => addDias(c.fecha_inicio, -45), hecho: "Enviado a contabilidad", boton: "Marcar enviado" },
+  { k: "examen", t: "Examen", plazo: c => c.fecha_fin, auto: true },
+  { k: "asistencia", t: "Asistencia", plazo: c => c.fecha_fin, auto: true },
+  { k: "certificados", t: "Certificados", plazo: c => addDias(c.fecha_fin, 7), hecho: "Generados", boton: "Marcar hechos" },
+  { k: "envio", t: "Hoja de firmas y acta a Industria", plazo: c => addDias(c.fecha_fin, 15), hecho: "Enviadas", boton: "Marcar enviadas" },
+];
+// los plazos vencidos antes de estrenar la lista no se marcan como atrasados (se hicieron fuera del panel)
+const TRAMITES_DESDE = "2026-10-16";
+const unoDe = v => Array.isArray(v) ? (v[0] || null) : (v || null);
+const quienTram = e => { const n = String(e || "").split("@")[0].split(/[._-]/)[0]; return n ? n[0].toUpperCase() + n.slice(1) : ""; };
+// solo cursos no cancelados con gente; en la lista, los terminados hace más de 60 días ya no cuentan
+const conTramites = c => c.estado !== "cancelado" && (c.inscripciones || []).some(i => i.estado === "confirmada");
+const tramitesVivos = c => conTramites(c) && c.fecha_fin >= addDias(hoy, -60);
+function estadoTramites(c) {
+  const conf = (c.inscripciones || []).filter(i => i.estado === "confirmada");
+  const presentes = conf.filter(i => i.asistio !== false);
+  const hechos = new Map((c.curso_tramites || []).map(t => [t.tramite, t]));
+  const ex = unoDe(c.examen_cursos), entregados = conf.filter(i => exDe(i)).length, marcados = conf.filter(i => i.asistio != null).length;
+  const terminado = c.fecha_fin <= hoy;
+  return TRAMITES.map(T => {
+    const plazo = T.plazo(c), dp = diasHasta(plazo);
+    let ok, detalle;
+    if (T.k === "examen") {
+      ok = entregados > 0 && entregados >= presentes.length && !ex?.abierto;
+      detalle = entregados || ex ? `${entregados} de ${presentes.length} entregados${ex?.abierto ? " · abierto" : ""}` : "";
+    } else if (T.k === "asistencia") {
+      ok = conf.length > 0 && marcados === conf.length;
+      detalle = marcados ? `${marcados} de ${conf.length} marcada` : "";
+    } else {
+      const h = hechos.get(T.k); ok = !!h;
+      detalle = h ? `${T.hecho} el ${fcorta(h.hecho_at.slice(0, 10))}${h.hecho_por ? " · " + quienTram(h.hecho_por) : ""}` : "";
+    }
+    let estado = "ok";
+    if (!ok) {
+      if (T.auto && !terminado) { estado = "pend"; detalle = detalle || "Se hace el último día del curso"; }
+      else if (plazo < TRAMITES_DESDE) { estado = "pend"; detalle = `Sin marcar · anterior a la lista de trámites${detalle ? " · " + detalle : ""}`; }
+      else if (dp < 0) { estado = "mal"; detalle = `Atrasado: era antes del ${fcorta(plazo)}${detalle ? " · " + detalle : ""}`; }
+      else if (dp <= 7) { estado = "aviso"; detalle = `${dp === 0 ? "Vence hoy" : dp === 1 ? "Queda 1 día" : `Quedan ${dp} días`} (${fcorta(plazo)})${detalle ? " · " + detalle : ""}`; }
+      else { estado = "pend"; detalle = `Antes del ${fcorta(plazo)}${detalle ? " · " + detalle : ""}`; }
+    }
+    return { ...T, ok, estado, detalle, plazo };
+  });
+}
+function celdaTramites(c) {
+  if (!tramitesVivos(c)) return `<span class="gris">—</span>`;
+  const e = estadoTramites(c), n = e.filter(x => x.ok).length, mal = e.find(x => x.estado === "mal"), av = e.find(x => x.estado === "aviso");
+  const aviso = mal || av;
+  return `<div class="tr-mini"><span class="tr-barra"><i style="width:${n / e.length * 100}%"></i></span><span><b>${n}</b>/${e.length}</span></div>${aviso ? `<div class="tr-av ${aviso.estado}">● ${esc(aviso.t)}${aviso.estado === "mal" ? ": atrasado" : ": " + (diasHasta(aviso.plazo) === 0 ? "hoy" : `${diasHasta(aviso.plazo)} día${diasHasta(aviso.plazo) === 1 ? "" : "s"}`)}</div>` : ""}`;
+}
+function pintarTramites() {
+  const z = $("#dc-tramites"); if (!z) return;
+  const c = { ...actual, inscripciones: inscritos };
+  if (modoDocente || !conTramites(c)) { z.innerHTML = ""; return; }
+  const e = estadoTramites(c), n = e.filter(x => x.ok).length;
+  const IC = { ok: "✓", mal: "!", aviso: "!" };
+  z.innerHTML = `<div class="tram"><div class="tram-cab"><b>Trámites del curso</b><span class="tram-n">${n} de ${e.length} hechos<span class="tram-barra"><i style="width:${n / e.length * 100}%"></i></span></span></div>
+    <div class="tram-grid">${e.map((x, k) => {
+      let btn = "";
+      if (!x.auto) btn = x.ok ? `<button class="btn sec mini" type="button" data-tram-quitar="${x.k}">Deshacer</button>`
+        : `${x.k === "certificados" ? `<button class="btn mini" type="button" data-tram-ir="cert">Generar</button> ` : ""}<button class="btn ${x.estado === "pend" || x.k === "certificados" ? "sec" : ""} mini" type="button" data-tram-hacer="${x.k}">${x.boton}</button>`;
+      else if (!x.ok && x.k === "examen" && c.fecha_inicio <= hoy) btn = `<button class="btn sec mini" type="button" data-tram-ir="examen">Ir al examen</button>`;
+      return `<div class="paso ${x.estado}"><span class="ic">${IC[x.estado] || k + 1}</span>${x.auto ? `<span class="auto">automático</span>` : ""}<h5>${esc(x.t)}</h5><small>${esc(x.detalle)}</small>${btn ? `<div class="acc-p">${btn}</div>` : ""}</div>`;
+    }).join("")}</div></div>`;
+}
+async function marcarTramite(cursoId, tramite, hecho = true) {
+  const q = hecho ? sb.from("curso_tramites").upsert({ curso_id: cursoId, tramite, hecho_at: new Date().toISOString(), hecho_por: miEmail || null }, { onConflict: "curso_id,tramite" })
+    : sb.from("curso_tramites").delete().eq("curso_id", cursoId).eq("tramite", tramite);
+  const { error } = await q;
+  if (error) { toast("No se ha podido guardar el trámite"); return false; }
+  return true;
+}
+async function refrescarTramites() {
+  const id = actual?.id; await cargarCursos();
+  if (id && $("#dlg-curso").open && actual?.id === id) { actual = cursos.find(c => c.id === id) || actual; pintarTramites(); }
+}
+$("#dc-tramites").addEventListener("click", async e => {
+  const h = e.target.closest("[data-tram-hacer]"), q = e.target.closest("[data-tram-quitar]"), ir = e.target.closest("[data-tram-ir]");
+  if (ir) return ir.dataset.tramIr === "cert" ? $("#dc-cert").click() : $("#dc-examen").click();
+  if (h || q) {
+    const k = (h || q).dataset[h ? "tramHacer" : "tramQuitar"], t = TRAMITES.find(x => x.k === k);
+    (h || q).disabled = true;
+    if (await marcarTramite(actual.id, k, !!h)) toast(h ? `${t.t}: hecho` : `${t.t}: vuelve a estar pendiente`);
+    refrescarTramites();
+  }
 });
 
 iniciar();
