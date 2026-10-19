@@ -2002,7 +2002,7 @@ async function cargarCorreos() {
     return `<tr><td>${new Date(x.created_at).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</td>
       <td>${TIPOCORREO[x.tipo]}</td><td>${esc(t?.nombre)}<div class="gris" style="font-size:13px">${esc(t?.email || "sin correo")}</div></td>
       <td class="hide-m">${cu ? `${TIPO[cu.tipo]}, ${cu.sede}, ${textoFechas(cu.fechas)}` : ""}</td>
-      <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span>
+      <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span>${x.estado === "descartado" && x.error ? `<div class="gris" style="font-size:12px;margin-top:3px">${esc(x.error)}</div>` : ""}
         ${esSuper && (x.estado === "pendiente" || x.estado === "error") ? `<div class="acc-correo"><button class="btn sec mini" type="button" data-correo-probar="${x.id}" title="Te llega a ti este mismo correo; sigue pendiente en la cola">Probar</button><button class="btn mini" type="button" data-correo-enviar="${x.id}" title="Se envía ya al técnico (y al centro en copia), aunque el envío esté desactivado">Enviar ya</button></div>` : ""}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Aún no se ha generado ningún correo.</td></tr>`;
 }
