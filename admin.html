@@ -702,15 +702,15 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <div class="grid2">
         <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" class="mayus" required autocomplete="off" aria-describedby="fa-sug"></label>
         <div class="sug-taller" id="fa-sug" role="region" aria-live="polite" hidden style="grid-column:1/-1"></div>
-        <label class="c">Persona de contacto<input name="contacto" class="mayus"></label>
-        <label class="c">Teléfono del centro<input name="tel_contacto"></label>
-        <label class="c" style="grid-column:1/-1">Correo del centro técnico<input name="email_centro" type="email"></label>
+        <label class="c">Persona de contacto<input name="contacto" class="mayus" required></label>
+        <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" required></label>
+        <label class="c" style="grid-column:1/-1">Correo del centro técnico <span class="gris" style="font-weight:400">recibe copia de la confirmación</span><input name="email_centro" type="email" required></label>
       </div>
       <div class="grid2">
         <label class="c" style="grid-column:1/-1">Nombre y apellidos<input name="nombre" class="mayus" required></label>
         <label class="c">DNI o NIE<input name="dni" required></label>
-        <label class="c">Teléfono<input name="telefono"></label>
-        <label class="c" style="grid-column:1/-1">Correo <span class="gris" style="font-weight:400">si lo pones, recibe la confirmación</span><input name="email" type="email"></label>
+        <label class="c">Teléfono<input name="telefono" type="tel" required></label>
+        <label class="c" style="grid-column:1/-1">Correo <span class="gris" style="font-weight:400">recibe la confirmación</span><input name="email" type="email" required></label>
       </div>
       <label style="display:flex;gap:9px;align-items:flex-start;font-size:14px;cursor:pointer"><input type="checkbox" name="forzar" style="accent-color:var(--verde);width:18px;height:18px;margin-top:2px"> <span>Darle plaza aunque el curso esté completo <span class="gris">(si no, entra en lista de espera)</span></span></label>
       <div class="error" id="fa-err"></div>
@@ -1771,12 +1771,22 @@ const sugTallerAdd = (() => {
   const norm = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[.,\-'"]/g, "").replace(/\s+/g, " ").trim();
   let temp, pedido = 0, lista = [], elegido = "";
   const ocultar = () => { box.hidden = true; box.innerHTML = ""; };
+  // rellena el contacto del taller si lo tenemos y aún está vacío
+  async function rellenar(nombre) {
+    const { data: c } = await sb.from("centros").select("contacto,telefono,email").eq("nombre", nombre).maybeSingle();
+    if (!c) return;
+    if (!f.contacto.value && c.contacto) f.contacto.value = c.contacto.toLocaleUpperCase("es-ES");
+    if (!f.tel_contacto.value && c.telefono) f.tel_contacto.value = c.telefono;
+    if (!f.email_centro.value && c.email) f.email_centro.value = c.email;
+  }
   async function buscar() {
     const q = inp.value.trim();
     if (q.length < 3 || norm(q) === norm(elegido)) return ocultar();
     const n = ++pedido, { data, error } = await sb.rpc("buscar_talleres", { p_q: q });
     if (n !== pedido || inp.value.trim() !== q) return;
-    if (error || !data?.length || data.some(x => norm(x.nombre) === norm(q))) return ocultar();
+    const exacto = (data || []).find(x => norm(x.nombre) === norm(q));
+    if (exacto) { elegido = inp.value; rellenar(exacto.nombre); }
+    if (error || !data?.length || exacto) return ocultar();
     lista = data;
     box.innerHTML = `<p>¿Es alguno de estos? Ya está registrado:</p><div class="ops">${data.map((x, i) =>
       `<button type="button" data-i="${i}"><b>${esc(x.nombre)}</b>${x.provincia ? `<span>${esc(x.provincia)}</span>` : ""}</button>`).join("")}</div>
@@ -1790,9 +1800,7 @@ const sugTallerAdd = (() => {
     if (b) {
       const x = lista[+b.dataset.i];
       inp.value = x.nombre.toLocaleUpperCase("es-ES"); elegido = inp.value; ocultar();
-      // rellena el contacto del taller si lo tenemos y aún está vacío
-      const { data: c } = await sb.from("centros").select("contacto,telefono,email").eq("nombre", x.nombre).maybeSingle();
-      if (c) { if (!f.contacto.value && c.contacto) f.contacto.value = c.contacto.toLocaleUpperCase("es-ES"); if (!f.tel_contacto.value && c.telefono) f.tel_contacto.value = c.telefono; if (!f.email_centro.value && c.email) f.email_centro.value = c.email; }
+      await rellenar(x.nombre);
       f.nombre.focus();
     } else if (e.target.closest(".no")) { elegido = inp.value; ocultar(); inp.focus(); }
   });
