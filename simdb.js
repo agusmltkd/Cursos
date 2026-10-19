@@ -291,6 +291,12 @@
         return out;
       },
       duplicados_tecnicos: () => [],
+      buscar_talleres: p => {
+        const n = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+        const q = n(p.p_q); if (q.length < 3) return [];
+        const ok = c => n(c.nombre).includes(q) || n(c.nombre).replace(/ /g, "").includes(q.replace(/ /g, "")) || (base(c.nombre) && base(c.nombre).includes(base(p.p_q)) && base(p.p_q).length >= 3);
+        return db.centros.filter(ok).sort((a, b) => (n(b.nombre).startsWith(q) - n(a.nombre).startsWith(q)) || a.nombre.localeCompare(b.nombre)).slice(0, 6).map(c => ({ nombre: c.nombre, provincia: c.provincia || null }));
+      },
       regenerar_enlace: p => { const c = db.centros.find(x => x.id === p.p_centro); if (c) c.token = uid(); return c?.token || null; },
       cuentas_lista: () => db.admins.map(a => ({ ...a, docente: db.firmantes.find(f => f.id === a.docente_id)?.nombre || null, ultimo_acceso: a.email === sim.email ? ahora() : null, tiene_usuario: true })),
       cuentas_lista2: () => db.admins.map(a => ({ nivel: "admin", ...a, docente: db.firmantes.find(f => f.id === a.docente_id)?.nombre || null, ultimo_acceso: a.email === sim.email ? ahora() : null, tiene_usuario: true })),

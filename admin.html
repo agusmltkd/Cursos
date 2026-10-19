@@ -18,7 +18,7 @@
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
-<script src="simdb.js?v=20261016b"></script>
+<script src="simdb.js?v=20261019a"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -226,6 +226,13 @@ a.enlace:hover{color:var(--verde)}
 .tip{position:fixed;z-index:120;background:var(--tinta);color:#fff;font-size:13px;padding:7px 10px;border-radius:8px;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.2);max-width:260px;line-height:1.35}
 .cifra small{display:block;font-size:12.5px;color:var(--gris)}
 .cifra .delta{font-size:12.5px;font-weight:600}
+.sug-taller{margin-top:-6px;background:var(--verde-suave);border:1px solid #cfe5d8;border-radius:12px;padding:10px 12px;font-size:14px}
+.sug-taller p{margin:0 0 8px;color:var(--verde-osc);font-weight:600}
+.sug-taller .ops{display:flex;flex-wrap:wrap;gap:6px}
+.sug-taller .ops button{display:inline-grid;text-align:left;gap:1px;border:1px solid var(--linea-2);background:#fff;border-radius:10px;padding:7px 11px;font:inherit;font-size:14px;color:var(--tinta);cursor:pointer}
+.sug-taller .ops button:hover,.sug-taller .ops button:focus-visible{border-color:var(--verde);outline:2px solid #cfe5d8}
+.sug-taller .ops span{font-size:12px;color:var(--gris)}
+.sug-taller .no{margin-top:8px;border:0;background:none;padding:2px 0;font:inherit;font-size:13px;color:var(--gris);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 /* duplicados */
 .dup-lista{display:grid;gap:10px}
 .dup{background:var(--panel);border:1px solid var(--linea);border-radius:14px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px 14px;align-items:center}
@@ -693,7 +700,8 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
     <div class="dh"><h2>Añadir asistente</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
     <div class="db" style="display:grid;gap:14px">
       <div class="grid2">
-        <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" class="mayus" required list="dl-centros" autocomplete="off"></label>
+        <label class="c" style="grid-column:1/-1">Centro técnico<input name="centro" class="mayus" required autocomplete="off" aria-describedby="fa-sug"></label>
+        <div class="sug-taller" id="fa-sug" role="region" aria-live="polite" hidden style="grid-column:1/-1"></div>
         <label class="c">Persona de contacto<input name="contacto" class="mayus"></label>
         <label class="c">Teléfono del centro<input name="tel_contacto"></label>
         <label class="c" style="grid-column:1/-1">Correo del centro técnico<input name="email_centro" type="email"></label>
@@ -710,7 +718,6 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
     <div class="df"><button class="btn sec" type="button" data-close>Cancelar</button><button class="btn" type="submit">Añadir asistente</button></div>
   </form>
 </dialog>
-<datalist id="dl-centros"></datalist>
 
 <!-- Certificados -->
 <dialog id="dlg-ind" style="width:min(960px,calc(100vw - 24px))">
@@ -1754,12 +1761,43 @@ async function hojaFirmas(id) {
 }
 
 /* ---------- añadir asistente ---------- */
-$("#dc-add").addEventListener("click", async () => {
-  $("#f-add").reset(); $("#fa-err").textContent = "";
-  const { data } = await sb.from("centros").select("nombre").order("nombre");
-  $("#dl-centros").innerHTML = (data || []).map(c => `<option value="${esc(c.nombre)}">`).join("");
+$("#dc-add").addEventListener("click", () => {
+  $("#f-add").reset(); $("#fa-err").textContent = ""; sugTallerAdd.reset();
   $("#dlg-add").showModal();
 });
+/* sugerencias de talleres ya registrados (igual que en el formulario público), para no crear el mismo con otro nombre */
+const sugTallerAdd = (() => {
+  const f = $("#f-add"), inp = f.centro, box = $("#fa-sug");
+  const norm = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[.,\-'"]/g, "").replace(/\s+/g, " ").trim();
+  let temp, pedido = 0, lista = [], elegido = "";
+  const ocultar = () => { box.hidden = true; box.innerHTML = ""; };
+  async function buscar() {
+    const q = inp.value.trim();
+    if (q.length < 3 || norm(q) === norm(elegido)) return ocultar();
+    const n = ++pedido, { data, error } = await sb.rpc("buscar_talleres", { p_q: q });
+    if (n !== pedido || inp.value.trim() !== q) return;
+    if (error || !data?.length || data.some(x => norm(x.nombre) === norm(q))) return ocultar();
+    lista = data;
+    box.innerHTML = `<p>¿Es alguno de estos? Ya está registrado:</p><div class="ops">${data.map((x, i) =>
+      `<button type="button" data-i="${i}"><b>${esc(x.nombre)}</b>${x.provincia ? `<span>${esc(x.provincia)}</span>` : ""}</button>`).join("")}</div>
+      <button type="button" class="no">No, es otro taller</button>`;
+    box.hidden = false;
+  }
+  inp.addEventListener("input", () => { clearTimeout(temp); if (norm(inp.value) !== norm(elegido)) elegido = ""; temp = setTimeout(buscar, 250); });
+  inp.addEventListener("keydown", e => { if (e.key === "Escape" && !box.hidden) { e.preventDefault(); e.stopPropagation(); ocultar(); } });
+  box.addEventListener("click", async e => {
+    const b = e.target.closest("[data-i]");
+    if (b) {
+      const x = lista[+b.dataset.i];
+      inp.value = x.nombre.toLocaleUpperCase("es-ES"); elegido = inp.value; ocultar();
+      // rellena el contacto del taller si lo tenemos y aún está vacío
+      const { data: c } = await sb.from("centros").select("contacto,telefono,email").eq("nombre", x.nombre).maybeSingle();
+      if (c) { if (!f.contacto.value && c.contacto) f.contacto.value = c.contacto.toLocaleUpperCase("es-ES"); if (!f.tel_contacto.value && c.telefono) f.tel_contacto.value = c.telefono; if (!f.email_centro.value && c.email) f.email_centro.value = c.email; }
+      f.nombre.focus();
+    } else if (e.target.closest(".no")) { elegido = inp.value; ocultar(); inp.focus(); }
+  });
+  return { reset() { clearTimeout(temp); pedido++; elegido = ""; lista = []; ocultar(); } };
+})();
 $("#f-add").addEventListener("submit", async e => {
   e.preventDefault();
   const v = Object.fromEntries(new FormData(e.target));
