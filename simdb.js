@@ -291,6 +291,17 @@
         return out;
       },
       duplicados_tecnicos: () => [],
+      renovaciones_tempranas: () => {
+        const hoyS = new Date().toISOString().slice(0, 10), cur = id => db.cursos.find(c => c.id === id), out = [];
+        for (const i of db.inscripciones) {
+          const c = cur(i.curso_id); if (!c || c.fecha_inicio < hoyS || c.estado === "cancelado" || !["confirmada", "lista_espera"].includes(i.estado)) continue;
+          const lim = new Date(c.fecha_inicio); lim.setMonth(lim.getMonth() - 9); const limS = lim.toISOString().slice(0, 10);
+          const prev = db.inscripciones.filter(j => j.tecnico_id === i.tecnico_id && j.id !== i.id && j.estado === "confirmada" && j.asistio !== false)
+            .map(j => cur(j.curso_id)).filter(c2 => c2 && c2.estado !== "cancelado" && c2.fecha_fin < c.fecha_inicio && c2.fecha_fin > limS).map(c2 => c2.fecha_fin).sort();
+          if (prev.length) out.push({ inscripcion_id: i.id, curso_id: c.id, tecnico: db.tecnicos.find(t => t.id === i.tecnico_id)?.nombre || "", ultimo_fin: prev[prev.length - 1] });
+        }
+        return out;
+      },
       buscar_talleres: p => {
         const n = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
         const q = n(p.p_q); if (q.length < 3) return [];

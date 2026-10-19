@@ -18,7 +18,7 @@
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261011b"></script>
-<script src="simdb.js?v=20261019a"></script>
+<script src="simdb.js?v=20261019b"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -1532,7 +1532,7 @@ async function cargarInscritos() {
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}"><b>${esc(t.nombre)}</b></a><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
       <td>${esc(t.dni)}</td><td>${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
-      <td>${est}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
+      <td>${est}${!modoDocente && renovTemp.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00" title="Terminó otro curso el ${fcorta(renovTemp.get(i.id).ultimo_fin)}">● Aún no le toca renovar</div>` : ""}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">${modoDocente ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
@@ -2907,7 +2907,7 @@ $("#f-copiar").addEventListener("submit", async e => {
 });
 
 /* ---------- avisos (icono del perfil) ---------- */
-let avisos = [], descartados = new Set(), ultimaVista = null, miEmail = "", esSuper = false, tAvisos = null;
+let renovTemp = new Map(), avisos = [], descartados = new Set(), ultimaVista = null, miEmail = "", esSuper = false, tAvisos = null;
 const NIVEL = { urgente: ["Urgente", "var(--rojo)"], tarea: ["Por hacer", "var(--ambar)"], nuevo: ["Novedades", "var(--verde)"] };
 function programarAvisos() { clearTimeout(tAvisos); tAvisos = setTimeout(calcularAvisos, 600); }
 async function calcularAvisos() {
@@ -2920,7 +2920,9 @@ async function calcularAvisos() {
     if (d >= 0 && d <= 30 && c.ocupadas < c.quorum_min)
       add({ clave: `quorum:${c.id}`, nivel: "urgente", titulo: `Faltan ${c.quorum_min - c.ocupadas} para el quórum`, sub: `${et} · empieza ${d === 0 ? "hoy" : d === 1 ? "mañana" : `en ${d} días`} (${c.ocupadas}/${c.quorum_min})`, curso: c.id });
 
-    if (!c.docente_id && c.ocupadas > 0 && d <= 30 && diasHasta(c.fecha_fin) >= -30)
+    if (!c.docente_id && d >= 0 && d <= 14)       // a 2 semanas o menos: urgente aunque aún no haya inscritos
+      add({ clave: `docente14:${c.id}`, nivel: "urgente", titulo: "Falta asignar el docente", sub: `${et} · empieza ${d === 0 ? "hoy" : d === 1 ? "mañana" : `en ${d} días`} · hace falta para la hoja de firmas y los certificados`, curso: c.id, quitar: true });
+    else if (!c.docente_id && c.ocupadas > 0 && d <= 30 && diasHasta(c.fecha_fin) >= -30)
       add({ clave: `docente:${c.id}`, nivel: "tarea", titulo: "Curso sin docente asignado", sub: `${et} · hace falta para los certificados`, curso: c.id, quitar: true });
     if (!modoDocente && tramitesVivos(c)) {
       const e = estadoTramites(c), mal = e.filter(x => x.estado === "mal"), ind = e.find(x => x.k === "industria" && x.estado === "aviso");
@@ -2937,17 +2939,25 @@ async function calcularAvisos() {
   }
   if (modoDocente) {
     for (const c of vivos) { const d = diasHasta(c.fecha_inicio); if (d >= 0 && d <= 14) add({ clave: `prox:${c.id}`, nivel: "nuevo", titulo: d === 0 ? "Tu curso empieza hoy" : d === 1 ? "Tu curso empieza mañana" : `Tu curso empieza en ${d} días`, sub: `${etiquetaCurso(c)} · ${c.ocupadas} inscrito${c.ocupadas === 1 ? "" : "s"}`, curso: c.id, quitar: true }); }
-    avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:") && !a.clave.startsWith("cert:"));
+    avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:") && !a.clave.startsWith("docente14:") && !a.clave.startsWith("cert:"));
     return pintarAvisos();
   }
-  const [dni, prov, cor, nuevas, dup] = await Promise.all([
+  const [dni, prov, cor, nuevas, dup, ren] = await Promise.all([
     sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false),
     sb.from("centros_resumen").select("id", { count: "exact", head: true }).is("provincia", null),
     sb.from("correos").select("id", { count: "exact", head: true }).eq("estado", "error"),
     sb.from("inscripciones").select("id,estado,created_at,origen,tecnicos(nombre),centros(nombre),cursos(id,tipo,sede,fechas,fecha_inicio)")
       .gt("created_at", ultimaVista || addDias(hoy, -7)).neq("origen", "importacion").order("created_at", { ascending: false }).limit(30),
-    verDuplicados ? sb.rpc("duplicados_talleres") : Promise.resolve({ data: [] })
+    verDuplicados ? sb.rpc("duplicados_talleres") : Promise.resolve({ data: [] }),
+    sb.rpc("renovaciones_tempranas")
   ]);
+  // técnicos que se apuntan cuando aún no les toca renovar (menos de 9 meses desde su último curso)
+  renovTemp = new Map((ren.data || []).map(r => [r.inscripcion_id, r]));
+  for (const r of renovTemp.values()) {
+    const c = cursos.find(x => x.id === r.curso_id); if (!c) continue;
+    const meses = Math.round((new Date(c.fecha_inicio) - new Date(r.ultimo_fin)) / (30.44 * 864e5));
+    add({ clave: `renov:${r.inscripcion_id}`, nivel: "tarea", titulo: `${r.tecnico} se inscribe antes de tiempo`, sub: `${etiquetaCurso(c)} · su último curso terminó el ${fcorta(r.ultimo_fin)} (${meses < 1 ? "hace menos de un mes" : meses === 1 ? "1 mes antes" : `${meses} meses antes`}); aún no le toca renovar`, curso: c.id, quitar: true });
+  }
   if (dni.count) add({ clave: `dni:${dni.count}`, nivel: "tarea", titulo: `${dni.count} técnico${dni.count > 1 ? "s" : ""} con el DNI mal`, sub: "Corrígelos para poder comprobar sus renovaciones", ir: "dni", quitar: true });
   if (verDuplicados) {
     const dc = await sb.rpc("duplicados_tecnicos");
