@@ -1345,8 +1345,9 @@ async function iniciar() {
   pintarPerfil(perfil || { email: session.user.email });
   const [{ data: sede }, { data: superadmin }] = await Promise.all([sb.rpc("admin_sede"), sb.rpc("es_superadmin")]);
   const esAdminTotal = !!superadmin && !sede && !modoDocente;
+  verDuplicados = !sede && !modoDocente;
   if (sede) aplicarSede(sede);
-  else if (esAdminTotal) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
+  else if (verDuplicados) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
   const { data: ph } = await sb.rpc("puede_historial");
   puedeHist = !!ph; $("#tab-hist").classList.toggle("hidden", !puedeHist); $$(".solo-hist").forEach(b => b.classList.toggle("hidden", !puedeHist));
   $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
@@ -2551,7 +2552,7 @@ $("#es-csv").addEventListener("click", () => {
 });
 
 /* ---------- duplicados ---------- */
-let dupT = [], dupC = [];
+let dupT = [], dupC = [], verDuplicados = false;
 async function cargarDuplicados(soloContar = false) {
   const [a, b] = await Promise.all([sb.rpc("duplicados_talleres"), sb.rpc("duplicados_tecnicos")]);
   if (a.error || b.error) return soloContar || toast("No se han podido buscar duplicados");
@@ -2899,10 +2900,10 @@ async function calcularAvisos() {
     sb.from("correos").select("id", { count: "exact", head: true }).eq("estado", "error"),
     sb.from("inscripciones").select("id,estado,created_at,origen,tecnicos(nombre),centros(nombre),cursos(id,tipo,sede,fechas,fecha_inicio)")
       .gt("created_at", ultimaVista || addDias(hoy, -7)).neq("origen", "importacion").order("created_at", { ascending: false }).limit(30),
-    esSuper ? sb.rpc("duplicados_talleres") : Promise.resolve({ data: [] })
+    verDuplicados ? sb.rpc("duplicados_talleres") : Promise.resolve({ data: [] })
   ]);
   if (dni.count) add({ clave: `dni:${dni.count}`, nivel: "tarea", titulo: `${dni.count} técnico${dni.count > 1 ? "s" : ""} con el DNI mal`, sub: "Corrígelos para poder comprobar sus renovaciones", ir: "dni", quitar: true });
-  if (esSuper) {
+  if (verDuplicados) {
     const dc = await sb.rpc("duplicados_tecnicos");
     const n = (dup.data || []).length + (dc.data || []).length;
     if (n) add({ clave: `dup:${n}`, nivel: "tarea", titulo: `${n} posible${n > 1 ? "s" : ""} duplicado${n > 1 ? "s" : ""}`, sub: "Talleres o técnicos que parecen repetidos", ir: "duplicados", quitar: true });
