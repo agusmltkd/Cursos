@@ -2,7 +2,7 @@
    La función de envío del servidor (enviar-correos) usa exactamente lo mismo. */
 (function () {
   // Enlace público del formulario de inscripción (lo que ve la gente en los correos como {web})
-  const FORMULARIO = "https://www.wortach.com/wortachweb/curso-adiestramiento";
+  const FORMULARIO = "https://www.wortach.com/curso-adiestramiento";
   // Dónde se imparte cada sede (sale en los correos y en el calendario .ics)
   const DIRECCIONES = {
     Sevilla: { lineas: ["Calle Aviación 31, Local 11", "Sevilla"] },
