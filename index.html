@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="correos.js?v=20261011b"></script>
 <style>
@@ -249,6 +249,24 @@ input.mayus{text-transform:uppercase}
 .sug-taller .ops button:hover,.sug-taller .ops button:focus-visible{border-color:var(--verde);outline:2px solid color-mix(in srgb,var(--verde) 30%,transparent)}
 .sug-taller .ops span{font-size:12px;color:var(--gris)}
 .sug-taller .no{margin-top:8px;border:0;background:none;padding:2px 0;font:inherit;font-size:13px;color:var(--gris);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* ===== Tipografía de la web de WORTACH (indicaciones de Sistemas) =====
+   Una sola fuente, Inter. Título 48/800 (34 en móvil) · secciones 36/800 · subtítulos 20/700
+   · texto 16/400 · texto pequeño 14/400 · botones 14/700 */
+:root{--f-tit:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--f:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body{font:400 16px/1.55 var(--f)}
+.heroe h1{font-size:48px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.elige h2,.hoja h2,.final h2{font-size:36px;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+.que-curso h2,.mes-tit,.alternativas h3,.condiciones h3,.resumen h3,legend,.elige-op b,.sede-banda{font-size:20px;font-weight:700}
+.calend .d{font-size:20px;font-weight:800}
+.heroe p,.conv .dias,.plazas .txt b,.alt b,.confirma-sede,.condiciones p,.horario,.final .ficha,label.c input,label.c select{font-size:16px}
+.que-curso dt small,.que-curso dd,.pasos li,.pasos .n,.segmento .cnt,.mes-tit small,.calend .m,.conv .tipo,.conv .lugar,.plazas .txt,.alternativas p,.alt span,
+.elige-op span,.sede-banda small,.recordado,label.c,.tec-cab b,.tec .err-tec,.aviso-plazas,.est,.dni-estado,.ayuda,.acepto,.error,.resumen .sede,.jornadas li,
+.resumen .estado,.resumen .cargo,.aviso-espera,.pie,.contacto,.interruptor,.sede-et,.sug-taller,.sug-taller .ops button,.sug-taller .ops span,.sug-taller .no{font-size:14px}
+.que-curso dt small,label.c,.error{font-weight:600}
+.sede-banda small{font-weight:400}
+.btn,.conv .ir,.alt button,.mas-tec,.volver,.segmento button,.elige .todas,.tec-cab button{font-size:14px;font-weight:700}
+@media (max-width:640px){.heroe h1{font-size:34px}.elige h2,.hoja h2,.final h2{font-size:28px}.calend .d{font-size:18px}}
 </style>
 </head>
 <body>
@@ -516,7 +534,7 @@ function pintarResumen() {
   const c = sel, cargo = D(restaDias(c.fecha_inicio, 45));
   $("#resumen").style.setProperty("--sc", colorSede(c.sede));
   $("#resumen").innerHTML = `<div class="sede-banda">${icoSede(c.sede, 20)} ${c.sede === "Online" ? "Curso online" : `Sede ${esc(c.sede)}`}<small>${c.sede === "Online" ? "a distancia" : "presencial"}</small></div>
-    <span class="tipo" style="display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
+    <span class="tipo" style="display:inline-block;font-size:14px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
     <h3>${frase(c.fechas)}</h3><div class="sede">${c.fechas.length} jornadas${c.sede === "Online" ? ", online" : ` en ${esc(c.sede)}`}</div>
     <ul class="jornadas">${horarioJornadas(c)}</ul>
     <div class="estado">${disco(c, 54)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
@@ -679,7 +697,7 @@ function mostrarFinal(res, v) {
     <div class="ficha">
       <span><b>${TIPO[c.tipo]} en ${esc(c.sede)}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
       <span style="color:var(--gris);margin-bottom:6px">${esc(v.centro)}</span>
-      <ul class="lista-final">${res.map(r => `<li><span>${esc(r.t.nombre)}</span>${r.data ? (r.data.estado === "lista_espera" ? `<span class="est esp">Lista de espera, puesto ${r.data.posicion}</span>` : `<span class="est ok">Plaza reservada</span>`) : `<span class="est mal">No inscrito</span>`}</li>${r.data ? "" : `<li style="font-size:13.5px;color:var(--rojo);margin-top:-4px">${esc(r.error)}</li>`}`).join("")}</ul>
+      <ul class="lista-final">${res.map(r => `<li><span>${esc(r.t.nombre)}</span>${r.data ? (r.data.estado === "lista_espera" ? `<span class="est esp">Lista de espera, puesto ${r.data.posicion}</span>` : `<span class="est ok">Plaza reservada</span>`) : `<span class="est mal">No inscrito</span>`}</li>${r.data ? "" : `<li style="font-size:14px;color:var(--rojo);margin-top:-4px">${esc(r.error)}</li>`}`).join("")}</ul>
     </div>
     <div class="acciones">
       ${fallos.length ? `<button class="btn" id="corregir">Corregir ${fallos.length > 1 ? `los ${fallos.length} que faltan` : "el que falta"}</button>` : ""}

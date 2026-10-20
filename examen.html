@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700;112,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -84,6 +84,20 @@ fieldset.preg{min-width:0;margin:0 0 14px}
 .res-apto .nota{color:var(--verde)} .res-no .nota{color:var(--rojo)}
 .pie{display:flex;gap:12px;align-items:center;flex-wrap:wrap;color:var(--gris);font-size:14px;border-top:1px solid var(--linea);padding-top:16px;margin-top:20px}
 .pie img{height:22px}
+
+/* ===== Tipografía de la web de WORTACH (indicaciones de Sistemas) =====
+   Una sola fuente, Inter. Título 48/800 (34 en móvil) · secciones 36/800 · subtítulos 20/700
+   · texto 16/400 · texto pequeño 14/400 · botones 14/700 */
+:root{--f-tit:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--f:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body{font:400 16px/1.5 var(--f)}
+.tit h1{font-size:48px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+h2,.aviso h2,.sec-t{font-size:36px;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+.preg h3{font-size:20px;font-weight:700}
+.nota{font-size:48px;font-weight:800}
+.tit p,input[type=text]{font-size:16px}
+.tit .et,label.c,.error,.progreso .txt,.preg .num,.op .l,.escala-l,.pie{font-size:14px}
+.btn{font:700 14px var(--f)}
+@media (max-width:640px){.tit h1{font-size:34px}h2,.aviso h2,.sec-t{font-size:28px}}
 </style>
 </head>
 <body>
@@ -117,7 +131,7 @@ fieldset.preg{min-width:0;margin:0 0 14px}
     <form id="f-examen" novalidate>
       <div id="preguntas"></div>
       <h2 class="sec-t">Encuesta de satisfacción</h2>
-      <p class="gris" style="margin:0 0 12px;font-size:15px">No cuenta para la nota. Nos ayuda a mejorar.</p>
+      <p class="gris" style="margin:0 0 12px;font-size:14px">No cuenta para la nota. Nos ayuda a mejorar.</p>
       <div class="preg" id="p-satis">
         <h3>En base a la formación recibida, puntúa del 1 al 10 tu grado de satisfacción.</h3>
         <div class="escala" id="escala"></div>
