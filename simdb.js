@@ -280,7 +280,8 @@
     const RPC = {
       es_admin: () => !docP, es_superadmin: () => P === "admin", admin_sede: () => sedeP, es_docente: () => docP, puede_historial: () => P === "admin" || P === "gestor",
       todas_sedes: () => !docP && !sedeP, mi_docente: () => yo.docente_id || null,
-      mi_perfil: () => ({ email: sim.email, nombre: yo.nombre, sede: sedeP, ver_historial: P === "admin" || P === "gestor" }),
+      mi_perfil: () => ({ email: sim.email, nombre: yo.nombre, sede: sedeP, ver_historial: P === "admin" || P === "gestor", docente_id: docP ? yo.docente_id : null,
+        docente: docP ? db.firmantes.find(f => f.id === yo.docente_id)?.nombre || null : null, activo: true, nivel: P === "gestor" ? "gestor" : "admin" }),
       cambiar_mi_nombre: () => null,
       inscribirse: p => {
         const d = String(p.p_dni || "").toUpperCase().replace(/[\s.\-]/g, "");
