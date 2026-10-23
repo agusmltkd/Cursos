@@ -96,7 +96,7 @@
       const situacion = prox ? "inscrito" : !u ? "sin_formacion" : renovar < hoy ? "caducado" : renovar < mas(hoy, 60) ? "vence_pronto" : "al_dia";
       return { id: t.id, dni: t.dni, nombre: t.nombre, telefono: t.telefono, email: t.email, centro: cen.get(t.centro_id)?.nombre || null,
         tiene_iniciacion: !!t._ini || hechos.some(c => c.tipo === "iniciacion"), ultimo_tipo: u?.tipo || null, ultima_fecha: u?.fecha_fin || null, renovar_antes: renovar, proximo_curso: prox, situacion,
-        dni_ok: dniValido(t.dni), n_inscripciones: ins.length, centro_id: t.centro_id, centros_ids: [...new Set(ins.map(i => i.centro_id).filter(Boolean))] };
+        dni_ok: dniValido(t.dni), n_inscripciones: ins.length, centro_id: t.centro_id, centros_ids: [...new Set(ins.map(i => i.centro_id).filter(Boolean))], archivado_at: t.archivado_at || null, archivado_por: t.archivado_por || null };
     });
   }
   function centrosResumen(db) {
@@ -219,9 +219,23 @@
   }
 
   /* ---------- funciones (RPC) ---------- */
-  function crear() {
+  // perfil: "admin" (todo), "gestor" (todas las sedes), "sede:Zaragoza" (una sede) o "docente"
+  function crear(perfil = "admin") {
     const db = semilla(), oyentes = new Set();
-    const sim = { db, email: "practica@wortach.com" };
+    const P = String(perfil || "admin"), sedeP = P.startsWith("sede:") ? P.slice(5) : null, docP = P === "docente";
+    const yo = docP ? db.admins.find(a => a.docente_id) : sedeP ? db.admins.find(a => a.sede) : db.admins[0];
+    if (sedeP) { yo.sede = sedeP; yo.nombre = `Gestor ${sedeP} (práctica)`; }
+    if (P === "gestor") { yo.nivel = "gestor"; yo.nombre = "Gestor de todas las sedes (práctica)"; }
+    // como en la base real, cada perfil solo ve lo suyo: su sede o los cursos en los que es docente
+    if (sedeP || docP) {
+      const vis = new Set(db.cursos.filter(c => sedeP ? c.sede === sedeP : c.docente_id === yo.docente_id).map(c => c.id));
+      db.cursos = db.cursos.filter(c => vis.has(c.id));
+      db.inscripciones = db.inscripciones.filter(i => vis.has(i.curso_id));
+      const ins = new Set(db.inscripciones.map(i => i.id)), tecs = new Set(db.inscripciones.map(i => i.tecnico_id)), cens = new Set(db.inscripciones.map(i => i.centro_id));
+      db.tecnicos = db.tecnicos.filter(t => tecs.has(t.id)); db.centros = db.centros.filter(c => cens.has(c.id));
+      db.examenes = db.examenes.filter(x => ins.has(x.inscripcion_id)); db.correos = db.correos.filter(x => ins.has(x.inscripcion_id));
+    }
+    const sim = { db, email: yo.email, perfil: P };
     sim.auditar = (tabla, accion, fila, cambios, antes) => {
       if (!["cursos", "inscripciones", "tecnicos", "centros", "firmantes"].includes(tabla)) return;
       const ctx = tabla === "inscripciones" ? { tecnico_id: fila.tecnico_id, curso_id: fila.curso_id, centro_id: fila.centro_id } : tabla === "cursos" ? { tipo: fila.tipo, sede: fila.sede, fechas: fila.fechas } : { nombre: fila.nombre, tecnico_id: tabla === "tecnicos" ? fila.id : undefined, centro_id: tabla === "centros" ? fila.id : fila.centro_id };
@@ -230,11 +244,22 @@
       db.auditoria.unshift({ id: db.auditoria.length + 1, fecha: ahora(), usuario: tabla === "inscripciones" && accion === "alta" && fila.origen === "web" ? "formulario web" : sim.email, tabla, registro: fila.id || null, accion, antes: accion === "borrado" ? fila : a, despues: accion === "alta" ? fila : d, contexto: ctx });
     };
     sim.correo = (ins, tipo) => db.correos.push({ id: uid(), inscripcion_id: ins, tipo, estado: "pendiente", intentos: 0, error: null, created_at: ahora(), enviado_at: null });
+    // como en la base real: al recibir plaza desde la lista de espera se anula su otra plaza de ese año (en un curso que no ha empezado)
+    sim.anular = insId => {
+      const i = db.inscripciones.find(x => x.id === insId), c = i && db.cursos.find(x => x.id === i.curso_id); if (!c) return 0;
+      const hoyS = new Date().toISOString().slice(0, 10); let n = 0;
+      for (const o of db.inscripciones.filter(x => x.tecnico_id === i.tecnico_id && x.id !== insId && ["confirmada", "lista_espera"].includes(x.estado))) {
+        const oc = db.cursos.find(x => x.id === o.curso_id);
+        if (!oc || oc.estado === "cancelado" || oc.fecha_inicio <= hoyS || oc.fecha_inicio.slice(0, 4) !== c.fecha_inicio.slice(0, 4)) continue;
+        const antes = o.estado; o.estado = "cancelada"; n++; if (antes === "confirmada") sim.promover(oc.id);
+      }
+      return n;
+    };
     sim.promover = curso => {
       const c = db.cursos.find(x => x.id === curso); if (!c) return;
       const conf = db.inscripciones.filter(i => i.curso_id === curso && i.estado === "confirmada").length;
       const espera = db.inscripciones.filter(i => i.curso_id === curso && i.estado === "lista_espera").sort((a, b) => a.created_at.localeCompare(b.created_at));
-      for (let k = 0; k < c.cupo_max - conf && k < espera.length; k++) { espera[k].estado = "confirmada"; sim.correo(espera[k].id, "plaza_asignada"); }
+      for (let k = 0; k < c.cupo_max - conf && k < espera.length; k++) { espera[k].estado = "confirmada"; sim.correo(espera[k].id, "plaza_asignada"); sim.anular(espera[k].id); }
     };
     sim.avisar = (tabla, extra) => { if (["inscripciones", "cursos"].includes(tabla)) oyentes.forEach(f => { try { f({ table: tabla, ...(extra || {}) }); } catch {} }); };
     const ocupadas = c => db.inscripciones.filter(i => i.curso_id === c && i.estado === "confirmada").length;
@@ -248,12 +273,14 @@
       let ins = prev;
       if (prev) Object.assign(prev, { estado, centro_id: centro.id, created_at: ahora(), asistio: null, origen });
       else { ins = { id: uid(), curso_id: cursoId, tecnico_id: tec.id, centro_id: centro.id, contacto_nombre: centro.contacto, contacto_telefono: centro.telefono, dni_foto_path: null, estado, asistio: null, origen, notas: null, created_at: ahora() }; db.inscripciones.push(ins); }
+      tec.archivado_at = null; tec.archivado_por = null;   // si estaba archivado, vuelve
       sim.auditar("inscripciones", "alta", ins); sim.correo(ins.id, estado === "confirmada" ? "confirmacion" : "lista_espera"); sim.avisar("inscripciones", { eventType: prev ? "UPDATE" : "INSERT", new: ins });
       return { data: { estado, posicion: estado === "lista_espera" ? db.inscripciones.filter(i => i.curso_id === cursoId && i.estado === "lista_espera").length : null, id: ins.id, extra: Math.max(ocupadas(cursoId) - c.cupo_max, 0) }, error: null };
     };
     const RPC = {
-      es_admin: () => true, es_superadmin: () => true, admin_sede: () => null, es_docente: () => false, puede_historial: () => true,
-      mi_perfil: () => ({ email: sim.email, nombre: "Usuario de práctica", sede: null, ver_historial: true }),
+      es_admin: () => !docP, es_superadmin: () => P === "admin", admin_sede: () => sedeP, es_docente: () => docP, puede_historial: () => P === "admin" || P === "gestor",
+      todas_sedes: () => !docP && !sedeP, mi_docente: () => yo.docente_id || null,
+      mi_perfil: () => ({ email: sim.email, nombre: yo.nombre, sede: sedeP, ver_historial: P === "admin" || P === "gestor" }),
       cambiar_mi_nombre: () => null,
       inscribirse: p => {
         const d = String(p.p_dni || "").toUpperCase().replace(/[\s.\-]/g, "");
@@ -266,7 +293,7 @@
         return inscribir(p.p_curso, te, ce, "admin");
       },
       admin_inscribir: p => { const te = db.tecnicos.find(x => x.id === p.p_tecnico), ce = db.centros.find(x => x.id === p.p_centro); if (!te || !ce) return error("Elige el taller con el que va"); te.centro_id = ce.id; return inscribir(p.p_curso, te, ce, "admin", p.p_plaza); },
-      dar_plaza: p => { const i = db.inscripciones.find(x => x.id === p.p_ins); if (!i) return error("Inscripción no encontrada"); if (i.estado === "confirmada") return error("Ya tiene plaza"); i.estado = "confirmada"; sim.correo(i.id, "plaza_asignada"); sim.avisar("inscripciones"); const c = db.cursos.find(x => x.id === i.curso_id), o = ocupadas(c.id); return { data: { ocupadas: o, cupo: c.cupo_max, extra: Math.max(o - c.cupo_max, 0) }, error: null }; },
+      dar_plaza: p => { const i = db.inscripciones.find(x => x.id === p.p_ins); if (!i) return error("Inscripción no encontrada"); if (i.estado === "confirmada") return error("Ya tiene plaza"); const antes = i.estado; i.estado = "confirmada"; sim.correo(i.id, "plaza_asignada"); const anuladas = antes === "lista_espera" ? sim.anular(i.id) : 0; sim.avisar("inscripciones"); const c = db.cursos.find(x => x.id === i.curso_id), o = ocupadas(c.id); return { data: { ocupadas: o, cupo: c.cupo_max, extra: Math.max(o - c.cupo_max, 0), anuladas }, error: null }; },
       mover_inscripcion: p => { const i = db.inscripciones.find(x => x.id === p.p_ins), c = db.cursos.find(x => x.id === p.p_curso); if (!i || !c) return error("No encontrado"); const de = i.curso_id, eraConf = i.estado === "confirmada"; i.curso_id = c.id; i.estado = ocupadas(c.id) < c.cupo_max ? "confirmada" : "lista_espera"; if (eraConf) sim.promover(de); sim.avisar("inscripciones"); return { data: { estado: i.estado }, error: null }; },
       marcar_asistencia: p => { const i = db.inscripciones.find(x => x.id === p.p_ins); if (i) i.asistio = p.p_valor; return null; },
       corregir_dni: p => {
@@ -291,6 +318,17 @@
         return out;
       },
       duplicados_tecnicos: () => [],
+      duplicados_anio: () => {
+        const anio = new Date().getFullYear(), g = new Map();
+        for (const i of db.inscripciones) {
+          const c = db.cursos.find(x => x.id === i.curso_id);
+          if (!c || c.estado === "cancelado" || !["confirmada", "lista_espera"].includes(i.estado) || i.asistio === false || +c.fecha_inicio.slice(0, 4) < anio) continue;
+          const k = i.tecnico_id + "|" + c.fecha_inicio.slice(0, 4);
+          if (!g.has(k)) g.set(k, []); g.get(k).push({ ins: i.id, curso: c.id, sede: c.sede, tipo: c.tipo, inicio: c.fecha_inicio, fin: c.fecha_fin, estado: i.estado });
+        }
+        return [...g].filter(([, v]) => v.length > 1).map(([k, v]) => { v.sort((a, b) => a.inicio.localeCompare(b.inicio)); const [t, a] = k.split("|");
+          return { tecnico_id: t, tecnico: db.tecnicos.find(x => x.id === t)?.nombre || "", anio: +a, inscripciones: v.map(x => x.ins), cursos: v.map(x => x.curso), detalle: v }; });
+      },
       renovaciones_tempranas: () => {
         const hoyS = new Date().toISOString().slice(0, 10), cur = id => db.cursos.find(c => c.id === id), out = [];
         for (const i of db.inscripciones) {

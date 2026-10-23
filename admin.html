@@ -17,8 +17,8 @@
 <script src="industria.js?v=20261013a" defer></script>
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
-<script src="plantillas.js?v=20261020a"></script>
-<script src="simdb.js?v=20261019b"></script>
+<script src="plantillas.js?v=20261023a"></script>
+<script src="simdb.js?v=20261023a"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -430,7 +430,6 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <div class="error" id="login-err"></div>
       <button class="btn" type="submit" style="justify-content:center;padding:12px">Entrar</button>
       <a href="#" id="olvide" style="font-size:14px;justify-self:center">¿Has olvidado la contraseña?</a>
-      <a href="?practica" class="btn sec" style="justify-content:center;margin-top:6px">Probar el modo práctica <span class="gris" style="font-weight:400">· sin contraseña, con datos inventados</span></a>
     </form>
     <form id="olvidof" class="hidden">
       <h2 class="tit">Recuperar la contraseña</h2>
@@ -528,6 +527,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <div class="stats" id="stats-tec"></div>
       <div class="toolbar">
         <input id="buscar-tec" type="search" placeholder="Buscar por nombre, DNI o centro técnico" style="min-width:260px;flex:1">
+        <button class="btn sec hidden" id="tec-archivar" title="Dejan de salir en las cifras y en «por renovar». Si vuelven a inscribirse, se recuperan solos.">Archivar</button>
         <button class="btn sec" id="csv-tec">Exportar a Excel</button>
       </div>
       <div class="caja scroll"><table>
@@ -875,7 +875,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
     <div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
         <h3 style="margin:0;font-size:15px">Cursos</h3>
-        <span><button class="btn sec mini solo-hist hidden" type="button" id="ft-hist">Historial de cambios</button> <button class="btn mini" type="button" id="ft-inscribir">Inscribir en un curso</button></span>
+        <span><button class="btn sec mini solo-hist hidden" type="button" id="ft-hist">Historial de cambios</button> <button class="btn sec mini hidden" type="button" id="ft-archivar" title="Deja de salir en las cifras y en «por renovar». Si vuelve a inscribirse, se recupera solo.">Archivar</button> <button class="btn mini" type="button" id="ft-inscribir">Inscribir en un curso</button></span>
       </div>
       <div class="caja scroll"><table>
         <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th class="hide-m">Taller</th><th>Estado</th><th></th></tr></thead>
@@ -1012,6 +1012,17 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
         <button type="button" class="btn sec" id="pl-restaurar">Volver al texto original</button>
         <button type="button" class="btn sec" id="pl-prueba">Enviarme una prueba</button>
         <span class="gris" style="font-size:12.5px" id="pl-info"></span>
+      </div>
+    </form>
+    <form id="f-comun" class="hidden" style="display:grid;gap:12px;align-content:start">
+      <p class="gris" style="margin:0;font-size:14px">Estos textos salen en <b>todos</b> los correos. Si dejas uno vacío, se usa el original.</p>
+      <div id="pc-campos" style="display:grid;gap:12px"></div>
+      <div class="error" id="pc-err"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button type="submit" class="btn" id="pc-guardar">Guardar textos comunes</button>
+        <button type="button" class="btn sec" id="pc-restaurar">Volver a los originales</button>
+        <button type="button" class="btn sec" id="pc-prueba">Enviarme una prueba</button>
+        <span class="gris" style="font-size:12.5px" id="pc-info"></span>
       </div>
     </form>
     <div class="pl-prev"><div class="pl-asunto" id="pl-asunto"></div><iframe id="pl-frame" title="Vista previa del correo"></iframe></div>
@@ -1157,12 +1168,15 @@ const SUPABASE_URL = "https://ylnwqtgyfeqihggjneba.supabase.co";
 const SUPABASE_KEY = "sb_publishable_31lO8B4X7GEZm2oHh0WLBQ_EOR4r-XD";
 const PRACTICA = new URLSearchParams(location.search).has("practica");
 let cerrandoPagina = false;   // al cerrar la pestaña, las peticiones que queden van con keepalive para que no se corten
-const sb = PRACTICA ? SimDB.crear() : supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
+const PERFIL_PRACTICA = new URLSearchParams(location.search).get("practica") || "admin";
+const sb = PRACTICA ? SimDB.crear(PERFIL_PRACTICA) : supabase.createClient(SUPABASE_URL, SUPABASE_KEY,
   { global: { fetch: (u, o = {}) => fetch(u, cerrandoPagina ? { ...o, keepalive: true } : o) } });
 if (PRACTICA) {
   document.documentElement.classList.add("practica");
   const b = document.createElement("div"); b.className = "banda-practica";
-  b.innerHTML = `<b>MODO PRÁCTICA</b><span>Datos inventados. Nada de lo que hagas se guarda ni llega a nadie: al recargar empieza de cero.</span><a href="?practica">Reiniciar</a><a href="./admin.html">Salir</a>`;
+  const quien = { admin: "administrador", gestor: "gestor de todas las sedes", docente: "docente" }[PERFIL_PRACTICA] || (PERFIL_PRACTICA.startsWith("sede:") ? `gestor de ${PERFIL_PRACTICA.slice(5)}` : "administrador");
+  b.innerHTML = `<b>MODO PRÁCTICA</b><span>Como <span class="quien"></span>. Datos inventados. Nada de lo que hagas se guarda ni llega a nadie: al recargar empieza de cero.</span><a href="?practica=${encodeURIComponent(PERFIL_PRACTICA)}">Reiniciar</a><a href="./admin.html">Salir</a>`;
+  b.querySelector(".quien").textContent = quien;
   document.body.prepend(b);
 }
 const HASH0 = location.hash + location.search;
@@ -1352,6 +1366,7 @@ async function iniciar() {
   pintarPerfil(perfil || { email: session.user.email });
   const [{ data: sede }, { data: superadmin }] = await Promise.all([sb.rpc("admin_sede"), sb.rpc("es_superadmin")]);
   const esAdminTotal = !!superadmin && !sede && !modoDocente;
+  perfilCuenta = modoDocente ? "docente" : sede ? `sede:${sede}` : superadmin ? "admin" : "gestor";
   verDuplicados = !sede && !modoDocente;
   if (sede) aplicarSede(sede);
   else if (verDuplicados) { $("#tab-dup").classList.remove("hidden"); cargarDuplicados(true); }
@@ -1365,13 +1380,13 @@ async function iniciar() {
 }
 
 /* ---------- cuenta de docente ---------- */
-let modoDocente = false;
+let modoDocente = false, perfilCuenta = "admin";
 function aplicarDocente() {
   document.body.classList.add("docente");
   $(".marca span").textContent = "Mis cursos";
   document.title = "Mis cursos · Adiestramientos WORTACH";
   $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
-  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert", "#abrir-cargos"].forEach(x => $(x)?.classList.add("hidden"));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert", "#abrir-cargos", "#dc-csv"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -1413,7 +1428,7 @@ async function cargarCursos() {
   const anios = [...new Set([hoy.slice(0,4), ...cursos.map(c => c.fecha_inicio.slice(0,4))])].sort().reverse();
   const sa = $("#f-anio"), prev = sa.value || hoy.slice(0,4);
   sa.innerHTML = `<option value="">Todos los años</option>` + anios.map(a => `<option ${a === prev ? "selected" : ""}>${a}</option>`).join("");
-  const { count } = await sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).in("situacion", ["caducado","vence_pronto"]);
+  const { count } = await sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).in("situacion", ["caducado","vence_pronto"]).is("archivado_at", null);
   porRenovar = count || 0;
   pintarPanel(anios); pintarCursos();
   if (typeof programarAvisos === "function") programarAvisos();
@@ -1532,7 +1547,7 @@ async function cargarInscritos() {
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}"><b>${esc(t.nombre)}</b></a><div class="gris" style="font-size:13px">${esc(t.email || "sin correo")}${t.telefono ? ", " + esc(t.telefono) : ""}</div></td>
       <td>${esc(t.dni)}</td><td>${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
-      <td>${est}${!modoDocente && renovTemp.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00" title="Terminó otro curso el ${fcorta(renovTemp.get(i.id).ultimo_fin)}">● Aún no le toca renovar</div>` : ""}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
+      <td>${est}${!modoDocente && dupAnioIns.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00">● También en ${dupAnioIns.get(i.id).otros.map(o => `${esc(o.sede)} ${fcorta(o.inicio)}`).join(" y ")}</div>` : ""}${!modoDocente && !dupAnioIns.has(i.id) && renovTemp.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00" title="Terminó otro curso el ${fcorta(renovTemp.get(i.id).ultimo_fin)}">● Aún no le toca renovar</div>` : ""}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
       <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
       <td><div class="acc">${modoDocente ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
@@ -1572,11 +1587,12 @@ $("#dc-tb").addEventListener("click", async e => {
     const lleno = conf >= actual.cupo_max;
     if (lleno && !confirm(`El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max} y recibirá el correo de plaza asignada.`)) return;
     marcar(true);
-    const cursoId = actual.id;
-    conDeshacer(`Dando plaza a ${i.tecnicos.nombre} (recibirá el correo de plaza asignada)`, async () => {
+    const cursoId = actual.id, otra = i.estado === "lista_espera" && dupAnioIns.get(i.id)?.otros.find(o => o.inicio > hoy);
+    conDeshacer(`Dando plaza a ${i.tecnicos.nombre} (recibirá el correo de plaza asignada)${otra ? `; se anulará su plaza en ${otra.sede} del ${fcorta(otra.inicio)}` : ""}`, async () => {
       const data = await ejecutar(sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false }));
-      toast(data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada");
-      if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos(); cargarCursos();
+      toast((data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada")
+        + (data.anuladas ? `. Tenía otra plaza este año y se ha anulado` : ""));
+      if ($("#dlg-curso").open && actual?.id === cursoId) await cargarInscritos(); cargarCursos(); if (data.anuladas) programarAvisos();
     }, { alDeshacer: () => marcar(false), alCerrar: PET.rpc("dar_plaza", { p_ins: i.id, p_directo: false }) });
   }
   if (b.dataset.act === "mover") {
@@ -1599,6 +1615,7 @@ $("#f-mover").addEventListener("submit", async e => {
   }, { alDeshacer: () => tr?.classList.remove("pend"), alCerrar: destino && PET.rpc("mover_inscripcion", { p_ins: m.id, p_curso: destino.id }) });
 });
 $("#dc-csv").addEventListener("click", () => {
+  if (modoDocente) return;   // los docentes no exportan los datos de los asistentes
   csv(`inscritos_${actual.sede}_${actual.fecha_inicio}.csv`,
     ["Estado","Fecha inscripción","Centro técnico","Correo centro","Persona de contacto","Teléfono centro","Nombre y apellidos","DNI","Teléfono asistente","Correo asistente","Asistió"],
     inscritos.map(i => [i.estado, new Date(i.created_at).toLocaleString("es-ES"), i.centros?.nombre, i.centros?.email, i.contacto_nombre, i.contacto_telefono, i.tecnicos.nombre, i.tecnicos.dni, i.tecnicos.telefono, i.tecnicos.email, i.asistio == null ? "" : i.asistio ? "Sí" : "No"]));
@@ -1899,7 +1916,7 @@ $("#fe-borrar").addEventListener("click", async () => {
 });
 
 /* ---------- técnicos ---------- */
-let tecnicos = [], filtroSit = "";
+let tecnicos = [], filtroSit = "", listaTec = [];
 const SIT = { caducado: ["Caducado","b-bad"], vence_pronto: ["Vence pronto","b-warn"], al_dia: ["Al día","b-ok"], inscrito: ["Inscrito","b-azul"], sin_formacion: ["Sin formación","b-gris"] };
 async function cargarTecnicos() {
   const { data, error } = await sb.from("tecnicos_estado").select("*").order("nombre");
@@ -1907,22 +1924,53 @@ async function cargarTecnicos() {
   tecnicos = data; pintarTecnicos();
 }
 function pintarTecnicos() {
-  const cuenta = k => tecnicos.filter(t => t.situacion === k).length;
-  const malos = tecnicos.filter(t => !t.dni_ok).length;
-  $("#stats-tec").innerHTML = [["", "Todos", tecnicos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
+  // los archivados (antiguos que ya no hace falta seguir) no cuentan en ninguna cifra; tienen su propio filtro
+  const vivos = tecnicos.filter(t => !t.archivado_at), archivados = tecnicos.length - vivos.length;
+  const cuenta = k => vivos.filter(t => t.situacion === k).length;
+  const malos = vivos.filter(t => !t.dni_ok).length;
+  $("#stats-tec").innerHTML = [["", "Todos", vivos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
     .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b><span>${n}</span></button>`).join("")
-    + (malos || filtroSit === "dni" ? `<button class="stat" data-sit="dni" aria-pressed="${filtroSit === "dni"}" style="border-color:var(--rojo)"><b style="color:var(--rojo)">${malos}</b><span>DNI por revisar</span></button>` : "");
+    + (malos || filtroSit === "dni" ? `<button class="stat" data-sit="dni" aria-pressed="${filtroSit === "dni"}" style="border-color:var(--rojo)"><b style="color:var(--rojo)">${malos}</b><span>DNI por revisar</span></button>` : "")
+    + (archivados || filtroSit === "archivado" ? `<button class="stat" data-sit="archivado" aria-pressed="${filtroSit === "archivado"}"><b>${archivados}</b><span>Archivados</span></button>` : "");
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const q = norm($("#buscar-tec").value);
-  const lista = tecnicos.filter(t => (!filtroSit || (filtroSit === "dni" ? !t.dni_ok : t.situacion === filtroSit)) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
+  const lista = tecnicos.filter(t => (filtroSit === "archivado" ? !!t.archivado_at : !t.archivado_at && (!filtroSit || (filtroSit === "dni" ? !t.dni_ok : t.situacion === filtroSit))) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
+  // archivar de golpe los de la lista (p. ej. los caducados de hace años) o recuperarlos
+  const masivo = $("#tec-archivar");
+  masivo.classList.toggle("hidden", modoDocente || !lista.length || !["caducado", "dni", "sin_formacion", "archivado"].includes(filtroSit));
+  masivo.textContent = filtroSit === "archivado" ? `Recuperar ${lista.length === 1 ? "el de la lista" : `los ${lista.length} de la lista`}` : `Archivar ${lista.length === 1 ? "el de la lista" : `los ${lista.length} de la lista`}`;
+  listaTec = lista;
   $("#tb-tec").innerHTML = lista.map(t => `<tr class="click" data-ficha-tec="${t.id}" tabindex="0">
     <td><b>${esc(t.nombre)}</b></td><td>${t.dni_ok ? esc(t.dni) : `<span style="color:var(--rojo);font-weight:600">${esc(t.dni)}</span><br><button class="btn peligro mini" data-corregir="${t.id}">Corregir DNI</button>`}</td><td>${t.centro_id ? `<a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}</td>
     <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + ", " + fcorta(t.ultima_fecha) : "—"}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
     <td>${t.proximo_curso ? `Inscrito el ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
-    <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span></td>
+    <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.archivado_at ? ` <span class="badge b-gris" title="Archivado el ${fcorta(t.archivado_at.slice(0, 10))}${t.archivado_por ? " por " + esc(t.archivado_por.split("@")[0]) : ""}">Archivado</span>` : ""}</td>
     <td class="hide-m gris" style="font-size:13px">${esc(t.email || "")}<br>${esc(t.telefono || "")}</td></tr>`).join("")
     || `<tr><td colspan="7" class="vacio-t">${tecnicos.length ? "Ningún técnico coincide con la búsqueda." : "Aún no hay técnicos. Aparecerán aquí con las inscripciones o al importar los años anteriores."}</td></tr>`;
 }
+async function archivarTecnicos(ids, archivar) {
+  const { error } = await sb.from("tecnicos").update(archivar ? { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } : { archivado_at: null, archivado_por: null }).in("id", ids);
+  if (error) { toast("No se han podido " + (archivar ? "archivar" : "recuperar")); return false; }
+  return true;
+}
+$("#tec-archivar").addEventListener("click", () => {
+  const recuperar = filtroSit === "archivado", ids = listaTec.map(t => t.id); if (!ids.length) return;
+  if (!recuperar && ids.length > 1 && !confirm(`Vas a archivar ${ids.length} técnicos. Dejarán de salir en las cifras y en «por renovar», pero no se borra nada: siguen en «Archivados» y, si vuelven a inscribirse, se recuperan solos.`)) return;
+  const b = $("#tec-archivar"); b.disabled = true;
+  conDeshacer(`${recuperar ? "Recuperando" : "Archivando"} ${ids.length} técnico${ids.length === 1 ? "" : "s"}`, async () => {
+    b.disabled = false;
+    if (await archivarTecnicos(ids, !recuperar)) { toast(`${ids.length} técnico${ids.length === 1 ? "" : "s"} ${recuperar ? "recuperado" : "archivado"}${ids.length === 1 ? "" : "s"}`); await cargarTecnicos(); cargarCursos(); programarAvisos(); }
+  }, { alDeshacer: () => { b.disabled = false; }, alCerrar: { m: "PATCH", r: `/rest/v1/tecnicos?id=in.(${ids.join(",")})`, b: recuperar ? { archivado_at: null, archivado_por: null } : { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } } });
+});
+$("#ft-archivar").addEventListener("click", async () => {
+  const t = fichaTec; if (!t) return;
+  if (await archivarTecnicos([t.id], !t.archivado_at)) {
+    toast(t.archivado_at ? "Técnico recuperado" : "Técnico archivado: ya no sale en las cifras ni en «por renovar»");
+    t.archivado_at = t.archivado_at ? null : new Date().toISOString();
+    $("#ft-archivar").textContent = t.archivado_at ? "Recuperar (quitar de archivados)" : "Archivar";
+    if (tecnicos.length) cargarTecnicos(); programarAvisos();
+  }
+});
 $("#stats-tec").addEventListener("click", e => { const b = e.target.closest("[data-sit]"); if (b) { filtroSit = b.dataset.sit; pintarTecnicos(); } });
 $("#buscar-tec").addEventListener("input", pintarTecnicos);
 function sugerenciasDni(d) {
@@ -2203,7 +2251,9 @@ async function abrirTecnico(id) {
   fichaTec = est.data;
   fichaTecIns = (ins.data || []).filter(i => i.cursos).sort((a, b) => b.cursos.fecha_inicio.localeCompare(a.cursos.fecha_inicio));
   const t = fichaTec, f = $("#f-tec");
-  $("#ft-badges").innerHTML = `<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.dni_ok ? "" : ` <span class="badge b-bad">DNI no válido</span>`}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn">sin iniciación</span>` : ""}`;
+  $("#ft-archivar").textContent = t.archivado_at ? "Recuperar (quitar de archivados)" : "Archivar";
+  $("#ft-archivar").classList.toggle("hidden", modoDocente);
+  $("#ft-badges").innerHTML = `${t.archivado_at ? `<span class="badge b-gris">Archivado</span> ` : ""}<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.dni_ok ? "" : ` <span class="badge b-bad">DNI no válido</span>`}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn">sin iniciación</span>` : ""}`;
   $("#ft-nombre").textContent = t.nombre;
   $("#ft-sub").innerHTML = `${esc(t.dni)}${t.centro_id ? ` · <a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}`;
   const hechos = fichaTecIns.filter(i => i.estado === "confirmada" && i.asistio !== false && i.cursos.fecha_fin < hoy && i.cursos.estado !== "cancelado");
@@ -2660,7 +2710,7 @@ $("[data-panel=duplicados]").addEventListener("click", async e => {
 let puedeHist = false, hist = [], histFin = false, histFiltro = null, nombres = { tec: new Map(), cen: new Map(), cur: new Map(), fir: new Map() };
 const CAMPOS = { estado: "estado", asistio: "asistencia", centro_id: "taller", tecnico_id: "técnico", curso_id: "curso", nombre: "nombre", dni: "DNI", telefono: "teléfono", email: "correo",
   contacto: "persona de contacto", contacto_nombre: "contacto", contacto_telefono: "teléfono del contacto", cupo_max: "cupo", quorum_min: "quórum", fechas: "fechas", fecha_inicio: "inicio",
-  fecha_fin: "fin", tipo: "tipo", sede: "sede", notas: "notas", docente_id: "docente", horas: "horas", token: "enlace del taller", origen: "origen", firma: "firma", cargo: "cargo", activo: "activo", rol: "rol", dni_foto_path: "foto del DNI" };
+  fecha_fin: "fin", tipo: "tipo", sede: "sede", notas: "notas", docente_id: "docente", horas: "horas", token: "enlace del taller", origen: "origen", firma: "firma", cargo: "cargo", activo: "activo", rol: "rol", dni_foto_path: "foto del DNI", archivado_at: "archivado", archivado_por: "archivado por" };
 const VAL_ESTADO = { confirmada: "con plaza", lista_espera: "lista de espera", cancelada: "baja", abierto: "abierto", cerrado: "cerrado", cancelado: "cancelado" };
 async function cargarNombres() {
   const [t, c, f] = await Promise.all([todas(() => sb.from("tecnicos").select("id,nombre")), todas(() => sb.from("centros").select("id,nombre")), sb.from("firmantes").select("id,nombre")]);
@@ -2907,7 +2957,7 @@ $("#f-copiar").addEventListener("submit", async e => {
 });
 
 /* ---------- avisos (icono del perfil) ---------- */
-let renovTemp = new Map(), avisos = [], descartados = new Set(), ultimaVista = null, miEmail = "", esSuper = false, tAvisos = null;
+let renovTemp = new Map(), dupAnioIns = new Map(), avisos = [], descartados = new Set(), ultimaVista = null, miEmail = "", esSuper = false, tAvisos = null;
 const NIVEL = { urgente: ["Urgente", "var(--rojo)"], tarea: ["Por hacer", "var(--ambar)"], nuevo: ["Novedades", "var(--verde)"] };
 function programarAvisos() { clearTimeout(tAvisos); tAvisos = setTimeout(calcularAvisos, 600); }
 async function calcularAvisos() {
@@ -2942,19 +2992,38 @@ async function calcularAvisos() {
     avisos = lista.filter(a => !a.clave.startsWith("quorum:") && !a.clave.startsWith("cargo:") && !a.clave.startsWith("docente:") && !a.clave.startsWith("docente14:") && !a.clave.startsWith("cert:"));
     return pintarAvisos();
   }
-  const [dni, prov, cor, nuevas, dup, ren] = await Promise.all([
-    sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false),
+  const [dni, prov, cor, nuevas, dup, ren, dupA, anu] = await Promise.all([
+    sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false).is("archivado_at", null),
     sb.from("centros_resumen").select("id", { count: "exact", head: true }).is("provincia", null),
     sb.from("correos").select("id", { count: "exact", head: true }).eq("estado", "error"),
     sb.from("inscripciones").select("id,estado,created_at,origen,tecnicos(nombre),centros(nombre),cursos(id,tipo,sede,fechas,fecha_inicio)")
       .gt("created_at", ultimaVista || addDias(hoy, -7)).neq("origen", "importacion").order("created_at", { ascending: false }).limit(30),
     verDuplicados ? sb.rpc("duplicados_talleres") : Promise.resolve({ data: [] }),
-    sb.rpc("renovaciones_tempranas")
+    sb.rpc("renovaciones_tempranas"),
+    sb.rpc("duplicados_anio"),
+    PRACTICA ? Promise.resolve({ data: [] }) : sb.from("anulaciones_auto").select("id,created_at,estado_anterior,nueva:inscripciones!inscripcion_nueva(id,tecnicos(nombre),cursos(id,tipo,sede,fechas,fecha_inicio)),anulada:inscripciones!inscripcion_anulada(id,cursos(id,tipo,sede,fechas,fecha_inicio))")
+      .gte("created_at", addDias(hoy, -60)).order("created_at", { ascending: false })
   ]);
+  // el mismo técnico en dos cursos del mismo año: revisar si es correcto o hay que borrarlo de uno
+  dupAnioIns = new Map();
+  for (const d of dupA.data || []) {
+    const det = d.detalle || [];
+    for (const x of det) dupAnioIns.set(x.ins, { anio: d.anio, otros: det.filter(y => y.ins !== x.ins) });
+    const prox = det.find(x => x.inicio >= hoy) || det[det.length - 1];
+    const lista = det.map(x => `${x.sede} ${fcorta(x.inicio)}${x.fin < hoy ? " (hecho)" : x.estado === "lista_espera" ? " (en espera)" : ""}`).join(" y ");
+    add({ clave: `dupanio:${d.tecnico_id}:${d.anio}:${(d.inscripciones || []).join(",")}`, nivel: "tarea", titulo: `${d.tecnico} está en ${det.length} cursos de ${d.anio}`,
+      sub: `${lista} · revisa si es correcto o bórralo de uno`, curso: prox?.curso, quitar: true });
+  }
+  // plazas anuladas solas: le llegó la plaza desde la lista de espera y tenía otra ese año
+  for (const a of anu.data || []) {
+    const n = a.nueva, o = a.anulada; if (!n?.cursos || !o?.cursos) continue;
+    add({ clave: `anul:${a.id}`, nivel: "tarea", titulo: `Plaza duplicada anulada: ${n.tecnicos?.nombre || "un técnico"}`,
+      sub: `Le llegó la plaza en ${etiquetaCurso(n.cursos)} y se anuló la que tenía ${a.estado_anterior === "lista_espera" ? "en espera " : ""}en ${etiquetaCurso(o.cursos)}`, curso: n.cursos.id, quitar: true });
+  }
   // técnicos que se apuntan cuando aún no les toca renovar (menos de 9 meses desde su último curso)
   renovTemp = new Map((ren.data || []).map(r => [r.inscripcion_id, r]));
   for (const r of renovTemp.values()) {
-    const c = cursos.find(x => x.id === r.curso_id); if (!c) continue;
+    const c = cursos.find(x => x.id === r.curso_id); if (!c || dupAnioIns.has(r.inscripcion_id)) continue;   // ya sale como duplicado del año
     const meses = Math.round((new Date(c.fecha_inicio) - new Date(r.ultimo_fin)) / (30.44 * 864e5));
     add({ clave: `renov:${r.inscripcion_id}`, nivel: "tarea", titulo: `${r.tecnico} se inscribe antes de tiempo`, sub: `${etiquetaCurso(c)} · su último curso terminó el ${fcorta(r.ultimo_fin)} (${meses < 1 ? "hace menos de un mes" : meses === 1 ? "1 mes antes" : `${meses} meses antes`}); aún no le toca renovar`, curso: c.id, quitar: true });
   }
@@ -3189,23 +3258,63 @@ $("#m-nombre").addEventListener("click", async () => {
 
 
 /* ---------- plantillas de correo ---------- */
-let plantillas = {}, plTipo = "confirmacion", plCampo = null;
+let plantillas = {}, plTipo = "confirmacion", plVistaTipo = "confirmacion", plCampo = null;
+// pueden cambiar las plantillas el administrador y los gestores de todas las sedes (no los de una sola sede)
+const puedePlantillas = () => verDuplicados || PRACTICA && PERFIL_PRACTICA === "admin";
+function pintarComunes() {
+  const { COMUNES, COMUNES_INFO } = PlantillasCorreo, g = plantillas.comun?.textos || {};
+  $("#pc-campos").innerHTML = Object.entries(COMUNES_INFO).map(([k, [tit, ayuda]]) => {
+    const largo = k === "pie";
+    return `<label class="c">${esc(tit)}${ayuda ? ` <span class="gris" style="font-weight:400">${esc(ayuda)}</span>` : ""}${largo ? `<textarea name="${k}" rows="3"></textarea>` : `<input name="${k}" maxlength="160">`}</label>`;
+  }).join("");
+  const f = $("#f-comun");
+  for (const k of Object.keys(COMUNES_INFO)) { f[k].value = g[k] ?? COMUNES[k]; f[k].placeholder = COMUNES[k].replace(/\n/g, " · "); }
+  const pc = plantillas.comun;
+  $("#pc-info").textContent = pc ? `Cambiados ${new Date(pc.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}${pc.updated_by ? " por " + pc.updated_by.split("@")[0] : ""}` : "Textos originales";
+  $("#pc-err").textContent = "";
+}
+function comunesForm() {
+  const f = $("#f-comun"); if (!f.antetitulo) return plantillas.comun?.textos || {};
+  return Object.fromEntries(Object.keys(PlantillasCorreo.COMUNES_INFO).map(k => [k, f[k].value]));
+}
+$("#f-comun").addEventListener("input", vistaPlantilla);
+$("#f-comun").addEventListener("focusin", e => { if (e.target.matches("input,textarea")) plCampo = e.target; });
+$("#f-comun").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!puedePlantillas()) return;
+  const textos = Object.fromEntries(Object.entries(comunesForm()).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => v && v !== PlantillasCorreo.COMUNES[k]));
+  const raras = [...Object.values(textos).join(" ").matchAll(/\{(\w+)\}/g)].map(m => m[0]).filter(v => !PlantillasCorreo.VARIABLES.some(([x]) => x === v) && !["{num}", "{num_jornadas}"].includes(v));
+  if (raras.length) return $("#pc-err").textContent = `No existe el dato ${raras[0]}. Se pueden usar ${PlantillasCorreo.VARIABLES.map(([x]) => x).join(" ")}, y en las jornadas {num} y {num_jornadas}.`;
+  const { data, error } = await sb.from("plantillas_correo").upsert({ tipo: "comun", asunto: "", titular: "", mensaje: "", nota: null, textos }).select().single();
+  if (error) return $("#pc-err").textContent = error.message;
+  plantillas.comun = data; toast("Textos comunes guardados: los próximos correos los usarán");
+  const b = $('#pl-tipos [data-pl="comun"] small'); if (b) b.textContent = "Personalizados";
+  pintarComunes(); vistaPlantilla();
+});
+$("#pc-restaurar").addEventListener("click", () => {
+  const f = $("#f-comun"); for (const [k, v] of Object.entries(PlantillasCorreo.COMUNES)) f[k].value = v;
+  vistaPlantilla(); toast("Textos originales cargados: pulsa «Guardar textos comunes» para aplicarlos");
+});
 async function abrirPlantillas() {
   const { data, error } = await sb.from("plantillas_correo").select("*");
   if (error) return toast("No se han podido cargar las plantillas");
   plantillas = Object.fromEntries((data || []).map(p => [p.tipo, p]));
   const { POR_DEFECTO, VARIABLES } = PlantillasCorreo;
-  $("#pl-tipos").innerHTML = Object.entries(POR_DEFECTO).map(([k, v]) => `<button type="button" data-pl="${k}">${esc(v.nombre)}<small>${plantillas[k] ? "Personalizada" : "Texto original"}</small></button>`).join("");
+  $("#pl-tipos").innerHTML = Object.entries(POR_DEFECTO).map(([k, v]) => `<button type="button" data-pl="${k}">${esc(v.nombre)}<small>${plantillas[k] ? "Personalizada" : "Texto original"}</small></button>`).join("")
+    + `<button type="button" data-pl="comun" style="margin-top:8px;border-top:1px solid var(--linea);border-radius:0 0 9px 9px">Textos comunes<small>${plantillas.comun ? "Personalizados" : "Saludo, pie, «Dónde»…"}</small></button>`;
   $("#pl-vars").innerHTML = VARIABLES.map(([v, t]) => `<button type="button" data-var="${v}" title="${esc(t)}">${v}</button>`).join("");
-  const soloVer = !esSuper;
-  $$("#f-plant input, #f-plant textarea").forEach(x => x.readOnly = soloVer);
-  ["#pl-guardar", "#pl-restaurar"].forEach(x => $(x).classList.toggle("hidden", soloVer));
+  const soloVer = !puedePlantillas();
+  pintarComunes();
+  $$("#f-plant input, #f-plant textarea, #f-comun input, #f-comun textarea").forEach(x => x.readOnly = soloVer);
+  ["#pl-guardar", "#pl-restaurar", "#pc-guardar", "#pc-restaurar"].forEach(x => $(x).classList.toggle("hidden", soloVer));
   elegirPlantilla(plTipo);
   $("#dlg-plant").showModal();
 }
 function elegirPlantilla(t) {
-  plTipo = t; const f = $("#f-plant"), p = { ...PlantillasCorreo.POR_DEFECTO[t], ...(plantillas[t] || {}) };
   $$("#pl-tipos button").forEach(b => b.setAttribute("aria-current", b.dataset.pl === t));
+  $("#f-plant").classList.toggle("hidden", t === "comun"); $("#f-comun").classList.toggle("hidden", t !== "comun");
+  if (t === "comun") { plVistaTipo = plTipo === "comun" ? "confirmacion" : plTipo; plTipo = "comun"; return vistaPlantilla(); }
+  plTipo = t; plVistaTipo = t; const f = $("#f-plant"), p = { ...PlantillasCorreo.POR_DEFECTO[t], ...(plantillas[t] || {}) };
   f.asunto.value = p.asunto; f.titular.value = p.titular; f.mensaje.value = p.mensaje; f.nota.value = p.nota || "";
   const pp = plantillas[t];
   $("#pl-info").textContent = pp ? `Cambiada ${new Date(pp.updated_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}${pp.updated_by ? " por " + pp.updated_by.split("@")[0] : ""}` : "Texto original";
@@ -3214,7 +3323,9 @@ function elegirPlantilla(t) {
 function vistaPlantilla() {
   const f = $("#f-plant");
   const c = cursos.find(x => x.fecha_inicio >= hoy && x.estado !== "cancelado") || { tipo: "actualizacion", sede: "Sevilla", fechas: [addDias(hoy, 50), addDias(hoy, 51)] };
-  const { asunto, html } = PlantillasCorreo.componer(plTipo, { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value }, "ANA LÓPEZ RUIZ", c, new URL("./", location.href).href);
+  // en «Textos comunes» se ve el correo de confirmación (o el último abierto) con los textos que se están escribiendo
+  const pl = plTipo === "comun" ? plantillas[plVistaTipo] : { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value };
+  const { asunto, html } = PlantillasCorreo.componer(plTipo === "comun" ? plVistaTipo : plTipo, pl, "ANA LÓPEZ RUIZ", c, new URL("./", location.href).href, comunesForm());
   $("#pl-asunto").innerHTML = `<span class="gris">Asunto:</span> <b></b>`; $("#pl-asunto b").textContent = asunto;
   $("#pl-frame").srcdoc = html;
 }
@@ -3223,8 +3334,8 @@ $("#pl-tipos").addEventListener("click", e => { const b = e.target.closest("[dat
 $("#f-plant").addEventListener("input", vistaPlantilla);
 $("#f-plant").addEventListener("focusin", e => { if (e.target.matches("input,textarea")) plCampo = e.target; });
 $("#pl-vars").addEventListener("click", e => {
-  const b = e.target.closest("[data-var]"); if (!b || !esSuper) return;
-  const c = plCampo || $("#f-plant").mensaje, a = c.selectionStart ?? c.value.length, z = c.selectionEnd ?? a;
+  const b = e.target.closest("[data-var]"); if (!b || !puedePlantillas()) return;
+  const c = (plCampo && !plCampo.closest(".hidden") ? plCampo : null) || $("#f-plant").mensaje, a = c.selectionStart ?? c.value.length, z = c.selectionEnd ?? a;
   c.value = c.value.slice(0, a) + b.dataset.var + c.value.slice(z); c.focus(); c.setSelectionRange(a + b.dataset.var.length, a + b.dataset.var.length);
   vistaPlantilla();
 });
@@ -3233,6 +3344,7 @@ $("#f-plant").addEventListener("submit", async e => {
   const f = e.target, fila = { tipo: plTipo, asunto: f.asunto.value.trim(), titular: f.titular.value.trim(), mensaje: f.mensaje.value.trim(), nota: f.nota.value.trim() || null };
   const raras = [...(fila.asunto + fila.titular + fila.mensaje + (fila.nota || "")).matchAll(/\{(\w+)\}/g)].map(m => m[0]).filter(v => !PlantillasCorreo.VARIABLES.some(([x]) => x === v));
   if (raras.length) return $("#pl-err").textContent = `No existe el dato ${raras[0]}. Usa los botones de «Insertar dato».`;
+  if (!puedePlantillas()) return;
   const { data, error } = await sb.from("plantillas_correo").upsert(fila).select().single();
   if (error) return $("#pl-err").textContent = error.message;
   plantillas[plTipo] = data; toast("Plantilla guardada: los próximos correos usarán este texto");
@@ -3485,15 +3597,17 @@ $("#bk-copiar").addEventListener("click", async () => {
 /* ---------- correo de prueba de una plantilla ---------- */
 $("#pl-prueba").addEventListener("click", async e => {
   const b = e.currentTarget, f = $("#f-plant"); b.disabled = true; b.textContent = "Enviando…";
-  const { data, error } = await sb.functions.invoke("enviar-correos", { body: { prueba: { tipo: plTipo, plantilla: { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value } } } });
+  const { data, error } = await sb.functions.invoke("enviar-correos", { body: { prueba: { tipo: plTipo === "comun" ? plVistaTipo : plTipo, plantilla: plTipo === "comun" ? plantillas[plVistaTipo] || null : { asunto: f.asunto.value, titular: f.titular.value, mensaje: f.mensaje.value, nota: f.nota.value }, comunes: comunesForm() } } });
   b.disabled = false; b.textContent = "Enviarme una prueba";
   const msg = error ? await mensajeFuncion(error) : data?.error;
-  if (msg) { $("#pl-err").textContent = msg; return; }
-  $("#pl-err").textContent = ""; toast(`Prueba enviada a ${data?.para || "tu correo"}`);
+  if (msg) { $("#pl-err").textContent = $("#pc-err").textContent = msg; return; }
+  $("#pl-err").textContent = $("#pc-err").textContent = ""; toast(`Prueba enviada a ${data?.para || "tu correo"}`);
 });
+$("#pc-prueba").addEventListener("click", () => $("#pl-prueba").click());
 
 /* ---------- modo práctica desde el menú ---------- */
-$("#m-practica").addEventListener("click", () => { abrirMenu(false); open("admin.html?practica", "_blank"); });
+// se abre con el mismo tipo de perfil que la cuenta con la que se ha entrado
+$("#m-practica").addEventListener("click", () => { abrirMenu(false); open(`admin.html?practica=${encodeURIComponent(perfilCuenta)}`, "_blank"); });
 // en práctica llegan unas pocas inscripciones "desde la web" para ver el panel en directo
 if (PRACTICA && sb.simularWeb) { let n = 0; const llega = () => { if (n++ < 3) { sb.simularWeb(); setTimeout(llega, 150000); } }; setTimeout(llega, 30000); }
 if (PRACTICA) { $("#m-practica").classList.add("hidden"); $("#salir").textContent = "Salir del modo práctica"; $("#salir").onclick = e => { e.stopImmediatePropagation(); location.href = "./admin.html"; }; }
