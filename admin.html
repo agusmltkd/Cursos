@@ -527,7 +527,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <div class="stats" id="stats-tec"></div>
       <div class="toolbar">
         <input id="buscar-tec" type="search" placeholder="Buscar por nombre, DNI o centro técnico" style="min-width:260px;flex:1">
-        <button class="btn sec hidden" id="tec-archivar" title="Dejan de salir en las cifras y en «por renovar». Si vuelven a inscribirse, se recuperan solos.">Archivar</button>
+        <button class="btn sec hidden" id="tec-archivar" title="Dejan de contar como caducados y en «por renovar». No se cambia ni borra nada.">Ignorar</button>
         <button class="btn sec" id="csv-tec">Exportar a Excel</button>
       </div>
       <div class="caja scroll"><table>
@@ -875,7 +875,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
     <div>
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
         <h3 style="margin:0;font-size:15px">Cursos</h3>
-        <span><button class="btn sec mini solo-hist hidden" type="button" id="ft-hist">Historial de cambios</button> <button class="btn sec mini hidden" type="button" id="ft-archivar" title="Deja de salir en las cifras y en «por renovar». Si vuelve a inscribirse, se recupera solo.">Archivar</button> <button class="btn mini" type="button" id="ft-inscribir">Inscribir en un curso</button></span>
+        <span><button class="btn sec mini solo-hist hidden" type="button" id="ft-hist">Historial de cambios</button> <button class="btn sec mini hidden" type="button" id="ft-archivar" title="Deja de avisar de que tiene que renovar. No cambia ni borra nada; si vuelve a inscribirse, se vuelve a avisar.">Ignorar su caducidad</button> <button class="btn mini" type="button" id="ft-inscribir">Inscribir en un curso</button></span>
       </div>
       <div class="caja scroll"><table>
         <thead><tr><th>Fechas</th><th>Tipo</th><th>Sede</th><th class="hide-m">Taller</th><th>Estado</th><th></th></tr></thead>
@@ -1924,21 +1924,24 @@ async function cargarTecnicos() {
   tecnicos = data; pintarTecnicos();
 }
 function pintarTecnicos() {
-  // los archivados (antiguos que ya no hace falta seguir) no cuentan en ninguna cifra; tienen su propio filtro
-  const vivos = tecnicos.filter(t => !t.archivado_at), archivados = tecnicos.length - vivos.length;
-  const cuenta = k => vivos.filter(t => t.situacion === k).length;
-  const malos = vivos.filter(t => !t.dni_ok && !t.dni_ignorado).length;
-  $("#stats-tec").innerHTML = [["", "Todos", vivos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
+  // «sin avisos»: caducados que se ha decidido no seguir; siguen en la lista pero no cuentan como caducados ni «por renovar»
+  const ign = t => !!t.archivado_at, aviso = t => ["caducado", "vence_pronto"].includes(t.situacion) && !ign(t);
+  const cuenta = k => tecnicos.filter(t => t.situacion === k && (!["caducado", "vence_pronto"].includes(k) || !ign(t))).length;
+  const malos = tecnicos.filter(t => !t.dni_ok && !t.dni_ignorado).length, ignorados = tecnicos.filter(ign).length;
+  $("#stats-tec").innerHTML = [["", "Todos", tecnicos.length], ...Object.entries(SIT).map(([k, v]) => [k, v[0], cuenta(k)])]
     .map(([k, n, c]) => `<button class="stat" data-sit="${k}" aria-pressed="${filtroSit === k}"><b>${c}</b><span>${n}</span></button>`).join("")
     + (malos || filtroSit === "dni" ? `<button class="stat" data-sit="dni" aria-pressed="${filtroSit === "dni"}" style="border-color:var(--rojo)"><b style="color:var(--rojo)">${malos}</b><span>DNI por revisar</span></button>` : "")
-    + (archivados || filtroSit === "archivado" ? `<button class="stat" data-sit="archivado" aria-pressed="${filtroSit === "archivado"}"><b>${archivados}</b><span>Archivados</span></button>` : "");
+    + (ignorados || filtroSit === "ignorado" ? `<button class="stat" data-sit="ignorado" aria-pressed="${filtroSit === "ignorado"}"><b>${ignorados}</b><span>Sin avisos de caducidad</span></button>` : "");
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const q = norm($("#buscar-tec").value);
-  const lista = tecnicos.filter(t => (filtroSit === "archivado" ? !!t.archivado_at : !t.archivado_at && (!filtroSit || (filtroSit === "dni" ? !t.dni_ok && !t.dni_ignorado : t.situacion === filtroSit))) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
-  // archivar de golpe los de la lista (p. ej. los caducados de hace años) o recuperarlos
+  const pasa = t => !filtroSit ? true : filtroSit === "dni" ? !t.dni_ok && !t.dni_ignorado : filtroSit === "ignorado" ? ign(t)
+    : ["caducado", "vence_pronto"].includes(filtroSit) ? t.situacion === filtroSit && !ign(t) : t.situacion === filtroSit;
+  const lista = tecnicos.filter(t => pasa(t) && (!q || norm(t.nombre + " " + t.dni + " " + t.centro).includes(q)));
+  // ignorar de golpe los caducados de la lista (p. ej. los de hace años) o volver a avisar de ellos
   const masivo = $("#tec-archivar");
-  masivo.classList.toggle("hidden", modoDocente || !lista.length || !["caducado", "dni", "sin_formacion", "archivado"].includes(filtroSit));
-  masivo.textContent = filtroSit === "archivado" ? `Recuperar ${lista.length === 1 ? "el de la lista" : `los ${lista.length} de la lista`}` : `Archivar ${lista.length === 1 ? "el de la lista" : `los ${lista.length} de la lista`}`;
+  masivo.classList.toggle("hidden", modoDocente || !lista.length || !["caducado", "ignorado"].includes(filtroSit));
+  const cuantos = lista.length === 1 ? "el de la lista" : `los ${lista.length} de la lista`;
+  masivo.textContent = filtroSit === "ignorado" ? (lista.length === 1 ? "Volver a avisar del de la lista" : `Volver a avisar de los ${lista.length} de la lista`) : `Ignorar ${cuantos}`;
   listaTec = lista;
   $("#tb-tec").innerHTML = lista.map(t => `<tr class="click" data-ficha-tec="${t.id}" tabindex="0">
     <td><b>${esc(t.nombre)}</b></td><td>${t.dni_ok ? esc(t.dni) : t.dni_ignorado
@@ -1946,31 +1949,42 @@ function pintarTecnicos() {
       : `<span style="color:var(--rojo);font-weight:600">${esc(t.dni)}</span><br><button class="btn peligro mini" data-corregir="${t.id}">Corregir DNI</button> <button class="btn sec mini" data-dni-ignorar="${t.id}" data-valor="1" title="Deja de avisar de este DNI. No cambia ni borra nada del técnico.">Ignorar</button>`}</td><td>${t.centro_id ? `<a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}</td>
     <td class="hide-m">${t.ultimo_tipo ? TIPO[t.ultimo_tipo] + ", " + fcorta(t.ultima_fecha) : "—"}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn" title="No consta curso de iniciación">sin iniciación</span>` : ""}</td>
     <td>${t.proximo_curso ? `Inscrito el ${fcorta(t.proximo_curso)}` : fcorta(t.renovar_antes)}</td>
-    <td><span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.archivado_at ? ` <span class="badge b-gris" title="Archivado el ${fcorta(t.archivado_at.slice(0, 10))}${t.archivado_por ? " por " + esc(t.archivado_por.split("@")[0]) : ""}">Archivado</span>` : ""}</td>
+    <td>${ign(t) && !["inscrito"].includes(t.situacion)
+      ? `<span class="badge b-gris" title="Se ha decidido no avisar${t.archivado_por ? " (" + esc(t.archivado_por.split("@")[0]) + ", " + fcorta(t.archivado_at.slice(0, 10)) + ")" : ""}">${SIT[t.situacion][0]}, sin avisos</span><br><button class="btn sec mini" data-cad-ignorar="${t.id}" data-valor="0" style="margin-top:4px">Volver a avisar</button>`
+      : `<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${aviso(t) && !modoDocente ? `<br><button class="btn sec mini" data-cad-ignorar="${t.id}" data-valor="1" style="margin-top:4px" title="Deja de avisar de que este técnico tiene que renovar. No cambia ni borra nada.">Ignorar</button>` : ""}`}</td>
     <td class="hide-m gris" style="font-size:13px">${esc(t.email || "")}<br>${esc(t.telefono || "")}</td></tr>`).join("")
     || `<tr><td colspan="7" class="vacio-t">${tecnicos.length ? "Ningún técnico coincide con la búsqueda." : "Aún no hay técnicos. Aparecerán aquí con las inscripciones o al importar los años anteriores."}</td></tr>`;
 }
-async function archivarTecnicos(ids, archivar) {
-  const { error } = await sb.from("tecnicos").update(archivar ? { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } : { archivado_at: null, archivado_por: null }).in("id", ids);
-  if (error) { toast("No se han podido " + (archivar ? "archivar" : "recuperar")); return false; }
+async function ignorarCaducidad(ids, ignorar) {
+  const { error } = await sb.from("tecnicos").update(ignorar ? { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } : { archivado_at: null, archivado_por: null }).in("id", ids);
+  if (error) { toast("No se ha podido guardar"); return false; }
   return true;
 }
 $("#tec-archivar").addEventListener("click", () => {
-  const recuperar = filtroSit === "archivado", ids = listaTec.map(t => t.id); if (!ids.length) return;
-  if (!recuperar && ids.length > 1 && !confirm(`Vas a archivar ${ids.length} técnicos. Dejarán de salir en las cifras y en «por renovar», pero no se borra nada: siguen en «Archivados» y, si vuelven a inscribirse, se recuperan solos.`)) return;
+  const volver = filtroSit === "ignorado", ids = listaTec.map(t => t.id); if (!ids.length) return;
+  if (!volver && ids.length > 1 && !confirm(`Vas a dejar de recibir avisos de ${ids.length} técnicos caducados. No se cambia ni se borra nada: siguen en la lista y, si vuelven a inscribirse, se vuelve a avisar de ellos.`)) return;
   const b = $("#tec-archivar"); b.disabled = true;
-  conDeshacer(`${recuperar ? "Recuperando" : "Archivando"} ${ids.length} técnico${ids.length === 1 ? "" : "s"}`, async () => {
+  conDeshacer(`${volver ? "Volviendo a avisar de" : "Ignorando"} ${ids.length} técnico${ids.length === 1 ? "" : "s"}`, async () => {
     b.disabled = false;
-    if (await archivarTecnicos(ids, !recuperar)) { toast(`${ids.length} técnico${ids.length === 1 ? "" : "s"} ${recuperar ? "recuperado" : "archivado"}${ids.length === 1 ? "" : "s"}`); await cargarTecnicos(); cargarCursos(); programarAvisos(); }
-  }, { alDeshacer: () => { b.disabled = false; }, alCerrar: { m: "PATCH", r: `/rest/v1/tecnicos?id=in.(${ids.join(",")})`, b: recuperar ? { archivado_at: null, archivado_por: null } : { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } } });
+    if (await ignorarCaducidad(ids, !volver)) { toast(volver ? "Se vuelve a avisar de ellos" : `No se avisará más de ${ids.length === 1 ? "este técnico" : `estos ${ids.length} técnicos`}`); await cargarTecnicos(); cargarCursos(); }
+  }, { alDeshacer: () => { b.disabled = false; }, alCerrar: { m: "PATCH", r: `/rest/v1/tecnicos?id=in.(${ids.join(",")})`, b: volver ? { archivado_at: null, archivado_por: null } : { archivado_at: new Date().toISOString(), archivado_por: miEmail || null } } });
+});
+$("#tb-tec").addEventListener("click", async e => {
+  const b = e.target.closest("[data-cad-ignorar]"); if (!b) return;
+  e.stopPropagation(); b.disabled = true;
+  const ignorar = b.dataset.valor === "1";
+  if (!(await ignorarCaducidad([b.dataset.cadIgnorar], ignorar))) { b.disabled = false; return; }
+  toast(ignorar ? "No se volverá a avisar de que tiene que renovar" : "Se vuelve a avisar de este técnico");
+  const t = tecnicos.find(x => x.id === b.dataset.cadIgnorar); if (t) { t.archivado_at = ignorar ? new Date().toISOString() : null; t.archivado_por = ignorar ? miEmail : null; }
+  pintarTecnicos(); cargarCursos();
 });
 $("#ft-archivar").addEventListener("click", async () => {
   const t = fichaTec; if (!t) return;
-  if (await archivarTecnicos([t.id], !t.archivado_at)) {
-    toast(t.archivado_at ? "Técnico recuperado" : "Técnico archivado: ya no sale en las cifras ni en «por renovar»");
+  if (await ignorarCaducidad([t.id], !t.archivado_at)) {
+    toast(t.archivado_at ? "Se vuelve a avisar de este técnico" : "No se volverá a avisar de que tiene que renovar");
     t.archivado_at = t.archivado_at ? null : new Date().toISOString();
-    $("#ft-archivar").textContent = t.archivado_at ? "Recuperar (quitar de archivados)" : "Archivar";
-    if (tecnicos.length) cargarTecnicos(); programarAvisos();
+    $("#ft-archivar").textContent = t.archivado_at ? "Volver a avisar de su caducidad" : "Ignorar su caducidad";
+    if (tecnicos.length) cargarTecnicos(); cargarCursos();
   }
 });
 $("#stats-tec").addEventListener("click", e => { const b = e.target.closest("[data-sit]"); if (b) { filtroSit = b.dataset.sit; pintarTecnicos(); } });
@@ -2244,7 +2258,7 @@ function dniValido(v) {
 const ESTINS = { confirmada: ["Realizado","b-ok"], lista_espera: ["En espera","b-warn"], cancelada: ["Baja","b-gris"] };
 let fichaTec = null, fichaTecIns = [];
 document.addEventListener("click", e => {
-  if (e.target.closest("[data-corregir],[data-quitar-tec],[data-dni-ignorar]")) return;
+  if (e.target.closest("[data-corregir],[data-quitar-tec],[data-dni-ignorar],[data-cad-ignorar]")) return;
   if (modoDocente && e.target.closest("[data-ficha-tec],[data-ficha-taller]")) { e.preventDefault(); e.stopPropagation(); return; }
   const t = e.target.closest("[data-ficha-tec]"); if (t) { e.preventDefault(); abrirTecnico(t.dataset.fichaTec); return; }
   const l = e.target.closest("[data-ficha-taller]"); if (l) { e.preventDefault(); e.stopPropagation(); abrirTaller(l.dataset.fichaTaller); }
@@ -2263,9 +2277,9 @@ async function abrirTecnico(id) {
   fichaTec = est.data;
   fichaTecIns = (ins.data || []).filter(i => i.cursos).sort((a, b) => b.cursos.fecha_inicio.localeCompare(a.cursos.fecha_inicio));
   const t = fichaTec, f = $("#f-tec");
-  $("#ft-archivar").textContent = t.archivado_at ? "Recuperar (quitar de archivados)" : "Archivar";
-  $("#ft-archivar").classList.toggle("hidden", modoDocente);
-  $("#ft-badges").innerHTML = `${t.archivado_at ? `<span class="badge b-gris">Archivado</span> ` : ""}<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.dni_ok ? "" : t.dni_ignorado ? ` <span class="badge b-gris" title="Se ha decidido no avisar de este DNI">DNI no válido (ignorado)</span>` : ` <span class="badge b-bad">DNI no válido</span>`}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn">sin iniciación</span>` : ""}`;
+  $("#ft-archivar").textContent = t.archivado_at ? "Volver a avisar de su caducidad" : "Ignorar su caducidad";
+  $("#ft-archivar").classList.toggle("hidden", modoDocente || !(t.archivado_at || ["caducado", "vence_pronto"].includes(t.situacion)));
+  $("#ft-badges").innerHTML = `${t.archivado_at ? `<span class="badge b-gris">Caducidad sin avisos</span> ` : ""}<span class="badge ${SIT[t.situacion][1]}">${SIT[t.situacion][0]}</span>${t.dni_ok ? "" : t.dni_ignorado ? ` <span class="badge b-gris" title="Se ha decidido no avisar de este DNI">DNI no válido (ignorado)</span>` : ` <span class="badge b-bad">DNI no válido</span>`}${!t.tiene_iniciacion && t.ultima_fecha ? ` <span class="badge b-warn">sin iniciación</span>` : ""}`;
   $("#ft-nombre").textContent = t.nombre;
   $("#ft-sub").innerHTML = `${esc(t.dni)}${t.centro_id ? ` · <a class="enlace" data-ficha-taller="${t.centro_id}">${esc(t.centro || "")}</a>` : ""}`;
   const hechos = fichaTecIns.filter(i => i.estado === "confirmada" && i.asistio !== false && i.cursos.fecha_fin < hoy && i.cursos.estado !== "cancelado");
@@ -2722,7 +2736,7 @@ $("[data-panel=duplicados]").addEventListener("click", async e => {
 let puedeHist = false, hist = [], histFin = false, histFiltro = null, nombres = { tec: new Map(), cen: new Map(), cur: new Map(), fir: new Map() };
 const CAMPOS = { estado: "estado", asistio: "asistencia", centro_id: "taller", tecnico_id: "técnico", curso_id: "curso", nombre: "nombre", dni: "DNI", telefono: "teléfono", email: "correo",
   contacto: "persona de contacto", contacto_nombre: "contacto", contacto_telefono: "teléfono del contacto", cupo_max: "cupo", quorum_min: "quórum", fechas: "fechas", fecha_inicio: "inicio",
-  fecha_fin: "fin", tipo: "tipo", sede: "sede", notas: "notas", docente_id: "docente", horas: "horas", token: "enlace del taller", origen: "origen", firma: "firma", cargo: "cargo", activo: "activo", rol: "rol", dni_foto_path: "foto del DNI", archivado_at: "archivado", archivado_por: "archivado por", dni_ignorado: "avisos del DNI ignorados" };
+  fecha_fin: "fin", tipo: "tipo", sede: "sede", notas: "notas", docente_id: "docente", horas: "horas", token: "enlace del taller", origen: "origen", firma: "firma", cargo: "cargo", activo: "activo", rol: "rol", dni_foto_path: "foto del DNI", archivado_at: "avisos de caducidad ignorados", archivado_por: "ignorado por", dni_ignorado: "avisos del DNI ignorados" };
 const VAL_ESTADO = { confirmada: "con plaza", lista_espera: "lista de espera", cancelada: "baja", abierto: "abierto", cerrado: "cerrado", cancelado: "cancelado" };
 async function cargarNombres() {
   const [t, c, f] = await Promise.all([todas(() => sb.from("tecnicos").select("id,nombre")), todas(() => sb.from("centros").select("id,nombre")), sb.from("firmantes").select("id,nombre")]);
@@ -3005,7 +3019,7 @@ async function calcularAvisos() {
     return pintarAvisos();
   }
   const [dni, prov, cor, nuevas, dup, ren, dupA, anu] = await Promise.all([
-    sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false).eq("dni_ignorado", false).is("archivado_at", null),
+    sb.from("tecnicos_estado").select("id", { count: "exact", head: true }).eq("dni_ok", false).eq("dni_ignorado", false),
     sb.from("centros_resumen").select("id", { count: "exact", head: true }).is("provincia", null),
     sb.from("correos").select("id", { count: "exact", head: true }).eq("estado", "error"),
     sb.from("inscripciones").select("id,estado,created_at,origen,tecnicos(nombre),centros(nombre),cursos(id,tipo,sede,fechas,fecha_inicio)")
