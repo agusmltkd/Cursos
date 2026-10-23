@@ -96,7 +96,7 @@
       const situacion = prox ? "inscrito" : !u ? "sin_formacion" : renovar < hoy ? "caducado" : renovar < mas(hoy, 60) ? "vence_pronto" : "al_dia";
       return { id: t.id, dni: t.dni, nombre: t.nombre, telefono: t.telefono, email: t.email, centro: cen.get(t.centro_id)?.nombre || null,
         tiene_iniciacion: !!t._ini || hechos.some(c => c.tipo === "iniciacion"), ultimo_tipo: u?.tipo || null, ultima_fecha: u?.fecha_fin || null, renovar_antes: renovar, proximo_curso: prox, situacion,
-        dni_ok: dniValido(t.dni), n_inscripciones: ins.length, centro_id: t.centro_id, centros_ids: [...new Set(ins.map(i => i.centro_id).filter(Boolean))], archivado_at: t.archivado_at || null, archivado_por: t.archivado_por || null };
+        dni_ok: dniValido(t.dni), n_inscripciones: ins.length, centro_id: t.centro_id, centros_ids: [...new Set(ins.map(i => i.centro_id).filter(Boolean))], archivado_at: t.archivado_at || null, archivado_por: t.archivado_por || null, dni_ignorado: !!t.dni_ignorado };
     });
   }
   function centrosResumen(db) {
