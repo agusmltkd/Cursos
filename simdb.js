@@ -319,6 +319,21 @@
         return out;
       },
       duplicados_tecnicos: () => [],
+      finalizar_curso: p => {
+        const c = db.cursos.find(x => x.id === p.p_curso); if (!c) return error("Curso no encontrado");
+        const hoyS = new Date().toISOString().slice(0, 10);
+        if (p.p_finalizar !== false) {
+          if (c.estado === "cancelado") return error("El curso está cancelado");
+          if (c.fecha_fin > hoyS) return error("El curso aún no ha terminado: se puede finalizar a partir del último día");
+          db.examen_cursos.filter(e => e.curso_id === c.id).forEach(e => { e.abierto = false; });
+          Object.assign(c, { finalizado_at: c.finalizado_at || ahora(), finalizado_por: c.finalizado_por || sim.email });
+        } else {
+          if (docP) return error("Solo la gestión puede reabrir un curso finalizado");
+          Object.assign(c, { finalizado_at: null, finalizado_por: null });
+        }
+        sim.avisar("cursos");
+        return { finalizado_at: c.finalizado_at, finalizado_por: c.finalizado_por };
+      },
       duplicados_anio: () => {
         const anio = new Date().getFullYear(), g = new Map();
         for (const i of db.inscripciones) {

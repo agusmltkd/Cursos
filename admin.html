@@ -18,7 +18,7 @@
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261023a"></script>
-<script src="simdb.js?v=20261023c"></script>
+<script src="simdb.js?v=20261026a"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -31,6 +31,8 @@
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 var(--f);background:var(--papel);color:var(--tinta)}
 .hidden{display:none!important}
+.final-banda{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:var(--verde-suave);border:1px solid #cfe5d8;border-radius:14px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+.final-banda b{color:var(--verde-osc)}.final-banda .esp{flex:1}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--verde);outline-offset:2px}
 a{color:var(--verde)}
@@ -642,6 +644,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
   <div class="dh"><div><span id="dc-tipo"></span><h2 id="dc-titulo" style="margin-top:6px"></h2><div class="gris" id="dc-sub"></div></div><button class="x" data-close aria-label="Cerrar">×</button></div>
   <div class="db">
     <div class="resumen-c" id="dc-resumen"></div>
+    <div id="dc-final" class="final-banda hidden" role="status"></div>
     <div id="dc-tramites"></div>
     <div class="toolbar">
       <button class="btn" id="dc-add">Añadir asistente</button>
@@ -652,6 +655,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <button class="btn sec" id="dc-csv">Exportar a Excel</button>
       <button class="btn sec" id="dc-mails">Copiar correos</button>
       <span class="esp"></span>
+      <button class="btn" id="dc-finalizar" title="Cuando todo esté listo: cierra el curso y ya no se cambian inscritos, asistencia ni examen">Finalizar curso</button>
       <button class="btn sec" id="dc-editar">Editar curso</button>
       <button class="btn peligro" id="dc-cancelar">Cancelar curso</button>
     </div>
@@ -1494,7 +1498,7 @@ document.addEventListener("click", e => {
 ["#f-anio","#f-sede","#f-tipo","#f-pasados"].forEach(s => $(s).addEventListener("change", pintarCursos));
 function estadoBadge(c) {
   const pasado = c.fecha_fin < hoy;
-  return c.estado === "cancelado" ? `<span class="badge b-bad">Cancelado</span>` : pasado ? `<span class="badge b-gris">Celebrado</span>`
+  return c.estado === "cancelado" ? `<span class="badge b-bad">Cancelado</span>` : c.finalizado_at ? `<span class="badge b-ok" title="Finalizado el ${fcorta(c.finalizado_at.slice(0, 10))}">Finalizado</span>` : pasado ? `<span class="badge b-gris">Celebrado</span>`
     : c.estado === "cerrado" ? `<span class="badge b-gris">Cerrado</span>` : c.ocupadas >= c.cupo_max ? `<span class="badge b-azul">Completo</span>`
     : c.ocupadas < c.quorum_min ? `<span class="badge b-warn">Sin quórum</span>` : `<span class="badge b-ok">Abierto</span>`;
 }
@@ -1512,6 +1516,43 @@ function pintarCursos() {
 }
 $("#tb-cursos").addEventListener("keydown", e => { if (e.key === "Enter") { const tr = e.target.closest("tr[data-ver]"); if (tr) abrirCurso(tr.dataset.ver); } });
 
+/* ---------- finalizar el curso ---------- */
+// cuando ya está todo listo (asistencia, examen, certificados…) se finaliza: ya no se cambian inscritos, asistencia ni examen
+function pintarFinal() {
+  const c = actual, fin = !!c.finalizado_at, gestor = !modoDocente;
+  const z = $("#dc-final");
+  z.classList.toggle("hidden", !fin);
+  if (fin) z.innerHTML = `<span>✓ <b>Curso finalizado</b> el ${fcorta(c.finalizado_at.slice(0, 10))}${c.finalizado_por ? ` por ${esc(String(c.finalizado_por).split("@")[0])}` : ""}. Ya no se pueden cambiar los inscritos, la asistencia ni el examen.</span><span class="esp"></span>${gestor ? `<button class="btn sec mini" type="button" id="dc-reabrir">Reabrir</button>` : ""}`;
+  $("#dc-finalizar").classList.toggle("hidden", fin || c.estado === "cancelado" || c.fecha_fin > hoy);
+  ["#dc-add", "#dc-editar"].forEach(x => { if (!modoDocente) $(x).classList.toggle("hidden", fin); });
+}
+$("#dc-finalizar").addEventListener("click", async () => {
+  const c = actual; if (!c) return;
+  // lo que falta, para avisar antes de cerrar
+  const conf = inscritos.filter(i => i.estado === "confirmada"), sinAsis = conf.filter(i => i.asistio == null).length;
+  const presentes = conf.filter(i => i.asistio !== false), sinExamen = presentes.filter(i => !exDe(i)).length;
+  const { data: ex } = await sb.from("examen_cursos").select("abierto").eq("curso_id", c.id).maybeSingle();
+  const falta = [];
+  if (sinAsis) falta.push(`${sinAsis} asistente${sinAsis > 1 ? "s" : ""} sin la asistencia marcada`);
+  if (ex && sinExamen) falta.push(`${sinExamen} sin entregar el examen`);
+  if (ex?.abierto) falta.push("el examen sigue abierto (se cerrará al finalizar)");
+  if (!modoDocente) { const pend = estadoTramites({ ...c, inscripciones: inscritos }).filter(x => !x.ok && !x.auto).map(x => x.t.toLowerCase()); if (pend.length) falta.push(`trámites sin marcar: ${pend.join(", ")}`); }
+  const txt = `¿Finalizar el curso del ${textoFechas(c.fechas)} en ${c.sede}?\n\nUna vez finalizado ya no se pueden cambiar los inscritos, la asistencia ni el examen${modoDocente ? "; solo la gestión puede reabrirlo" : " (se puede reabrir)"}. Los certificados y la hoja de firmas se siguen pudiendo sacar.`
+    + (falta.length ? `\n\nOjo, queda pendiente:\n· ${falta.join("\n· ")}\n\n¿Finalizar igualmente?` : "");
+  if (!confirm(txt)) return;
+  const { data, error } = await sb.rpc("finalizar_curso", { p_curso: c.id, p_finalizar: true });
+  if (error) return toast(error.message);
+  Object.assign(c, data || { finalizado_at: new Date().toISOString() });
+  toast("Curso finalizado"); await cargarCursos(); actual = cursos.find(x => x.id === c.id) || c; abrirCurso(actual.id);
+});
+$("#dc-final").addEventListener("click", async e => {
+  if (!e.target.closest("#dc-reabrir")) return;
+  if (!confirm("¿Reabrir el curso? Se podrán volver a cambiar los inscritos, la asistencia y el examen.")) return;
+  const { error } = await sb.rpc("finalizar_curso", { p_curso: actual.id, p_finalizar: false });
+  if (error) return toast(error.message);
+  toast("Curso reabierto"); const id = actual.id; await cargarCursos(); actual = cursos.find(x => x.id === id) || actual; abrirCurso(id);
+});
+
 /* ---------- detalle ---------- */
 let actual = null, inscritos = [];
 async function abrirCurso(id) {
@@ -1519,7 +1560,8 @@ async function abrirCurso(id) {
   $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
   $("#dc-titulo").textContent = textoFechas(actual.fechas);
   $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${horarioDe(actual, i)}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
-  $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado" || modoDocente);
+  $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado" || modoDocente || !!actual.finalizado_at);
+  pintarFinal();
   $("#dc-tb").innerHTML = `<tr><td colspan="8" class="vacio-t">Cargando…</td></tr>`;
   if (!$("#dlg-curso").open) $("#dlg-curso").showModal();
   await cargarInscritos();
@@ -1548,8 +1590,8 @@ async function cargarInscritos() {
       <td>${esc(t.dni)}</td><td>${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}${i.centros?.email ? `<div class="gris" style="font-size:13px">${esc(i.centros.email)}</div>` : ""}</td>
       <td class="hide-m">${esc(i.contacto_nombre || "")}<div class="gris" style="font-size:13px">${esc(i.contacto_telefono || "")}</div></td>
       <td>${est}${!modoDocente && dupAnioIns.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00">● También en ${dupAnioIns.get(i.id).otros.map(o => `${esc(o.sede)} ${fcorta(o.inicio)}`).join(" y ")}</div>` : ""}${!modoDocente && !dupAnioIns.has(i.id) && renovTemp.has(i.id) ? `<div style="font-size:12px;margin-top:3px;color:#8a5a00" title="Terminó otro curso el ${fcorta(renovTemp.get(i.id).ultimo_fin)}">● Aún no le toca renovar</div>` : ""}${i.origen === "admin" ? `<div class="gris" style="font-size:12px">añadido a mano</div>` : ""}${exDe(i) ? `<div style="font-size:12px;margin-top:3px">Examen: <b style="color:${exDe(i).apto ? "var(--verde-osc)" : "var(--rojo)"}">${notaTxt(exDe(i).nota)} · ${exDe(i).apto ? "apto" : "no apto"}</b></div>` : ""}</td>
-      <td><select class="mini" data-act="asistio" aria-label="Asistió"><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
-      <td><div class="acc">${modoDocente ? "" : `
+      <td><select class="mini" data-act="asistio" aria-label="Asistió" ${actual.finalizado_at ? "disabled title=\"Curso finalizado\"" : ""}><option value="" ${i.asistio == null ? "selected" : ""}>—</option><option value="true" ${i.asistio === true ? "selected" : ""}>Sí</option><option value="false" ${i.asistio === false ? "selected" : ""}>No</option></select></td>
+      <td><div class="acc">${modoDocente || actual.finalizado_at ? "" : `
         ${i.estado !== "confirmada" ? `<button class="btn mini" data-act="plaza">Dar plaza</button>` : ""}
         <button class="btn sec mini" data-act="mover">Mover</button>
         ${i.estado === "cancelada" ? `<button class="btn sec mini" data-act="borrar">Eliminar</button>` : `<button class="btn peligro mini" data-act="cancelar" title="Dar de baja">Baja</button>`}`}
@@ -3000,7 +3042,7 @@ async function calcularAvisos() {
       add({ clave: `docente14:${c.id}`, nivel: "urgente", titulo: "Falta asignar el docente", sub: `${et} · empieza ${d === 0 ? "hoy" : d === 1 ? "mañana" : `en ${d} días`} · hace falta para la hoja de firmas y los certificados`, curso: c.id, quitar: true });
     else if (!c.docente_id && c.ocupadas > 0 && d <= 30 && diasHasta(c.fecha_fin) >= -30)
       add({ clave: `docente:${c.id}`, nivel: "tarea", titulo: "Curso sin docente asignado", sub: `${et} · hace falta para los certificados`, curso: c.id, quitar: true });
-    if (!modoDocente && tramitesVivos(c)) {
+    if (!modoDocente && tramitesVivos(c) && !c.finalizado_at) {   // un curso finalizado ya no avisa de trámites
       const e = estadoTramites(c), mal = e.filter(x => x.estado === "mal"), ind = e.find(x => x.k === "industria" && x.estado === "aviso");
       if (mal.length) add({ clave: `tram:${c.id}:${mal.map(x => x.k).join(",")}`, nivel: mal.some(x => x.k === "industria") ? "urgente" : "tarea", titulo: `Trámites atrasados: ${mal.map(x => x.t.toLowerCase()).join(", ")}`, sub: et, curso: c.id, quitar: true });
       if (ind) add({ clave: `tramind:${c.id}`, nivel: "tarea", titulo: "Presentar la comunicación a Industria", sub: `${et} · ${ind.detalle}`, curso: c.id, quitar: true });
