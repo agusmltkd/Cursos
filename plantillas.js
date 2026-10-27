@@ -55,13 +55,14 @@
   const D = s => new Date(s + "T12:00:00Z");
   const fd = s => { const d = D(s); return `${DIAS[d.getUTCDay()]} ${d.getUTCDate()} de ${MESES[d.getUTCMonth()]}`; };
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const HSTD = i => i === 0 ? ["10:00", "18:30"] : ["09:00", "17:15"];
+  // Sevilla y Online: la 1ª jornada de 10:00 a 18:30 y el resto de 9:00 a 17:15. Zaragoza: todas de 9:00 a 17:15
+  const HSTD = (i, sede) => i === 0 && sede !== "Zaragoza" ? ["10:00", "18:30"] : ["09:00", "17:15"];
   const hora = h => String(h).replace(/^0(\d)/, "$1");
 
   function variables(nombre, curso, web) {
     const f = curso.fechas, cargo = D(f[0]); cargo.setUTCDate(cargo.getUTCDate() - 45);
     const tipo = curso.tipo === "iniciacion" ? "Iniciación" : "Actualización";
-    const h0 = (curso.horarios && curso.horarios[0]) || HSTD(0);
+    const h0 = (curso.horarios && curso.horarios[0]) || HSTD(0, curso.sede);
     return { nombre, tipo, sede: curso.sede, curso: `${tipo} · ${curso.sede}`, anio: String(D(f[0]).getUTCFullYear()), num_jornadas: String(f.length),
       fechas: f.map(fd).join(", ").replace(/, ([^,]*)$/, " y $1"), hora_inicio: hora(h0[0]),
       cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: FORMULARIO, direccion: direccion(curso.sede) || "Online" };
@@ -86,7 +87,7 @@
     const p = { ...POR_DEFECTO[tipo], ...(plantilla || {}) }, v = variables(nombre, curso, web), color = COLOR[tipo] || "#268c56";
     const C = { ...COMUNES }; for (const [k, x] of Object.entries(comunes || {})) if (k in C && x != null && String(x).trim() !== "") C[k] = String(x);
     const fechas = curso.fechas, anio = D(fechas[0]).getUTCFullYear();
-    const filas = fechas.map((f, i) => { const h = (curso.horarios && curso.horarios[i]) || HSTD(i);
+    const filas = fechas.map((f, i) => { const h = (curso.horarios && curso.horarios[i]) || HSTD(i, curso.sede);
       return `<tr><td style="padding:10px 0;border-bottom:1px solid #e1e7e3;font-size:15px;color:#16201b">${rellenar(C.jornada, { ...v, num: String(i + 1) }, true)} · ${fd(f)}</td><td style="padding:10px 0;border-bottom:1px solid #e1e7e3;font-size:15px;color:#5a6660;text-align:right;white-space:nowrap">${hora(h[0])} – ${hora(h[1])}</td></tr>`; }).join("");
     const parrafos = t => rellenar(t, v, true).split(/\n{2,}/).map(x => x.replace(/\n/g, "<br>")).join(`</p><p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#16201b">`);
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head><body style="margin:0;background:#f2f4f1;font-family:Arial,Helvetica,sans-serif">

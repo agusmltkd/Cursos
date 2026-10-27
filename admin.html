@@ -17,7 +17,7 @@
 <script src="industria.js?v=20261013a" defer></script>
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
-<script src="plantillas.js?v=20261023a"></script>
+<script src="plantillas.js?v=20261027a"></script>
 <script src="simdb.js?v=20261026a"></script>
 <style>
 :root{
@@ -1887,22 +1887,31 @@ $("#f-add").addEventListener("submit", async e => {
 let editando = null;
 const fc = $("#f-curso");
 function pintarJornadas(fechas, horarios) {
-  const hs = fechas.map((_, i) => (horarios && horarios[i]) || HORARIO_STD(i));
+  const hs = fechas.map((_, i) => (horarios && horarios[i]) || HORARIO_STD(i, sedeForm()));
   $("#jornadas").innerHTML = fechas.map((f, i) => `<div class="jornada" data-j="${i}"><b>${i + 1}ª jornada</b>
       <input type="date" class="j-fecha" value="${f}" aria-label="Fecha de la jornada ${i + 1}">
       <input type="time" class="j-ini" value="${hs[i][0]}" aria-label="Hora de inicio de la jornada ${i + 1}"><span>a</span>
       <input type="time" class="j-fin" value="${hs[i][1]}" aria-label="Hora de fin de la jornada ${i + 1}"></div>`).join("") +
     `<div class="botones"><button type="button" class="btn sec mini" id="j-mas">Añadir jornada</button>` +
     (fechas.length > 1 ? `<button type="button" class="btn sec mini" id="j-menos">Quitar jornada</button>` : "") + `</div>`;
-  $("#j-mas").onclick = () => { const f = leerJornadas(), h = leerHorarios(); pintarJornadas([...f, addDias(f.at(-1), 1)], [...h, HORARIO_STD(1)]); };
+  $("#j-mas").onclick = () => { const f = leerJornadas(), h = leerHorarios(); pintarJornadas([...f, addDias(f.at(-1), 1)], [...h, HORARIO_STD(1, sedeForm())]); };
   if ($("#j-menos")) $("#j-menos").onclick = () => pintarJornadas(leerJornadas().slice(0, -1), leerHorarios().slice(0, -1));
 }
 const leerHorarios = () => $$("#jornadas .jornada").map(j => [j.querySelector(".j-ini").value || "09:00", j.querySelector(".j-fin").value || "17:15"]);
+// al cambiar de sede, si las jornadas tenían el horario habitual, se ponen las de la nueva sede
+let sedeJornadas = null;
+$("#fc-sede").addEventListener("focus", () => { sedeJornadas = sedeForm(); });
+$("#fc-sede").addEventListener("change", () => {
+  const f = leerJornadas(), hs = leerHorarios(), antes = sedeJornadas; sedeJornadas = sedeForm();
+  if (f.length && hs.every((x, i) => x[0] === HORARIO_STD(i, antes)[0] && x[1] === HORARIO_STD(i, antes)[1])) pintarJornadas(f, null);
+});
 const leerJornadas = () => $$("#jornadas .j-fecha").map(i => i.value).filter(Boolean);
 /* horario de cada jornada: el guardado en el curso o el habitual */
-const HORARIO_STD = i => i === 0 ? ["10:00", "18:30"] : ["09:00", "17:15"];
+// Sevilla y Online: la 1ª jornada de 10:00 a 18:30 y el resto de 9:00 a 17:15. Zaragoza: todas de 9:00 a 17:15
+const HORARIO_STD = (i, sede) => i === 0 && sede !== "Zaragoza" ? ["10:00", "18:30"] : ["09:00", "17:15"];
+const sedeForm = () => $("#fc-sede")?.value;
 const hora = h => String(h || "").replace(/^0(\d)/, "$1");
-const horarioDe = (c, i) => { const h = (c?.horarios && c.horarios[i]) || HORARIO_STD(i); return `${hora(h[0])}–${hora(h[1])}`; };
+const horarioDe = (c, i) => { const h = (c?.horarios && c.horarios[i]) || HORARIO_STD(i, c?.sede); return `${hora(h[0])}–${hora(h[1])}`; };
 function autoJornadas() {
   const ini = fc.inicio.value; if (!ini) return;
   const n = fc.tipo.value === "iniciacion" ? 4 : 2, out = [];
@@ -1937,7 +1946,7 @@ fc.addEventListener("submit", async e => {
   if (!fechas.length) { $("#fe-err").textContent = "Indica al menos una jornada."; return; }
   const jj = $$("#jornadas .jornada").map(j => ({ f: j.querySelector(".j-fecha").value, h: [j.querySelector(".j-ini").value || "09:00", j.querySelector(".j-fin").value || "17:15"] })).filter(x => x.f).sort((a, b) => a.f.localeCompare(b.f));
   if (jj.some(x => x.h[1] <= x.h[0])) { $("#fe-err").textContent = "En alguna jornada la hora de fin es anterior a la de inicio."; return; }
-  const horarios = jj.map(x => x.h), habitual = horarios.every((h, i) => h[0] === HORARIO_STD(i)[0] && h[1] === HORARIO_STD(i)[1]);
+  const horarios = jj.map(x => x.h), habitual = horarios.every((h, i) => h[0] === HORARIO_STD(i, fc.sede.value)[0] && h[1] === HORARIO_STD(i, fc.sede.value)[1]);
   const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null, docente_id: fc.docente.value || null,
     horas: +fc.horas.value || HORAS[fc.tipo.value], horarios: habitual ? null : horarios };
   if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm("Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;

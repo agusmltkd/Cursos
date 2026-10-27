@@ -324,7 +324,7 @@ body{font:400 16px/1.55 var(--f)}
       <div><h3>Plazas por orden de llegada</h3><p>Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y le avisamos por correo si se libera una plaza.</p></div>
       <div><h3>Quórum mínimo de 6</h3><p>Una convocatoria puede cambiar por cambios legislativos o si no reúne 6 asistentes. Si ocurre, os avisamos para reubicar la plaza.</p></div>
       <div><h3>Cargo 45 días antes</h3><p>WORTACH realiza el cargo al centro técnico 45 días antes de la primera jornada.</p></div>
-      <div><h3>Horario habitual</h3><div class="horario"><b>1ª jornada</b><span>10:00 a 18:30</span><b>Resto</b><span>9:00 a 17:15</span></div><p style="margin-top:6px">El de cada convocatoria aparece al elegirla.</p></div>
+      <div><h3>Horario habitual</h3><div class="horario"><b>Sevilla</b><span>1ª jornada de 10:00 a 18:30, el resto de 9:00 a 17:15</span><b>Zaragoza</b><span>todas de 9:00 a 17:15</span></div><p style="margin-top:6px">El de cada convocatoria aparece al elegirla.</p></div>
     </section>
   </section>
 
@@ -524,8 +524,9 @@ function irPaso(n) {
 $("#volver").addEventListener("click", () => irPaso(1));
 
 /* ---------- paso 2 ---------- */
-const HORARIO_STD = i => i === 0 ? ["10:00", "18:30"] : ["09:00", "17:15"];
-const horasDe = (c, i) => (c.horarios && c.horarios[i]) || HORARIO_STD(i);
+// Sevilla y Online: la 1ª jornada de 10:00 a 18:30 y el resto de 9:00 a 17:15. Zaragoza: todas de 9:00 a 17:15
+const HORARIO_STD = (i, sede) => i === 0 && sede !== "Zaragoza" ? ["10:00", "18:30"] : ["09:00", "17:15"];
+const horasDe = (c, i) => (c.horarios && c.horarios[i]) || HORARIO_STD(i, c.sede);
 const hora = h => String(h).replace(/^0(\d)/, "$1");
 function horarioJornadas(c) {
   return c.fechas.map((f, i) => { const [a, b] = horasDe(c, i); return `<li><span>${fLarga(f)}</span><span>${hora(a)} – ${hora(b)}</span></li>`; }).join("");
