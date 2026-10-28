@@ -652,6 +652,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
       <button class="btn sec" id="dc-examen">Examen</button>
       <button class="btn sec" id="dc-firmas">Hoja de firmas</button>
       <button class="btn sec" id="dc-industria" title="Planificación del proceso de adiestramiento para presentar a la comunidad autónoma">Comunicación a Industria</button>
+      <button class="btn sec" id="dc-finalizacion" title="Finalización del proceso de adiestramiento para presentar a la comunidad autónoma, con los asistentes que lo han superado">Comunicación de finalización</button>
       <button class="btn sec" id="dc-csv">Exportar a Excel</button>
       <button class="btn sec" id="dc-mails">Copiar correos</button>
       <span class="esp"></span>
@@ -1390,7 +1391,7 @@ function aplicarDocente() {
   $(".marca span").textContent = "Mis cursos";
   document.title = "Mis cursos · Adiestramientos WORTACH";
   $$("nav.tabs button").forEach(b => b.classList.toggle("hidden", !["panel", "cursos"].includes(b.dataset.tab)));
-  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-cert", "#abrir-cargos", "#dc-csv"].forEach(x => $(x)?.classList.add("hidden"));
+  ["#nuevo-curso", "#importar", "#copiar-cal", "#dc-add", "#dc-editar", "#dc-cancelar", "#dc-mails", "#dc-industria", "#dc-finalizacion", "#dc-cert", "#abrir-cargos", "#dc-csv"].forEach(x => $(x)?.classList.add("hidden"));
 }
 
 /* ---------- gestor de una sola sede ---------- */
@@ -1667,6 +1668,7 @@ $("#dc-mails").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(m); toast("Correos copiados"); } catch { prompt("Copia los correos:", m); }
 });
 $("#dc-firmas").addEventListener("click", () => hojaFirmas(actual.id));
+$("#dc-finalizacion").addEventListener("click", () => comunicadoFinalizacion(actual.id));
 
 /* ---------- certificados ---------- */
 let firmantes = [], certAlumnos = [];
@@ -1815,6 +1817,52 @@ async function hojaFirmas(id) {
   <div class="aprob"><table><tr><td class="et">Aprobado por:</td><td class="val" contenteditable>${esc((aprobador?.nombre || "").toLocaleUpperCase("es-ES"))}</td>
   <td class="et">Fecha presentación CCAA:</td><td class="val" contenteditable>${fPres}</td></tr></table><p class="rev">Rev.: 0</p></div>
   <p class="nota">Puedes cambiar cualquier dato de la cabecera, el docente o la fecha haciendo clic sobre él; luego vuelve a imprimir (Ctrl+P).</p>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
+/* ---------- comunicación de finalización (plantilla «FINALIZACION PROCESO DE ADIESTRAMIENTO») ---------- */
+// sale con los asistentes que lo han superado: tenían plaza, no se marcó «No» en asistencia y, si hubo examen, son aptos
+async function comunicadoFinalizacion(id) {
+  const c = cursos.find(x => x.id === id);
+  const { data, error } = await sb.from("inscripciones").select("created_at, asistio, tecnicos(nombre,dni), centros(nombre), examenes(apto)").eq("curso_id", id).eq("estado", "confirmada").order("created_at");
+  if (error) return toast("No se ha podido preparar la comunicación de finalización");
+  if (!firmantes.length) await cargarFirmantes().catch(() => {});
+  const aprobador = firmantes.find(x => x.rol === "aprobador");
+  if (!cfgIndustria) { const { data: aj } = await sb.from("ajustes").select("valor").eq("clave", "comunicacion_industria").maybeSingle(); cfgIndustria = aj?.valor || {}; }
+  const tipo = (cfgIndustria?.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${TIPO[c.tipo]}`).toLocaleUpperCase("es-ES");
+  const lugar = cfgIndustria?.lugar?.[c.sede] || (c.sede === "Online" ? "Formación online (aula virtual)" : c.sede);
+  const fechas = window.Industria ? Industria.fechasLargas(c.fechas) : textoFechas(c.fechas);
+  const fPres = [hoy, c.fechas.at(-1)].sort().at(-1).split("-").reverse().join("/");
+  const superan = data.filter(i => i.asistio !== false && (!exDe(i) || exDe(i).apto));
+  const fuera = data.length - superan.length;
+  const base = location.href.replace(/[^/]*$/, "");
+  const filas = superan.map(i => `<tr><td>${esc(i.centros?.nombre || "")}</td><td>${esc(i.tecnicos?.nombre || "")}</td><td class="c">${esc(i.tecnicos?.dni || "")}</td></tr>`).join("");
+  const vacias = Array.from({ length: Math.max(10 - superan.length, 2) }, () => `<tr><td></td><td></td><td></td></tr>`).join("");
+  const w = window.open("", "_blank");
+  if (!w) return toast("Permite las ventanas emergentes para imprimir");
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Finalización proceso de adiestramiento ${c.sede} ${c.fecha_inicio}</title>
+  <style>@page{size:A4 landscape;margin:8mm 12mm}body{font:12px/1.3 Arial,sans-serif;color:#000;margin:0;padding:0 1px}
+  .logo{height:44px;display:block;margin:0 0 4px 46px}
+  h1{font-size:14.5px;text-align:center;text-decoration:underline;margin:0 0 10px;letter-spacing:.01em}
+  table{width:100%;border-collapse:collapse}td,th{border:1px solid #000;padding:5px 8px;vertical-align:middle}
+  .cab{margin-bottom:16px;border:1.5px solid #000}.cab td{height:32px;padding:3px 10px;font-size:12.5px}.cab .et{text-align:center}.cab .v{text-align:center;font-weight:700}
+  .lista th{font-weight:700;text-align:center;font-size:13px;height:48px}.lista td{height:27px;font-size:12px;padding:2px 10px}.c{text-align:center}
+  .aprob{margin-top:30px;break-inside:avoid;page-break-inside:avoid}.aprob table{border:1.5px solid #000}
+  .aprob td{height:26px;text-align:center;padding:3px 8px;font-size:12px}.aprob .val{font-weight:700;font-size:12.5px}
+  .rev{text-align:right;font-size:13px;margin:4px 50px 0}[contenteditable]:hover{outline:1px dashed #268c56}
+  .nota{margin:10px 0 0;font-size:11px;color:#268c56}@media print{.nota{display:none}}</style></head><body>
+  <img class="logo" src="${base}icons/logo.png" alt="WORTACH">
+  <h1>FINALIZACION PROCESO DE ADIESTRAMIENTO</h1>
+  <table class="cab">
+    <tr><td class="et" style="width:30%">Tipo de proceso de adiestramiento celebrado:</td><td class="v" colspan="3" contenteditable>${esc(tipo)}</td></tr>
+    <tr><td class="et" style="width:16%">Fechas celebración:</td><td class="v" style="width:20%" contenteditable>${esc(fechas)}</td><td class="et" style="width:19%">Lugar de celebración:</td><td class="v" contenteditable>${esc(lugar)}</td></tr>
+  </table>
+  <table class="lista"><thead><tr><th style="width:36.5%">Centro Técnico / Entidad / Taller</th><th style="width:42%">Nombre y apellidos asistente</th><th>DNI</th></tr></thead>
+  <tbody contenteditable>${filas}${vacias}</tbody></table>
+  <div class="aprob"><table><tr><td style="width:18.5%">Aprobado por:</td><td class="val" style="width:36.5%" contenteditable>${esc((aprobador?.nombre || "").toLocaleUpperCase("es-ES"))}</td>
+  <td style="width:20%">Fecha presentación CCAA:</td><td class="val" contenteditable>${fPres}</td></tr></table><p class="rev">Rev.: 0</p></div>
+  <p class="nota">Salen los ${superan.length} asistentes que han superado el adiestramiento${fuera ? ` (no salen ${fuera}: no asistieron o no aprobaron el examen)` : ""}. Puedes cambiar cualquier dato haciendo clic sobre él y volver a imprimir (Ctrl+P).</p>
   <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
   w.document.close();
 }
