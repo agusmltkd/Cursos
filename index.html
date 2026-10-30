@@ -19,7 +19,7 @@
   --papel:#f2f4f1; --panel:#ffffff; --tinta:#16201b; --gris:#5a6660; --linea:#d9dfdb; --linea-2:#c3ccc7;
   --ambar:#a86b00; --ambar-suave:#fbf0d9; --rojo:#b8372d; --rojo-suave:#fbe7e4;
   --ocupada:#d5dcd8;
-  --c-sevilla:#268c56; --c-zaragoza:#2f6fde; --c-online:#7b52c2;
+  --c-sevilla:#268c56; --c-zaragoza:#2f6fde; --c-online:#7b52c2; --c-vdo:#d4570f;
   --f-tit:"Archivo","Arial Black",system-ui,sans-serif;
   --f:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
   color-scheme:light;
@@ -321,7 +321,7 @@ body{font:400 16px/1.55 var(--f)}
     <div id="lista" aria-live="polite"><div class="vacio">Cargando convocatorias…</div></div>
 
     <section class="condiciones" aria-label="Condiciones">
-      <div><h3>Plazas por orden de llegada</h3><p>Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y le avisamos por correo si se libera una plaza.</p></div>
+      <div><h3>Plazas por orden de llegada</h3><p id="cond-plazas">Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y le avisamos por correo si se libera una plaza.</p></div>
       <div><h3>Quórum mínimo de 6</h3><p>Una convocatoria puede cambiar por cambios legislativos o si no reúne 6 asistentes. Si ocurre, os avisamos para reubicar la plaza.</p></div>
       <div><h3>Cargo 45 días antes</h3><p>WORTACH realiza el cargo al centro técnico 45 días antes de la primera jornada.</p></div>
       <div><h3>Horario habitual</h3><div class="horario"><b>Sevilla</b><span>1ª jornada de 10:00 a 18:30, el resto de 9:00 a 17:15</span><b>Zaragoza</b><span>todas de 9:00 a 17:15</span></div><p style="margin-top:6px">El de cada convocatoria aparece al elegirla.</p></div>
@@ -344,7 +344,7 @@ body{font:400 16px/1.55 var(--f)}
             <label class="c">Persona de contacto<input name="contacto" class="mayus" autocomplete="name"></label>
             <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" autocomplete="tel" inputmode="tel"></label>
             <label class="c">Provincia del centro<select name="provincia" id="provincia"><option value="">Elige la provincia</option></select></label>
-            <label class="c">Correo del centro técnico <span class="ayuda">recibe copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
+            <label class="c">Correo del centro técnico <span class="ayuda" data-no-vdo>recibe copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
           </div>
         </fieldset>
         <fieldset>
@@ -354,7 +354,7 @@ body{font:400 16px/1.55 var(--f)}
           <div class="aviso-plazas hidden" id="aviso-plazas"></div>
         </fieldset>
         <label class="acepto"><input type="checkbox" name="acepto">
-          <span>Los datos son correctos, el centro técnico acepta el cargo del adiestramiento 45 días antes y el técnico consiente que WORTACH trate sus datos para gestionarlo.</span></label>
+          <span id="acepto-txt">Los datos son correctos, el centro técnico acepta el cargo del adiestramiento 45 días antes y el técnico consiente que WORTACH trate sus datos para gestionarlo.</span></label>
         <div class="confirma-sede" id="confirma-sede"></div>
         <div class="error" id="err" role="alert"></div>
         <div class="acciones"><button class="btn" type="submit" id="enviar">Reservar plaza</button></div>
@@ -388,11 +388,26 @@ const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } 
 const leer = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
 
 let cursos = [], filtro = { sede: "", tipo: "", libres: false }, sel = null;
-const SEDE_FIJA = (() => { const v = new URLSearchParams(location.search).get("sede"); return ["Sevilla","Zaragoza","Online"].find(x => x.toLowerCase() === String(v || "").toLowerCase()) || null; })();
+/* Formación VDO: solo por enlace directo (?sede=vdo). Sus convocatorias no salen en el formulario de WORTACH ni al revés */
+const SEDE_VDO = "VDO Sevilla", esVdo = c => String(c?.sede || "").startsWith("VDO");
+const VDO = (() => { const q = new URLSearchParams(location.search), v = String(q.get("sede") || q.get("programa") || "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+  return q.has("vdo") || v === "vdo" || v === "vdo sevilla" || /\/vdo\/?$/i.test(location.pathname); })();
+const SEDE_FIJA = VDO ? SEDE_VDO : (() => { const v = new URLSearchParams(location.search).get("sede"); return ["Sevilla","Zaragoza","Online"].find(x => x.toLowerCase() === String(v || "").toLowerCase()) || null; })();
+if (VDO) {
+  document.title = "Formación VDO · Inscripción";
+  document.body.classList.add("vdo");
+  $("#anio").previousSibling.textContent = "Formación VDO ";
+  $(".que-curso").remove();
+  $("#cond-plazas").textContent = "Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y, si se libera una plaza, se le asigna por orden.";
+  $$(".condiciones > div").slice(1).forEach(d => d.remove());
+  $$("[data-no-vdo]").forEach(x => x.remove());
+  $("#acepto-txt").textContent = "Los datos son correctos y el técnico consiente que WORTACH trate sus datos para gestionar su inscripción en la formación VDO.";
+  const guia = $('.pie a[href^="docs/"]'); if (guia) { guia.nextSibling.textContent = "Asistencia Técnica · "; guia.remove(); }
+}
 if (SEDE_FIJA) {
   filtro.sede = SEDE_FIJA;
   document.querySelector("#f-sede").classList.add("hidden");
-  document.querySelector(".heroe p").textContent = `Convocatorias de ${SEDE_FIJA}. Elige una, rellena los datos del técnico y la plaza queda reservada al momento, por orden de inscripción.`;
+  document.querySelector(".heroe p").textContent = VDO ? "Convocatorias de la formación VDO en Sevilla. Elige una, rellena los datos del técnico y la plaza queda reservada al momento, por orden de inscripción." : `Convocatorias de ${SEDE_FIJA}. Elige una, rellena los datos del técnico y la plaza queda reservada al momento, por orden de inscripción.`;
 }
 
 /* ---------- textos de fechas ---------- */
@@ -478,7 +493,8 @@ function pintar() {
       <div class="lista">${cs.map(fila).join("")}</div>`;
   }).join("");
 }
-const COLOR_SEDE = { Sevilla: "var(--c-sevilla)", Zaragoza: "var(--c-zaragoza)", Online: "var(--c-online)" };
+const COLOR_SEDE = { Sevilla: "var(--c-sevilla)", Zaragoza: "var(--c-zaragoza)", Online: "var(--c-online)", [SEDE_VDO]: "var(--c-vdo)" };
+const ciudad = s => String(s || "").replace(/^VDO\s*/, "");
 const colorSede = s => COLOR_SEDE[s] || "var(--verde)";
 const nombreSede = s => s === "Online" ? "Online" : s;
 function fila(c) {
@@ -487,7 +503,7 @@ function fila(c) {
     <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
     <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 3 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
       <span class="dias">${frase(c.fechas)}</span>
-      <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : ` en la sede de ${esc(c.sede)}`}</span></span>
+      <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : esVdo(c) ? ` en ${esc(ciudad(c.sede))}` : ` en la sede de ${esc(c.sede)}`}</span></span>
     <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
     <span class="ir">${c.libres === 0 ? "Lista de espera" : "Inscribirse"}</span>
   </button>`;
@@ -505,7 +521,7 @@ async function cargar() {
   let { data, error } = await sb.rpc("convocatorias_publicas");
   if (error) ({ data, error } = await sb.rpc("cursos_disponibles"));
   if (error) { if (!cursos.length) $("#lista").innerHTML = `<div class="vacio">No se han podido cargar las convocatorias. Comprueba tu conexión y recarga la página.</div>`; return; }
-  cursos = data;
+  cursos = (data || []).filter(c => VDO ? esVdo(c) : !esVdo(c));
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0,4)))];
   if (anios.length) $("#anio").textContent = anios.join("–");
   if (sel) { const nuevo = cursos.find(c => c.id === sel.id); if (nuevo) { sel = nuevo; if (!$("#paso2").classList.contains("hidden")) pintarResumen(); } }
@@ -534,12 +550,12 @@ function horarioJornadas(c) {
 function pintarResumen() {
   const c = sel, cargo = D(restaDias(c.fecha_inicio, 45));
   $("#resumen").style.setProperty("--sc", colorSede(c.sede));
-  $("#resumen").innerHTML = `<div class="sede-banda">${icoSede(c.sede, 20)} ${c.sede === "Online" ? "Curso online" : `Sede ${esc(c.sede)}`}<small>${c.sede === "Online" ? "a distancia" : "presencial"}</small></div>
+  $("#resumen").innerHTML = `<div class="sede-banda">${icoSede(c.sede, 20)} ${c.sede === "Online" ? "Curso online" : esVdo(c) ? `Formación VDO · ${esc(ciudad(c.sede))}` : `Sede ${esc(c.sede)}`}<small>${c.sede === "Online" ? "a distancia" : "presencial"}</small></div>
     <span class="tipo" style="display:inline-block;font-size:14px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
-    <h3>${frase(c.fechas)}</h3><div class="sede">${c.fechas.length} jornadas${c.sede === "Online" ? ", online" : ` en ${esc(c.sede)}`}</div>
+    <h3>${frase(c.fechas)}</h3><div class="sede">${c.fechas.length} jornadas${c.sede === "Online" ? ", online" : ` en ${esc(ciudad(c.sede))}`}</div>
     <ul class="jornadas">${horarioJornadas(c)}</ul>
     <div class="estado">${disco(c, 54)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
-    <div class="cargo">Cargo al centro técnico: ${cargo.getDate()} de ${MESES[cargo.getMonth()]} de ${cargo.getFullYear()}.</div>`;
+    ${VDO ? "" : `<div class="cargo">Cargo al centro técnico: ${cargo.getDate()} de ${MESES[cargo.getMonth()]} de ${cargo.getFullYear()}.</div>`}`;
   actualizarAviso();
 }
 function prepararForm() {
@@ -572,7 +588,7 @@ $("#provincia").innerHTML += PROVINCIAS.map(p => `<option>${p}</option>`).join("
 $("input[name=tel_contacto]").addEventListener("input", e => { const p = provinciaPorTelefono(e.target.value); if (p && !$("#provincia").value) $("#provincia").value = p; });
 
 /* ---------- técnicos (uno o varios) ---------- */
-const MSG_DNI = "Con el DNI comprobamos que el técnico tiene sus adiestramientos al día.";
+const MSG_DNI = VDO ? "Sale en el registro de asistencia del curso." : "Con el DNI comprobamos que el técnico tiene sus adiestramientos al día.";
 function bloqueTec(v = {}) {
   const b = document.createElement("div");
   b.className = "tec";
@@ -581,7 +597,7 @@ function bloqueTec(v = {}) {
       <label class="c ancho">Nombre y apellidos<input data-k="nombre" class="mayus" autocomplete="off"></label>
       <label class="c">DNI o NIE <span class="ayuda">con su letra</span><input data-k="dni" placeholder="12345678Z o X1234567L" autocapitalize="characters" autocomplete="off" maxlength="12"><span class="dni-estado">${MSG_DNI}</span></label>
       <label class="c">Teléfono<input data-k="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
-      <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibe la confirmación y los recordatorios</span><input data-k="email" type="email" inputmode="email" autocomplete="off"></label>
+      <label class="c ancho">Correo electrónico <span class="ayuda">${VDO ? "por si hay que avisarle de algún cambio" : "aquí recibe la confirmación y los recordatorios"}</span><input data-k="email" type="email" inputmode="email" autocomplete="off"></label>
     </div><div class="err-tec hidden"></div>`;
   for (const k of ["nombre","dni","telefono","email"]) if (v[k]) b.querySelector(`[data-k=${k}]`).value = v[k];
   const dni = b.querySelector("[data-k=dni]");
@@ -683,7 +699,8 @@ function mostrarFinal(res, v) {
   const uno = res.length === 1, soloEspera = !plaza.length;
   const titulo = uno ? (soloEspera ? `En lista de espera, posición ${espera[0].data.posicion}` : "Plaza reservada")
     : [plaza.length ? `${plaza.length} plaza${plaza.length > 1 ? "s" : ""} reservada${plaza.length > 1 ? "s" : ""}` : "", espera.length ? `${espera.length} en lista de espera` : ""].filter(Boolean).join(" · ");
-  const texto = uno ? (soloEspera ? `Si se libera una plaza se asigna por orden y ${esc(res[0].t.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(res[0].t.email)}. También recibirá un recordatorio una semana antes y el día anterior.`)
+  const texto = VDO ? (soloEspera ? "Si se libera una plaza, se asigna por orden de la lista de espera." : "La inscripción ha quedado registrada. Si hay algún cambio en la convocatoria, os avisaremos.")
+    : uno ? (soloEspera ? `Si se libera una plaza se asigna por orden y ${esc(res[0].t.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(res[0].t.email)}. También recibirá un recordatorio una semana antes y el día anterior.`)
     : `Cada técnico recibe la confirmación en su correo y el centro una copia. ${espera.length ? "Si se libera una plaza, se asigna por orden de la lista de espera y se avisa por correo." : "También reciben un recordatorio una semana antes y el día anterior."}`;
   const col = soloEspera ? "var(--ambar)" : "var(--verde)";
   $("#final").innerHTML = `
@@ -693,10 +710,10 @@ function mostrarFinal(res, v) {
                : `<path d="M26 43l11 11 21-23" fill="none" stroke="var(--verde)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`}
     </svg>
     <h2>${titulo}</h2>
-    <span class="sede-final" style="--sc:${colorSede(c.sede)}">${icoSede(c.sede, 18)} ${c.sede === "Online" ? "Curso online" : `Sede ${esc(c.sede)}`}</span>
+    <span class="sede-final" style="--sc:${colorSede(c.sede)}">${icoSede(c.sede, 18)} ${c.sede === "Online" ? "Curso online" : esVdo(c) ? `Formación VDO · ${esc(ciudad(c.sede))}` : `Sede ${esc(c.sede)}`}</span>
     <p>${texto}</p>
     <div class="ficha">
-      <span><b>${TIPO[c.tipo]} en ${esc(c.sede)}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
+      <span><b>${TIPO[c.tipo]} en ${esc(ciudad(c.sede))}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
       <span style="color:var(--gris);margin-bottom:6px">${esc(v.centro)}</span>
       <ul class="lista-final">${res.map(r => `<li><span>${esc(r.t.nombre)}</span>${r.data ? (r.data.estado === "lista_espera" ? `<span class="est esp">Lista de espera, puesto ${r.data.posicion}</span>` : `<span class="est ok">Plaza reservada</span>`) : `<span class="est mal">No inscrito</span>`}</li>${r.data ? "" : `<li style="font-size:14px;color:var(--rojo);margin-top:-4px">${esc(r.error)}</li>`}`).join("")}</ul>
     </div>
@@ -719,14 +736,14 @@ function descargarIcs(c, v) {
     const d = f.replace(/-/g, ""), [h0, h1] = horasDe(c, i).map(h => h.replace(":", "").padStart(4, "0") + "00");
     return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
       `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
-      `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
-      `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[c.sede] || "Online"}`,
+      VDO ? `SUMMARY:Formación VDO (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}` : `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
+      `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[c.sede] || (esVdo(c) ? ciudad(c.sede) : "Online")}`,
       `DESCRIPTION:Asistente: ${v.nombre}. Dudas: asistencia@wortach.com / 954 360 572`, "END:VEVENT"].join("\r\n");
   });
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//WORTACH//Adiestramientos//ES", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
-  a.download = `adiestramiento-wortach-${c.fecha_inicio}.ics`; a.click();
+  a.download = `${VDO ? "formacion-vdo" : "adiestramiento-wortach"}-${c.fecha_inicio}.ics`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
@@ -755,7 +772,7 @@ $("#alternativas").addEventListener("click", e => {
 
 /* ---------- embudo anónimo: cuántos entran, eligen y se inscriben (sin datos personales) ---------- */
 const SESION = (() => { try { let s = sessionStorage.getItem("wortach_sesion"); if (!s) { s = crypto.randomUUID(); sessionStorage.setItem("wortach_sesion", s); } return s; } catch { return crypto.randomUUID?.() || String(Math.random()).slice(2) + Date.now(); } })();
-function evento(tipo, c) { try { sb.rpc("registrar_evento", { p_sesion: SESION, p_evento: tipo, p_sede: c?.sede || null, p_curso: c?.id || null }).then(() => {}, () => {}); } catch {} }
+function evento(tipo, c) { if (VDO) return; try { sb.rpc("registrar_evento", { p_sesion: SESION, p_evento: tipo, p_sede: c?.sede || null, p_curso: c?.id || null }).then(() => {}, () => {}); } catch {} }
 evento("visita");
 
 /* enlace personal del taller: ?t=… rellena los datos del centro */

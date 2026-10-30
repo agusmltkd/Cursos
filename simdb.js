@@ -42,14 +42,15 @@
     const alDia = (s, dow) => { let d = s; while (D(d).getDay() !== dow) d = mas(d, 1); return d; };
     const PLAN = [[-330, "Sevilla", "actualizacion", 10], [-300, "Zaragoza", "actualizacion", 8], [-250, "Sevilla", "iniciacion", 9], [-200, "Online", "actualizacion", 6], [-120, "Sevilla", "actualizacion", 10],
       [-60, "Zaragoza", "actualizacion", 7], [-20, "Sevilla", "actualizacion", 8], [9, "Sevilla", "actualizacion", 8], [16, "Zaragoza", "actualizacion", 3], [30, "Sevilla", "iniciacion", 12],
-      [44, "Online", "actualizacion", 3], [52, "Sevilla", "actualizacion", 5], [70, "Zaragoza", "actualizacion", 1], [100, "Sevilla", "actualizacion", 0]];
+      [44, "Online", "actualizacion", 3], [52, "Sevilla", "actualizacion", 5], [70, "Zaragoza", "actualizacion", 1], [100, "Sevilla", "actualizacion", 0],
+      [-45, "VDO Sevilla", "actualizacion", 6], [23, "VDO Sevilla", "actualizacion", 5]];   // formación VDO: aparte de los adiestramientos WORTACH
     const cursos = [], inscripciones = [];
     let t = 0;
     PLAN.forEach(([off, sede, tipo, n], k) => {
       const ini = alDia(mas(hoy, off), tipo === "iniciacion" ? 1 : 4), dias = tipo === "iniciacion" ? 4 : 2;
       const fechas = Array.from({ length: dias }, (_, j) => mas(ini, j));
       const c = { id: uid(), tipo, sede, fechas, fecha_inicio: fechas[0], fecha_fin: fechas.at(-1), cupo_max: 10, quorum_min: 6, estado: off === 100 ? "cerrado" : "abierto",
-        notas: null, created_at: ahora(), docente_id: off === 9 ? null : firmantes[k % 2].id, horas: tipo === "iniciacion" ? 30 : 14, horarios: null, publicado_at: off > 40 ? ahora() : mas(hoy, -200) + "T09:00:00Z" };
+        notas: null, created_at: ahora(), docente_id: off === 9 || sede.startsWith("VDO") ? null : firmantes[k % 2].id, horas: tipo === "iniciacion" ? 30 : 14, horarios: null, publicado_at: off > 40 ? ahora() : mas(hoy, -200) + "T09:00:00Z" };
       cursos.push(c);
       for (let j = 0; j < n; j++) {
         const te = tecnicos[t++ % tecnicos.length];
@@ -58,7 +59,7 @@
           created_at: new Date(Date.now() - (Math.abs(off) + 10 - j) * 864e5 + (off > 0 && j > n - 3 ? 9 * 864e5 : 0)).toISOString() });
       }
     });
-    const correos = inscripciones.slice(-14).map((i, k) => ({ id: uid(), inscripcion_id: i.id, tipo: k % 5 === 0 ? "recordatorio_7" : "confirmacion", estado: k === 3 ? "error" : k < 6 ? "enviado" : "pendiente", intentos: k === 3 ? 5 : 0, error: k === 3 ? "Dirección rechazada" : null, created_at: i.created_at, enviado_at: k < 6 ? ahora() : null }));
+    const correos = inscripciones.filter(i => !esVdo(cursos.find(c => c.id === i.curso_id))).slice(-14).map((i, k) => ({ id: uid(), inscripcion_id: i.id, tipo: k % 5 === 0 ? "recordatorio_7" : "confirmacion", estado: k === 3 ? "error" : k < 6 ? "enviado" : "pendiente", intentos: k === 3 ? 5 : 0, error: k === 3 ? "Dirección rechazada" : null, created_at: i.created_at, enviado_at: k < 6 ? ahora() : null }));
     const admins = [
       { email: "practica@wortach.com", nombre: "Usuario de práctica", sede: null, activo: true, ver_historial: true, docente_id: null, created_at: ahora() },
       { email: "zaragoza@ejemplo-practica.es", nombre: "Gestor Zaragoza (práctica)", sede: "Zaragoza", activo: true, ver_historial: false, docente_id: null, created_at: ahora() },
@@ -85,14 +86,15 @@
   }
 
   /* ---------- vistas calculadas ---------- */
+  const esVdo = c => String(c?.sede || "").startsWith("VDO");
   function tecnicosEstado(db) {
     const hoy = hoyISO(), cur = new Map(db.cursos.map(c => [c.id, c])), cen = new Map(db.centros.map(c => [c.id, c]));
     return db.tecnicos.map(t => {
       const ins = db.inscripciones.filter(i => i.tecnico_id === t.id);
-      const hechos = ins.filter(i => i.estado === "confirmada" && i.asistio !== false && cur.get(i.curso_id) && cur.get(i.curso_id).estado !== "cancelado" && cur.get(i.curso_id).fecha_fin < hoy).map(i => cur.get(i.curso_id));
+      const hechos = ins.filter(i => i.estado === "confirmada" && i.asistio !== false && cur.get(i.curso_id) && cur.get(i.curso_id).estado !== "cancelado" && cur.get(i.curso_id).fecha_fin < hoy && !esVdo(cur.get(i.curso_id))).map(i => cur.get(i.curso_id));
       hechos.sort((a, b) => b.fecha_fin.localeCompare(a.fecha_fin));
       const u = hechos[0], renovar = u ? mas(u.fecha_inicio, 365) : null;
-      const prox = ins.filter(i => i.estado === "confirmada" && cur.get(i.curso_id) && cur.get(i.curso_id).estado !== "cancelado" && cur.get(i.curso_id).fecha_fin >= hoy).map(i => cur.get(i.curso_id).fecha_inicio).sort()[0] || null;
+      const prox = ins.filter(i => i.estado === "confirmada" && cur.get(i.curso_id) && cur.get(i.curso_id).estado !== "cancelado" && cur.get(i.curso_id).fecha_fin >= hoy && !esVdo(cur.get(i.curso_id))).map(i => cur.get(i.curso_id).fecha_inicio).sort()[0] || null;
       const situacion = prox ? "inscrito" : !u ? "sin_formacion" : renovar < hoy ? "caducado" : renovar < mas(hoy, 60) ? "vence_pronto" : "al_dia";
       return { id: t.id, dni: t.dni, nombre: t.nombre, telefono: t.telefono, email: t.email, centro: cen.get(t.centro_id)?.nombre || null,
         tiene_iniciacion: !!t._ini || hechos.some(c => c.tipo === "iniciacion"), ultimo_tipo: u?.tipo || null, ultima_fecha: u?.fecha_fin || null, renovar_antes: renovar, proximo_curso: prox, situacion,
@@ -228,7 +230,7 @@
     if (P === "gestor") { yo.nivel = "gestor"; yo.nombre = "Gestor de todas las sedes (práctica)"; }
     // como en la base real, cada perfil solo ve lo suyo: su sede o los cursos en los que es docente
     if (sedeP || docP) {
-      const vis = new Set(db.cursos.filter(c => sedeP ? c.sede === sedeP : c.docente_id === yo.docente_id).map(c => c.id));
+      const vis = new Set(db.cursos.filter(c => sedeP ? c.sede === sedeP || (sedeP === "Sevilla" && c.sede === "VDO Sevilla") : c.docente_id === yo.docente_id).map(c => c.id));
       db.cursos = db.cursos.filter(c => vis.has(c.id));
       db.inscripciones = db.inscripciones.filter(i => vis.has(i.curso_id));
       const ins = new Set(db.inscripciones.map(i => i.id)), tecs = new Set(db.inscripciones.map(i => i.tecnico_id)), cens = new Set(db.inscripciones.map(i => i.centro_id));
@@ -243,14 +245,15 @@
       if (accion === "cambio") { a = {}; d = {}; for (const k of Object.keys(cambios || {})) { if (antes && String(antes[k]) !== String(fila[k])) { a[k] = antes[k]; d[k] = fila[k]; } } if (antes && !Object.keys(d).length) return; if (!antes) { d = cambios; } }
       db.auditoria.unshift({ id: db.auditoria.length + 1, fecha: ahora(), usuario: tabla === "inscripciones" && accion === "alta" && fila.origen === "web" ? "formulario web" : sim.email, tabla, registro: fila.id || null, accion, antes: accion === "borrado" ? fila : a, despues: accion === "alta" ? fila : d, contexto: ctx });
     };
-    sim.correo = (ins, tipo) => db.correos.push({ id: uid(), inscripcion_id: ins, tipo, estado: "pendiente", intentos: 0, error: null, created_at: ahora(), enviado_at: null });
+    // los cursos VDO no envían correos
+    sim.correo = (ins, tipo) => esVdo(db.cursos.find(c => c.id === db.inscripciones.find(i => i.id === ins)?.curso_id)) ? 0 : db.correos.push({ id: uid(), inscripcion_id: ins, tipo, estado: "pendiente", intentos: 0, error: null, created_at: ahora(), enviado_at: null });
     // como en la base real: al recibir plaza desde la lista de espera se anula su otra plaza de ese año (en un curso que no ha empezado)
     sim.anular = insId => {
       const i = db.inscripciones.find(x => x.id === insId), c = i && db.cursos.find(x => x.id === i.curso_id); if (!c) return 0;
       const hoyS = new Date().toISOString().slice(0, 10); let n = 0;
       for (const o of db.inscripciones.filter(x => x.tecnico_id === i.tecnico_id && x.id !== insId && ["confirmada", "lista_espera"].includes(x.estado))) {
         const oc = db.cursos.find(x => x.id === o.curso_id);
-        if (!oc || oc.estado === "cancelado" || oc.fecha_inicio <= hoyS || oc.fecha_inicio.slice(0, 4) !== c.fecha_inicio.slice(0, 4)) continue;
+        if (!oc || oc.estado === "cancelado" || oc.fecha_inicio <= hoyS || oc.fecha_inicio.slice(0, 4) !== c.fecha_inicio.slice(0, 4) || esVdo(oc) !== esVdo(c)) continue;
         const antes = o.estado; o.estado = "cancelada"; n++; if (antes === "confirmada") sim.promover(oc.id);
       }
       return n;
@@ -339,7 +342,7 @@
         for (const i of db.inscripciones) {
           const c = db.cursos.find(x => x.id === i.curso_id);
           if (!c || c.estado === "cancelado" || !["confirmada", "lista_espera"].includes(i.estado) || i.asistio === false || +c.fecha_inicio.slice(0, 4) < anio) continue;
-          const k = i.tecnico_id + "|" + c.fecha_inicio.slice(0, 4);
+          const k = i.tecnico_id + "|" + c.fecha_inicio.slice(0, 4) + "|" + esVdo(c);
           if (!g.has(k)) g.set(k, []); g.get(k).push({ ins: i.id, curso: c.id, sede: c.sede, tipo: c.tipo, inicio: c.fecha_inicio, fin: c.fecha_fin, estado: i.estado });
         }
         return [...g].filter(([, v]) => v.length > 1).map(([k, v]) => { v.sort((a, b) => a.inicio.localeCompare(b.inicio)); const [t, a] = k.split("|");
@@ -348,10 +351,10 @@
       renovaciones_tempranas: () => {
         const hoyS = new Date().toISOString().slice(0, 10), cur = id => db.cursos.find(c => c.id === id), out = [];
         for (const i of db.inscripciones) {
-          const c = cur(i.curso_id); if (!c || c.fecha_inicio < hoyS || c.estado === "cancelado" || !["confirmada", "lista_espera"].includes(i.estado)) continue;
+          const c = cur(i.curso_id); if (!c || esVdo(c) || c.fecha_inicio < hoyS || c.estado === "cancelado" || !["confirmada", "lista_espera"].includes(i.estado)) continue;
           const lim = new Date(c.fecha_inicio); lim.setMonth(lim.getMonth() - 9); const limS = lim.toISOString().slice(0, 10);
           const prev = db.inscripciones.filter(j => j.tecnico_id === i.tecnico_id && j.id !== i.id && j.estado === "confirmada" && j.asistio !== false)
-            .map(j => cur(j.curso_id)).filter(c2 => c2 && c2.estado !== "cancelado" && c2.fecha_fin < c.fecha_inicio && c2.fecha_fin > limS).map(c2 => c2.fecha_fin).sort();
+            .map(j => cur(j.curso_id)).filter(c2 => c2 && !esVdo(c2) && c2.estado !== "cancelado" && c2.fecha_fin < c.fecha_inicio && c2.fecha_fin > limS).map(c2 => c2.fecha_fin).sort();
           if (prev.length) out.push({ inscripcion_id: i.id, curso_id: c.id, tecnico: db.tecnicos.find(t => t.id === i.tecnico_id)?.nombre || "", ultimo_fin: prev[prev.length - 1] });
         }
         return out;
