@@ -384,6 +384,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const D = s => new Date(s + "T12:00:00");
 const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
+const tipoTxt = c => String(c?.sede || "").startsWith("VDO") ? (c.tipo === "iniciacion" ? "TIPO A Iniciación" : "TIPO A Reciclaje") : TIPO[c?.tipo] || "";
 const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const leer = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
 
@@ -401,6 +402,7 @@ if (VDO) {
   $("#cond-plazas").textContent = "Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y, si se libera una plaza, se le asigna por orden.";
   $$(".condiciones > div").slice(1).forEach(d => d.remove());
   $$("[data-no-vdo]").forEach(x => x.remove());
+  $('#f-tipo [data-v="actualizacion"]').textContent = "TIPO A Reciclaje"; $('#f-tipo [data-v="iniciacion"]').textContent = "TIPO A Iniciación";
   $("#acepto-txt").textContent = "Los datos son correctos y el técnico consiente que WORTACH trate sus datos para gestionar su inscripción en la formación VDO.";
   const guia = $('.pie a[href^="docs/"]'); if (guia) { guia.nextSibling.textContent = "Asistencia Técnica · "; guia.remove(); }
 }
@@ -499,9 +501,9 @@ const colorSede = s => COLOR_SEDE[s] || "var(--verde)";
 const nombreSede = s => s === "Online" ? "Online" : s;
 function fila(c) {
   const b = bloqueFecha(c.fechas);
-  return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}" style="--sc:${colorSede(c.sede)}" aria-label="${esc(nombreSede(c.sede))}, ${TIPO[c.tipo]}, ${frase(c.fechas)}">
+  return `<button class="conv ${c.libres === 0 ? "completo" : ""}" data-id="${c.id}" style="--sc:${colorSede(c.sede)}" aria-label="${esc(nombreSede(c.sede))}, ${tipoTxt(c)}, ${frase(c.fechas)}">
     <span class="calend"><span class="d">${b.d}</span><span class="m">${b.m}</span></span>
-    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${TIPO[c.tipo]}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 3 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
+    <span><span class="cab-conv"><span class="sede-et">${icoSede(c.sede)} ${esc(nombreSede(c.sede))}</span><span class="tipo ${c.tipo === "iniciacion" ? "t-ini" : "t-act"}">${tipoTxt(c)}</span>${c.nuevo ? `<span class="nuevo">¡Nuevo!</span>` : ""}${c.libres > 0 && c.libres <= 3 ? `<span class="ultimas">¡Últimas plazas!</span>` : ""}</span>
       <span class="dias">${frase(c.fechas)}</span>
       <span class="lugar">${c.fechas.length} jornadas${c.sede === "Online" ? " · a distancia" : esVdo(c) ? ` en ${esc(ciudad(c.sede))}` : ` en la sede de ${esc(c.sede)}`}</span></span>
     <span class="plazas ${nivel(c)}">${disco(c)}<span class="txt">${textoPlazas(c)}</span></span>
@@ -551,7 +553,7 @@ function pintarResumen() {
   const c = sel, cargo = D(restaDias(c.fecha_inicio, 45));
   $("#resumen").style.setProperty("--sc", colorSede(c.sede));
   $("#resumen").innerHTML = `<div class="sede-banda">${icoSede(c.sede, 20)} ${c.sede === "Online" ? "Curso online" : esVdo(c) ? `Formación VDO · ${esc(ciudad(c.sede))}` : `Sede ${esc(c.sede)}`}<small>${c.sede === "Online" ? "a distancia" : "presencial"}</small></div>
-    <span class="tipo" style="display:inline-block;font-size:14px;font-weight:600;padding:2px 10px;border-radius:999px">${TIPO[c.tipo]}</span>
+    <span class="tipo" style="display:inline-block;font-size:14px;font-weight:600;padding:2px 10px;border-radius:999px">${tipoTxt(c)}</span>
     <h3>${frase(c.fechas)}</h3><div class="sede">${c.fechas.length} jornadas${c.sede === "Online" ? ", online" : ` en ${esc(ciudad(c.sede))}`}</div>
     <ul class="jornadas">${horarioJornadas(c)}</ul>
     <div class="estado">${disco(c, 54)}<span>${c.libres === 0 ? `<b>Completo.</b> Quedarás en lista de espera${c.en_espera ? ` detrás de ${c.en_espera} persona${c.en_espera > 1 ? "s" : ""}` : ""}.` : `<b>${c.libres} de ${c.cupo_max} plazas libres.</b> La plaza se reserva al enviar.`}</span></div>
@@ -628,7 +630,7 @@ function actualizarAviso() {
   $("#enviar").textContent = libres <= 0 ? (n > 1 ? `Apuntar a los ${n} a la lista de espera` : "Apuntarse a la lista de espera") : (n > 1 ? `Reservar ${n} plazas ${dondeBtn}` : `Reservar plaza ${dondeBtn}`);
   pintarAlternativas(n, libres);
   const cs = $("#confirma-sede"); cs.style.setProperty("--sc", colorSede(sel.sede));
-  cs.innerHTML = `Vas a inscribir ${n > 1 ? `a <b style="color:inherit">${n} técnicos</b>` : "al técnico"} en el curso de ${TIPO[sel.tipo].toLowerCase()} ${sel.sede === "Online" ? "<b>ONLINE</b>" : `de <b>${esc(sel.sede.toUpperCase())}</b>`}, ${frase(sel.fechas)} de ${D(sel.fecha_inicio).getFullYear()}. Si no es la sede que buscas, <a href="#" id="cambiar-sede">cambia de convocatoria</a>.`;
+  cs.innerHTML = `Vas a inscribir ${n > 1 ? `a <b style="color:inherit">${n} técnicos</b>` : "al técnico"} en el curso ${VDO ? `<b>${esc(tipoTxt(sel))}</b> de la <b>FORMACIÓN VDO</b> en Sevilla` : `de ${tipoTxt(sel).toLowerCase()} ${sel.sede === "Online" ? "<b>ONLINE</b>" : `de <b>${esc(sel.sede.toUpperCase())}</b>`}`}, ${frase(sel.fechas)} de ${D(sel.fecha_inicio).getFullYear()}. Si no es la sede que buscas, <a href="#" id="cambiar-sede">cambia de convocatoria</a>.`;
   $("#cambiar-sede").onclick = ev => { ev.preventDefault(); irPaso(1); };
 }
 $("#mas-tec").addEventListener("click", () => { const b = bloqueTec(); b.querySelector("[data-k=nombre]").focus(); });
@@ -713,7 +715,7 @@ function mostrarFinal(res, v) {
     <span class="sede-final" style="--sc:${colorSede(c.sede)}">${icoSede(c.sede, 18)} ${c.sede === "Online" ? "Curso online" : esVdo(c) ? `Formación VDO · ${esc(ciudad(c.sede))}` : `Sede ${esc(c.sede)}`}</span>
     <p>${texto}</p>
     <div class="ficha">
-      <span><b>${TIPO[c.tipo]} en ${esc(ciudad(c.sede))}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
+      <span><b>${tipoTxt(c)} en ${esc(ciudad(c.sede))}</b> · ${frase(c.fechas)} de ${D(c.fecha_inicio).getFullYear()}</span>
       <span style="color:var(--gris);margin-bottom:6px">${esc(v.centro)}</span>
       <ul class="lista-final">${res.map(r => `<li><span>${esc(r.t.nombre)}</span>${r.data ? (r.data.estado === "lista_espera" ? `<span class="est esp">Lista de espera, puesto ${r.data.posicion}</span>` : `<span class="est ok">Plaza reservada</span>`) : `<span class="est mal">No inscrito</span>`}</li>${r.data ? "" : `<li style="font-size:14px;color:var(--rojo);margin-top:-4px">${esc(r.error)}</li>`}`).join("")}</ul>
     </div>
@@ -736,7 +738,7 @@ function descargarIcs(c, v) {
     const d = f.replace(/-/g, ""), [h0, h1] = horasDe(c, i).map(h => h.replace(":", "").padStart(4, "0") + "00");
     return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
       `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
-      VDO ? `SUMMARY:Formación VDO (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}` : `SUMMARY:Adiestramiento tacógrafos WORTACH (${TIPO[c.tipo]}) · jornada ${i + 1}/${c.fechas.length}`,
+      VDO ? `SUMMARY:Formación VDO (${tipoTxt(c)}) · jornada ${i + 1}/${c.fechas.length}` : `SUMMARY:Adiestramiento tacógrafos WORTACH (${tipoTxt(c)}) · jornada ${i + 1}/${c.fechas.length}`,
       `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[c.sede] || (esVdo(c) ? ciudad(c.sede) : "Online")}`,
       `DESCRIPTION:Asistente: ${v.nombre}. Dudas: asistencia@wortach.com / 954 360 572`, "END:VEVENT"].join("\r\n");
   });
@@ -759,7 +761,7 @@ function pintarAlternativas(n, libres) {
   z.innerHTML = `<h3>${libres <= 0 ? "Esta convocatoria está completa" : `Solo quedan ${libres} plaza${libres > 1 ? "s" : ""} en esta convocatoria`}</h3>
     <p>${libres <= 0 ? "Puedes apuntarte a la lista de espera o elegir otra con plazas libres:" : "Los que no quepan irán a lista de espera. Estas otras tienen sitio:"}</p>
     <div class="alt-lista">${alts.map(c => `<div class="alt" style="--sc:${colorSede(c.sede)}"><div><b>${esc(nombreSede(c.sede).toUpperCase())} · ${frase(c.fechas)}</b>
-      <span>${TIPO[c.tipo]} · ${c.libres} plaza${c.libres > 1 ? "s" : ""} libre${c.libres > 1 ? "s" : ""}${c.sede !== sel.sede ? " · otra sede" : ""}</span></div>
+      <span>${tipoTxt(c)} · ${c.libres} plaza${c.libres > 1 ? "s" : ""} libre${c.libres > 1 ? "s" : ""}${c.sede !== sel.sede ? " · otra sede" : ""}</span></div>
       <button type="button" data-alt="${c.id}">Cambiar a esta</button></div>`).join("")}</div>`;
   z.classList.remove("hidden");
 }

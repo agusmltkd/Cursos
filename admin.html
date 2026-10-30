@@ -18,7 +18,7 @@
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
 <script src="plantillas.js?v=20261027a"></script>
-<script src="simdb.js?v=20261030a"></script>
+<script src="simdb.js?v=20261030b"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -505,7 +505,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
         <div class="avisos" id="avisos"></div>
       </div>
       <h2 class="sec-t">Calendario <span id="cal-anio"></span> <small>Pulsa una convocatoria para ver sus inscritos</small></h2>
-      <div class="leyenda"><span id="leyenda-sedes"><span><i style="background:var(--verde)"></i>Sevilla</span> <span style="margin-left:12px"><i style="background:var(--azul)"></i>Zaragoza</span> <span style="margin-left:12px"><i style="background:var(--violeta)"></i>Online</span></span><span>Las cifras son plazas ocupadas sobre el cupo</span></div>
+      <div class="leyenda"><span id="leyenda-sedes"><span><i style="background:var(--verde)"></i>Sevilla</span> <span style="margin-left:12px"><i style="background:var(--azul)"></i>Zaragoza</span> <span style="margin-left:12px"><i style="background:var(--violeta)"></i>Online</span></span><span id="leyenda-vdo" class="hidden" style="margin-left:12px"><i style="background:var(--vdo)"></i>Formación VDO</span><span>Las cifras son plazas ocupadas sobre el cupo</span></div>
       <div class="anual" id="anual"></div>
     </section>
 
@@ -1223,7 +1223,9 @@ const diasHasta = s => Math.round((D(s) - D(hoy)) / 864e5);
 const fcorta = s => s ? `${D(s).getDate()} ${MESES[D(s).getMonth()].slice(0,3)} ${D(s).getFullYear()}` : "—";
 const TIPO = { actualizacion: "Actualización", iniciacion: "Iniciación" };
 const COLOR = { Sevilla: "var(--verde)", Zaragoza: "var(--azul)", Online: "var(--violeta)" };
-const tipoBadge = t => `<span class="badge ${t === "iniciacion" ? "b-ini" : "b-act"}">${TIPO[t]}</span>`;
+// la formación VDO se llama «TIPO A Reciclaje» (o «TIPO A Iniciación») en lugar de Actualización / Iniciación
+const tipoTxt = c => esVdo(c) ? (c.tipo === "iniciacion" ? "TIPO A Iniciación" : "TIPO A Reciclaje") : TIPO[c?.tipo] || "";
+const tipoBadge = (t, sede) => `<span class="badge ${t === "iniciacion" ? "b-ini" : "b-act"}">${tipoTxt({ tipo: t, sede })}</span>`;
 const SEDE_VDO = "VDO Sevilla", esVdo = c => String(c?.sede ?? c ?? "").startsWith("VDO");
 COLOR[SEDE_VDO] = "var(--vdo)";
 const cursosW = () => cursos.filter(c => !esVdo(c));   // adiestramientos WORTACH (sin la formación VDO)
@@ -1467,8 +1469,8 @@ async function cargarCursos() {
 
 /* ---------- panel ---------- */
 function pintarPanel(anios) {
-  const delAnio = cursosW().filter(c => c.fecha_inicio.startsWith(anioPanel));
-  const vivos = delAnio.filter(c => c.estado !== "cancelado");
+  const delAnio = cursos.filter(c => c.fecha_inicio.startsWith(anioPanel));
+  const vivos = delAnio.filter(c => c.estado !== "cancelado" && !esVdo(c));   // las cifras son de los adiestramientos WORTACH
   const plazas = vivos.reduce((s, c) => s + c.cupo_max, 0), ocup = vivos.reduce((s, c) => s + c.ocupadas, 0), esp = vivos.reduce((s, c) => s + c.espera, 0);
   $("#cifras").innerHTML = `
     <div class="cifra"><b>${vivos.length}</b><span>convocatorias en ${anioPanel}</span></div>
@@ -1479,25 +1481,25 @@ function pintarPanel(anios) {
   $("#anio-panel").onchange = e => { anioPanel = e.target.value; pintarPanel(anios); };
   $("#ir-renov").onclick = e => { e.preventDefault(); filtroSit = "caducado"; abrirTab("tecnicos"); };
 
-  const prox = cursosW().find(c => c.estado !== "cancelado" && c.fecha_fin >= hoy);
+  const prox = cursos.find(c => c.estado !== "cancelado" && c.fecha_fin >= hoy);
   if (prox) {
     const d = diasHasta(prox.fecha_inicio), enCurso = d <= 0;
     const q = prox.ocupadas >= prox.quorum_min;
     $("#proximo").innerHTML = `<svg style="position:absolute;right:-50px;top:-30px;width:220px;height:240px;color:var(--verde);opacity:.07"><use href="#simbolo"/></svg>
       <div class="et">${enCurso ? "En curso ahora" : "Próxima convocatoria"}</div>
       <h3>${textoFechas(prox.fechas)}</h3>
-      <div class="meta">${TIPO[prox.tipo]} en ${esc(prox.sede)}, ${prox.fechas.length} jornadas</div>
+      <div class="meta">${tipoTxt(prox)} en ${esc(prox.sede)}, ${prox.fechas.length} jornadas</div>
       <div class="fila">${disco(prox, 64)}
         <div class="txt"><b>${prox.ocupadas} de ${prox.cupo_max} plazas</b>${prox.espera ? `${prox.espera} en espera. ` : ""}${q ? "Quórum alcanzado" : `Faltan ${prox.quorum_min - prox.ocupadas} para el quórum`}</div>
         <div class="cuenta">${enCurso ? `<b>Hoy</b>` : `<b>${d}</b>día${d === 1 ? "" : "s"}`}</div></div>
-      <div class="acc"><button class="btn" data-ver="${prox.id}">Ver inscritos</button><button class="btn sec" data-firmas="${prox.id}">Hoja de firmas</button></div>`;
+      <div class="acc"><button class="btn" data-ver="${prox.id}">Ver inscritos</button><button class="btn sec" data-firmas="${prox.id}">${esVdo(prox) ? "Registro de asistencia" : "Hoja de firmas"}</button></div>`;
   } else $("#proximo").innerHTML = `<div class="et">Próxima convocatoria</div><h3>No hay cursos programados</h3><div class="acc" style="margin-top:16px"><button class="btn" onclick="abrirEdicion(null)">Nuevo curso</button></div>`;
 
-  const futuros = cursosW().filter(c => c.estado !== "cancelado" && c.fecha_inicio > hoy);
-  const cargos = futuros.filter(c => c.cargo >= addDias(hoy, -7) && c.cargo <= addDias(hoy, 21) && c.ocupadas > 0);
+  const futuros = cursos.filter(c => c.estado !== "cancelado" && c.fecha_inicio > hoy);
+  const cargos = futuros.filter(c => !esVdo(c) && c.cargo >= addDias(hoy, -7) && c.cargo <= addDias(hoy, 21) && c.ocupadas > 0);
   const quorum = futuros.filter(c => c.fecha_inicio <= addDias(hoy, 60) && c.ocupadas < c.quorum_min);
   const llenos = futuros.filter(c => c.espera > 0);
-  const li = (c, extra) => `<li><a data-ver="${c.id}">${rango(c.fechas)} ${MESES[D(c.fecha_inicio).getMonth()].slice(0,3)}, ${TIPO[c.tipo]}, ${c.sede}</a><span>${extra}</span></li>`;
+  const li = (c, extra) => `<li><a data-ver="${c.id}">${rango(c.fechas)} ${MESES[D(c.fecha_inicio).getMonth()].slice(0,3)}, ${tipoTxt(c)}, ${c.sede}</a><span>${extra}</span></li>`;
   let h = "";
   if (cargos.length && !modoDocente) h += `<div class="aviso"><h3><i style="background:var(--ambar)"></i>Cargos de estas semanas</h3><ul>${cargos.map(c => li(c, `${c.cargo < hoy ? "fue el " : c.cargo === hoy ? "hoy, " : ""}${fcorta(c.cargo)}, ${c.ocupadas} plazas`)).join("")}</ul></div>`;
   if (quorum.length) h += `<div class="aviso"><h3><i style="background:var(--rojo)"></i>Sin quórum en los próximos 60 días</h3><ul>${quorum.map(c => li(c, `${c.ocupadas} de ${c.quorum_min}`)).join("")}</ul></div>`;
@@ -1505,20 +1507,21 @@ function pintarPanel(anios) {
   $("#avisos").innerHTML = h || `<div class="aviso vacio">Todo en orden: no hay ${modoDocente ? "" : "cargos pendientes, "}cursos sin quórum ni listas de espera.</div>`;
 
   $("#cal-anio").textContent = anioPanel;
+  $("#leyenda-vdo")?.classList.toggle("hidden", !cursos.some(esVdo));
   const mesActual = hoy.slice(0,7);
   $("#anual").innerHTML = MESES.map((m, i) => {
     const k = `${anioPanel}-${String(i + 1).padStart(2, "0")}`;
     const cs = delAnio.filter(c => c.fecha_inicio.startsWith(k));
     return `<div class="mes ${k < mesActual ? "pasado" : ""} ${k === mesActual ? "actual" : ""}">
       <h4>${m[0].toUpperCase() + m.slice(1)}<span>${cs.length ? cs.reduce((s, c) => s + c.ocupadas, 0) + " inscritos" : ""}</span></h4>
-      ${cs.map(c => `<button class="chip ${c.estado === "cancelado" ? "cancel" : ""}" style="--c:${COLOR[c.sede]}" data-ver="${c.id}" title="${TIPO[c.tipo]} en ${c.sede}">
-        <b>${rango(c.fechas)}</b><span>${c.sede}${c.tipo === "iniciacion" ? " · Inic." : ""}</span><span class="oc">${c.ocupadas}/${c.cupo_max}</span></button>`).join("") || `<span class="gris" style="font-size:13px">Sin convocatorias</span>`}
+      ${cs.map(c => `<button class="chip ${c.estado === "cancelado" ? "cancel" : ""}" style="--c:${COLOR[c.sede]}" data-ver="${c.id}" title="${tipoTxt(c)} en ${c.sede}">
+        <b>${rango(c.fechas)}</b><span>${esVdo(c) ? "VDO" : c.sede}${c.tipo === "iniciacion" ? " · Inic." : ""}</span><span class="oc">${c.ocupadas}/${c.cupo_max}</span></button>`).join("") || `<span class="gris" style="font-size:13px">Sin convocatorias</span>`}
     </div>`;
   }).join("");
 }
 document.addEventListener("click", e => {
   const v = e.target.closest("[data-ver]"); if (v) { abrirCurso(v.dataset.ver); return; }
-  const f = e.target.closest("[data-firmas]"); if (f) hojaFirmas(f.dataset.firmas);
+  const f = e.target.closest("[data-firmas]"); if (f) esVdo(cursos.find(c => c.id === f.dataset.firmas)) ? registroVdo(f.dataset.firmas) : hojaFirmas(f.dataset.firmas);
 });
 
 /* ---------- lista de cursos ---------- */
@@ -1536,7 +1539,7 @@ function pintarCursos() {
     const pasado = c.fecha_fin < hoy;
     return `<tr class="click ${pasado ? "pasado" : ""}" data-ver="${c.id}" tabindex="0">
       <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
-      <td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+      <td>${tipoBadge(c.tipo, c.sede)}</td><td>${sedeTag(c.sede)}</td>
       <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}${c.ocupadas > c.cupo_max ? ` <span class="badge b-azul">+${c.ocupadas - c.cupo_max}</span>` : ""}</span></div></td>
       <td class="hide-m">${c.espera || "—"}</td><td class="hide-m col-cargo">${pasado ? "—" : fcorta(c.cargo)}</td><td class="hide-m col-tram">${celdaTramites(c)}</td><td>${estadoBadge(c)}</td></tr>`;
   }).join("") || `<tr><td colspan="8" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
@@ -1546,7 +1549,10 @@ const enlaceVdo = () => location.href.replace(/[?#].*$/, "").replace(/[^/]*$/, "
 function pintarVdo() {
   const vs = cursos.filter(esVdo);
   // la pestaña la ve la gestión (todas las sedes o Sevilla); un docente, solo si coordina algún curso VDO
-  $("#tab-vdo").classList.toggle("hidden", modoDocente ? !vs.length : !!miSede && miSede !== "Sevilla");
+  // la ven los administradores y el coordinador que tenga asignado algún curso VDO (la base de datos solo les da esos cursos)
+  $("#tab-vdo").classList.toggle("hidden", !(perfilCuenta === "admin" || vs.length));
+  $("#v-nuevo").classList.toggle("hidden", perfilCuenta !== "admin");
+  $$(".solo-gestion").forEach(x => x.classList.toggle("hidden", perfilCuenta !== "admin"));
   const anios = [...new Set([hoy.slice(0, 4), ...vs.map(c => c.fecha_inicio.slice(0, 4))])].sort().reverse();
   const sa = $("#v-anio"), prev = sa.value || hoy.slice(0, 4);
   sa.innerHTML = `<option value="">Todos los años</option>` + anios.map(a => `<option ${a === prev ? "selected" : ""}>${a}</option>`).join("");
@@ -1556,7 +1562,7 @@ function pintarVdo() {
   const coord = id => firmantes.find(f => f.id === id)?.nombre || "";
   $("#tb-vdo").innerHTML = lista.map(c => `<tr class="click ${c.fecha_fin < hoy ? "pasado" : ""}" data-ver="${c.id}" tabindex="0">
       <td><b>${textoFechas(c.fechas)}</b><div class="gris" style="font-size:13px">${c.fechas.map(f => DIAS[D(f).getDay()]).join(", ")}</div></td>
-      <td>${tipoBadge(c.tipo)}</td>
+      <td>${tipoBadge(c.tipo, c.sede)}</td>
       <td><div class="ocup">${disco(c)}<span><b>${c.ocupadas}</b> / ${c.cupo_max}</span></div></td>
       <td class="hide-m">${c.espera || "—"}</td><td class="hide-m">${esc(coord(c.docente_id)) || `<span class="gris">—</span>`}</td><td>${estadoBadge(c)}</td></tr>`).join("")
     || `<tr><td colspan="6" class="vacio-t">${vs.length ? "No hay cursos VDO con estos filtros. Marca “Mostrar celebrados” o cambia de año." : "Todavía no hay cursos VDO. Crea el primero con «Nuevo curso VDO»."}</td></tr>`;
@@ -1611,7 +1617,7 @@ async function abrirCurso(id) {
   actual = cursos.find(c => c.id === id); if (!actual) return;
   $("#dlg-curso").classList.toggle("vdo", esVdo(actual));
   $("#dc-firmas").textContent = esVdo(actual) ? "Registro de asistencia" : "Hoja de firmas";
-  $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
+  $("#dc-tipo").innerHTML = `${tipoBadge(actual.tipo, actual.sede)} ${sedeTag(actual.sede)} ${estadoBadge(actual)}`;
   $("#dc-titulo").textContent = textoFechas(actual.fechas);
   $("#dc-sub").textContent = actual.fechas.map((f, i) => `${DIAS[D(f).getDay()]} ${D(f).getDate()}: ${horarioDe(actual, i)}`).join("   ") + (actual.notas ? `   ·   ${actual.notas}` : "");
   $("#dc-cancelar").classList.toggle("hidden", actual.estado === "cancelado" || modoDocente || !!actual.finalizado_at);
@@ -1695,7 +1701,7 @@ $("#dc-tb").addEventListener("click", async e => {
     moviendo = i;
     $("#fm-quien").innerHTML = `<b>${esc(i.tecnicos.nombre)}</b> pasará al curso que elijas. Si no hay plaza, quedará en lista de espera y recibirá el correo correspondiente.`;
     $("#fm-sel").innerHTML = cursos.filter(c => c.id !== actual.id && esVdo(c) === esVdo(actual) && c.estado !== "cancelado" && c.fecha_inicio > hoy)
-      .map(c => `<option value="${c.id}">${textoFechas(c.fechas)}, ${TIPO[c.tipo]}, ${c.sede} (${c.ocupadas}/${c.cupo_max})</option>`).join("");
+      .map(c => `<option value="${c.id}">${textoFechas(c.fechas)}, ${tipoTxt(c)}, ${c.sede} (${c.ocupadas}/${c.cupo_max})</option>`).join("");
     $("#fm-err").textContent = ""; $("#dlg-mover").showModal();
   }
 });
@@ -1738,7 +1744,7 @@ function pintarDocentes(sel) {
 $("#dc-cert").addEventListener("click", async () => {
   try { await cargarFirmantes(); } catch (e) { return toast(e.message); }
   const f = $("#f-cert"); $("#ce-err").textContent = ""; $("#ce-nuevo").classList.add("hidden");
-  $("#ce-sub").textContent = `${TIPO[actual.tipo]} · ${actual.sede} · ${textoFechas(actual.fechas)}`;
+  $("#ce-sub").textContent = `${tipoTxt(actual)} · ${actual.sede} · ${textoFechas(actual.fechas)}`;
   pintarDocentes(actual.docente_id);
   f.horas.value = actual.horas || HORAS[actual.tipo];
   certAlumnos = inscritos.filter(i => i.estado === "confirmada");
@@ -1834,7 +1840,7 @@ async function hojaFirmas(id) {
   if (!firmantes.length) await cargarFirmantes().catch(() => {});
   const aprobador = firmantes.find(x => x.rol === "aprobador"), docente = firmantes.find(x => x.id === c.docente_id);
   if (!cfgIndustria && !modoDocente) { const { data: aj } = await sb.from("ajustes").select("valor").eq("clave", "comunicacion_industria").maybeSingle(); cfgIndustria = aj?.valor || {}; }
-  const tipo = (cfgIndustria?.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${TIPO[c.tipo]}`).toLocaleUpperCase("es-ES");
+  const tipo = (cfgIndustria?.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${tipoTxt(c)}`).toLocaleUpperCase("es-ES");
   const lugar = c.sede === "Online" ? "Online - Aula virtual" : `${c.sede} - Wortach`;
   const fechas = window.Industria ? Industria.fechasLargas(c.fechas) : textoFechas(c.fechas);
   // se presenta en la comunidad autónoma una vez acabado el curso: hoy, o el último día si aún no ha terminado
@@ -1943,7 +1949,7 @@ async function comunicadoFinalizacion(id) {
   if (!firmantes.length) await cargarFirmantes().catch(() => {});
   const aprobador = firmantes.find(x => x.rol === "aprobador");
   if (!cfgIndustria) { const { data: aj } = await sb.from("ajustes").select("valor").eq("clave", "comunicacion_industria").maybeSingle(); cfgIndustria = aj?.valor || {}; }
-  const tipo = (cfgIndustria?.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${TIPO[c.tipo]}`).toLocaleUpperCase("es-ES");
+  const tipo = (cfgIndustria?.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${tipoTxt(c)}`).toLocaleUpperCase("es-ES");
   const lugar = cfgIndustria?.lugar?.[c.sede] || (c.sede === "Online" ? "Formación online (aula virtual)" : c.sede);
   const fechas = window.Industria ? Industria.fechasLargas(c.fechas) : textoFechas(c.fechas);
   const fPres = [hoy, c.fechas.at(-1)].sort().at(-1).split("-").reverse().join("/");
@@ -2090,6 +2096,8 @@ function abrirEdicion(c, opc = {}) {
   fc.reset(); $("#fe-err").textContent = ""; delete fc.horas.dataset.tocado; fc.horas.value = HORAS[fc.tipo.value];
   $("#fe-titulo").textContent = (c ? "Editar curso" : "Nuevo curso") + (vdo ? " VDO" : "");
   $("#fc-docente").closest("label").firstChild.textContent = vdo ? "Coordinador " : "Docente ";
+  fc.tipo.options[0].textContent = vdo ? "TIPO A Reciclaje (2 jornadas)" : "Actualización (2 jornadas)";
+  fc.tipo.options[1].textContent = vdo ? "TIPO A Iniciación (4 jornadas)" : "Iniciación (4 jornadas)";
   $("#fc-docente").closest("label").querySelector("span").textContent = vdo ? "sale en el registro de asistencia" : "firma los certificados y, si tiene cuenta de docente, ve el curso y pasa lista";
   $("#fe-borrar").classList.toggle("hidden", !c);
   cargarFirmantes().then(() => {
@@ -2299,7 +2307,7 @@ async function cargarCorreos() {
     const t = x.inscripciones?.tecnicos, cu = x.inscripciones?.cursos;
     return `<tr><td>${new Date(x.created_at).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</td>
       <td>${TIPOCORREO[x.tipo]}</td><td>${esc(t?.nombre)}<div class="gris" style="font-size:13px">${esc(t?.email || "sin correo")}</div></td>
-      <td class="hide-m">${cu ? `${TIPO[cu.tipo]}, ${cu.sede}, ${textoFechas(cu.fechas)}` : ""}</td>
+      <td class="hide-m">${cu ? `${tipoTxt(cu)}, ${cu.sede}, ${textoFechas(cu.fechas)}` : ""}</td>
       <td><span class="badge ${ESTCORREO[x.estado][1]}" title="${esc(x.error || "")}">${ESTCORREO[x.estado][0]}</span>${x.estado === "descartado" && x.error ? `<div class="gris" style="font-size:12px;margin-top:3px">${esc(x.error)}</div>` : ""}
         ${esSuper && (x.estado === "pendiente" || x.estado === "error") ? `<div class="acc-correo"><button class="btn sec mini" type="button" data-correo-probar="${x.id}" title="Te llega a ti este mismo correo; sigue pendiente en la cola">Probar</button><button class="btn mini" type="button" data-correo-enviar="${x.id}" title="Se envía ya al técnico (y al centro en copia), aunque el envío esté desactivado">Enviar ya</button></div>` : ""}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Aún no se ha generado ningún correo.</td></tr>`;
@@ -2430,7 +2438,7 @@ $("#imp-file").addEventListener("change", async e => {
       <div class="cifra"><b>${lista.length}</b><span>cursos distintos</span></div>
       <div class="cifra"><b>${nuevos}</b><span>cursos que se crearán</span></div>
       <div class="cifra ${problemas.length ? "alerta" : ""}"><b>${problemas.length}</b><span>filas que no se importan</span></div>${otrasSedes ? `<div class="cifra"><b>${otrasSedes}</b><span>de otras sedes, se ignoran</span></div>` : ""}`;
-    $("#imp-cursos").innerHTML = lista.map(g => `<tr><td><b>${textoFechas(g.fechas)}</b> ${tipoBadge(g.tipo)}</td><td>${sedeTag(g.sede)}</td><td>${g.n}</td>
+    $("#imp-cursos").innerHTML = lista.map(g => `<tr><td><b>${textoFechas(g.fechas)}</b> ${tipoBadge(g.tipo, g.sede)}</td><td>${sedeTag(g.sede)}</td><td>${g.n}</td>
       <td>${existe(g) ? `<span class="badge b-ok">Ya existe</span>` : `<span class="badge b-azul">Se creará</span>`}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio-t">No se ha encontrado ningún registro válido.</td></tr>`;
     $("#imp-problemas").innerHTML = (problemas.length || avisos.length)
       ? `<ul class="problemas">${[...problemas.map(p => `<li style="color:var(--rojo)">${esc(p)}</li>`), ...avisos.map(p => `<li class="gris">${esc(p)}</li>`)].join("")}</ul>` : "";
@@ -2512,7 +2520,7 @@ async function abrirTecnico(id) {
       : i.estado === "confirmada" ? (celebrado ? (i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : `<span class="badge b-ok">Realizado</span>`) : `<span class="badge b-azul">Inscrito</span>`)
       : `<span class="badge ${ESTINS[i.estado][1]}">${ESTINS[i.estado][0]}</span>`;
     const cert = !modoDocente && i.estado === "confirmada" && celebrado && i.asistio !== false && c.estado !== "cancelado";
-    return `<tr><td><a class="enlace" data-ver="${c.id}"><b>${textoFechas(c.fechas)}</b></a></td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+    return `<tr><td><a class="enlace" data-ver="${c.id}"><b>${textoFechas(c.fechas)}</b></a></td><td>${tipoBadge(c.tipo, c.sede)}</td><td>${sedeTag(c.sede)}</td>
       <td class="hide-m">${i.centro_id ? `<a class="enlace" data-ficha-taller="${i.centro_id}">${esc(i.centros?.nombre || "")}</a>` : ""}</td><td>${est}</td>
       <td style="text-align:right">${cert ? `<button class="btn sec mini" data-cert-ins="${i.id}">Certificado</button>` : ""}</td></tr>`;
   }).join("") || `<tr><td colspan="6" class="vacio-t">Este técnico no tiene cursos${miSede ? " en tu sede" : ""}.</td></tr>`;
@@ -2628,7 +2636,7 @@ async function abrirTaller(id) {
     const est = c.estado === "cancelado" ? `<span class="badge b-bad">Curso cancelado</span>`
       : i.estado === "confirmada" ? (celebrado ? (i.asistio === false ? `<span class="badge b-bad">No asistió</span>` : `<span class="badge b-ok">Realizado</span>`) : `<span class="badge b-azul">Inscrito</span>`)
       : `<span class="badge ${ESTINS[i.estado][1]}">${ESTINS[i.estado][0]}</span>`;
-    return `<tr><td>${textoFechas(c.fechas)}</td><td>${tipoBadge(c.tipo)}</td><td>${sedeTag(c.sede)}</td>
+    return `<tr><td>${textoFechas(c.fechas)}</td><td>${tipoBadge(c.tipo, c.sede)}</td><td>${sedeTag(c.sede)}</td>
       <td><a class="enlace" data-ficha-tec="${i.tecnico_id}">${esc(i.tecnicos?.nombre || "")}</a></td><td>${est}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Sin inscripciones.</td></tr>`;
   cargarToken(id);
@@ -2675,7 +2683,7 @@ async function todas(mk) {
     if (data.length < 1000) return out;
   }
 }
-const etiquetaCurso = c => c ? `${TIPO[c.tipo] || ""} ${c.sede || ""} · ${c.fechas?.length ? textoFechas(c.fechas) : fcorta(c.fecha_inicio)}` : "un curso";
+const etiquetaCurso = c => c ? `${tipoTxt(c) || ""} ${c.sede || ""} · ${c.fechas?.length ? textoFechas(c.fechas) : fcorta(c.fecha_inicio)}` : "un curso";
 const tip = (() => {
   let el = null;
   document.addEventListener("mouseover", e => {
@@ -3161,7 +3169,7 @@ function pintarCopia() {
     const avisos = nf.flatMap(x => { const dw = D(x).getDay(), out = []; if (fest[x]) out.push(`${fcorta(x)}: ${fest[x]}`); if (dw === 0 || dw === 6) out.push(`${fcorta(x)}: fin de semana`); return out; });
     if (ya) f.marcado = false;
     return `<tr><td><input type="checkbox" data-cp="${k}" ${f.marcado ? "checked" : ""} ${ya ? "disabled" : ""} style="accent-color:var(--verde);width:18px;height:18px"></td>
-      <td>${tipoBadge(f.c.tipo)} ${sedeTag(f.c.sede)}</td>
+      <td>${tipoBadge(f.c.tipo, f.c.sede)} ${sedeTag(f.c.sede)}</td>
       <td class="hide-m gris" style="font-size:13.5px">${textoFechas(f.c.fechas)}</td>
       <td><input type="date" data-cp-ini="${k}" value="${f.inicio}" style="padding:5px 8px" ${ya ? "disabled" : ""}></td>
       <td style="font-size:13.5px">${textoFechas(nf)}${ya ? `<div class="cp-ya">Ya existe en ${destino}</div>` : ""}${avisos.map(x => `<div class="cp-aviso">⚠ ${esc(x)}</div>`).join("")}</td></tr>`;
@@ -3717,7 +3725,7 @@ async function pintarCargos() {
   $("#cg-lista").innerHTML = filasCargos.map(f => `<tr>
       <td style="white-space:nowrap"><b>${fcorta(f.curso.cargo)}</b>${f.curso.cargo < hoy ? `<div class="gris" style="font-size:12px">ya pasó</div>` : diasHasta(f.curso.cargo) === 0 ? `<div style="color:var(--rojo);font-size:12px;font-weight:600">hoy</div>` : ""}</td>
       <td><b>${esc(f.centro.nombre)}</b><div class="gris" style="font-size:12.5px">${esc([f.centro.provincia, f.centro.email].filter(Boolean).join(" · ") || "sin correo")}</div></td>
-      <td>${tipoBadge(f.curso.tipo)} ${sedeTag(f.curso.sede)}<div class="gris" style="font-size:12.5px">${textoFechas(f.curso.fechas)}</div></td>
+      <td>${tipoBadge(f.curso.tipo, f.curso.sede)} ${sedeTag(f.curso.sede)}<div class="gris" style="font-size:12.5px">${textoFechas(f.curso.fechas)}</div></td>
       <td><b>${f.tecs.length}</b><div class="cg-tecs">${f.tecs.map(t => esc(t?.nombre || "")).join(", ")}</div></td>
       <td class="num">${euros(f.base)}</td><td class="num"><b>${euros(f.total)}</b></td></tr>`).join("")
     || `<tr><td colspan="6" class="vacio-t">No hay cargos en este periodo.</td></tr>`;
@@ -3725,7 +3733,7 @@ async function pintarCargos() {
 function textoCargos() {
   const [d, h] = periodoCargos();
   return `Cargos de adiestramientos del ${fcorta(d)} al ${fcorta(h)}\n\n` + filasCargos.map(f =>
-    `${fcorta(f.curso.cargo)} · ${f.centro.nombre}${f.centro.email ? " (" + f.centro.email + ")" : ""}\n  ${TIPO[f.curso.tipo]} ${f.curso.sede}, ${textoFechas(f.curso.fechas)} · ${f.tecs.length} técnico${f.tecs.length > 1 ? "s" : ""}: ${f.tecs.map(t => t?.nombre).join(", ")}\n  Base ${euros(f.base)} · Total ${euros(f.total)}`).join("\n\n");
+    `${fcorta(f.curso.cargo)} · ${f.centro.nombre}${f.centro.email ? " (" + f.centro.email + ")" : ""}\n  ${tipoTxt(f.curso)} ${f.curso.sede}, ${textoFechas(f.curso.fechas)} · ${f.tecs.length} técnico${f.tecs.length > 1 ? "s" : ""}: ${f.tecs.map(t => t?.nombre).join(", ")}\n  Base ${euros(f.base)} · Total ${euros(f.total)}`).join("\n\n");
 }
 $("#abrir-cargos").addEventListener("click", () => abrirCargos());
 $("#cg-periodo").addEventListener("change", pintarCargos);
@@ -3744,7 +3752,7 @@ $("#cg-precios").addEventListener("submit", async e => {
 $("#cg-csv").addEventListener("click", () => {
   const [d, h] = periodoCargos();
   csv(`cargos_${d}_${h}.csv`, ["Fecha del cargo", "Taller", "Provincia", "Correo del taller", "Curso", "Sede", "Fechas del curso", "Nº técnicos", "Técnicos", "DNI", "Base (€)", "IVA (%)", "Total (€)"],
-    filasCargos.map(f => [f.curso.cargo, f.centro.nombre, f.centro.provincia || "", f.centro.email || "", TIPO[f.curso.tipo], f.curso.sede, textoFechas(f.curso.fechas), f.tecs.length,
+    filasCargos.map(f => [f.curso.cargo, f.centro.nombre, f.centro.provincia || "", f.centro.email || "", tipoTxt(f.curso), f.curso.sede, textoFechas(f.curso.fechas), f.tecs.length,
       f.tecs.map(t => t?.nombre).join(", "), f.tecs.map(t => t?.dni).join(", "), f.base == null ? "" : f.base.toFixed(2).replace(".", ","), ajCargos.iva ?? "", f.total == null ? "" : f.total.toFixed(2).replace(".", ",")]));
 });
 $("#cg-pdf").addEventListener("click", () => {
@@ -3752,7 +3760,7 @@ $("#cg-pdf").addEventListener("click", () => {
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Cargos ${d} a ${h}</title><style>body{font:13px Arial,sans-serif;margin:28px;color:#16201b}h1{font-size:20px;margin:0}p{color:#5a6660;margin:4px 0 16px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ccc;padding:7px 6px;text-align:left;vertical-align:top}th{background:#e4f1e9;font-size:11px;text-transform:uppercase}.n{text-align:right;white-space:nowrap}small{color:#5a6660}tfoot td{font-weight:bold;border-top:2px solid #16201b}</style></head><body>
     <img src="${location.href.replace(/[^/]*$/, "")}icons/logo.png" style="height:32px"><h1>Cargos a los talleres</h1><p>Del ${fcorta(d)} al ${fcorta(h)} · precios sin IVA: actualización ${euros(ajCargos.precio_actualizacion)}, iniciación ${euros(ajCargos.precio_iniciacion)} por técnico · IVA ${ajCargos.iva ?? 0} %</p>
     <table><thead><tr><th>Cargo</th><th>Taller</th><th>Curso</th><th>Técnicos</th><th class="n">Base</th><th class="n">Total</th></tr></thead><tbody>
-    ${filasCargos.map(f => `<tr><td>${fcorta(f.curso.cargo)}</td><td><b>${esc(f.centro.nombre)}</b><br><small>${esc(f.centro.email || "")}</small></td><td>${TIPO[f.curso.tipo]} ${esc(f.curso.sede)}<br><small>${textoFechas(f.curso.fechas)}</small></td><td>${f.tecs.length}<br><small>${f.tecs.map(t => esc(t?.nombre)).join(", ")}</small></td><td class="n">${euros(f.base)}</td><td class="n">${euros(f.total)}</td></tr>`).join("")}
+    ${filasCargos.map(f => `<tr><td>${fcorta(f.curso.cargo)}</td><td><b>${esc(f.centro.nombre)}</b><br><small>${esc(f.centro.email || "")}</small></td><td>${tipoTxt(f.curso)} ${esc(f.curso.sede)}<br><small>${textoFechas(f.curso.fechas)}</small></td><td>${f.tecs.length}<br><small>${f.tecs.map(t => esc(t?.nombre)).join(", ")}</small></td><td class="n">${euros(f.base)}</td><td class="n">${euros(f.total)}</td></tr>`).join("")}
     </tbody><tfoot><tr><td colspan="4">Total</td><td class="n">${euros(filasCargos.reduce((s, f) => s + (f.base || 0), 0))}</td><td class="n">${euros(filasCargos.reduce((s, f) => s + (f.total || 0), 0))}</td></tr></tfoot></table>
     <script>onload=()=>setTimeout(()=>print(),300)<\/script></body></html>`);
   w.document.close();
@@ -3894,8 +3902,8 @@ async function abrirIndustria() {
     if (!cfgIndustria) { const { data } = await sb.from("ajustes").select("valor").eq("clave", "comunicacion_industria").maybeSingle(); cfgIndustria = data?.valor || {}; }
   } catch (e) { return toast(e.message); }
   const c = actual, cfg = cfgIndustria, f = $("#f-ind");
-  $("#in-sub").textContent = `${TIPO[c.tipo]} · ${c.sede} · ${textoFechas(c.fechas)}`;
-  f.tipo.value = cfg.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${TIPO[c.tipo].toUpperCase()}`;
+  $("#in-sub").textContent = `${tipoTxt(c)} · ${c.sede} · ${textoFechas(c.fechas)}`;
+  f.tipo.value = cfg.tipo?.[c.tipo] || `Adiestramiento Tipo A, ${tipoTxt(c).toUpperCase()}`;
   f.fechas.value = window.Industria ? Industria.fechasLargas(c.fechas) : textoFechas(c.fechas);
   f.lugar.value = cfg.lugar?.[c.sede] || c.sede;
   f.temario.value = (cfg.temario?.[c.tipo] || []).join("\n");
@@ -3964,7 +3972,7 @@ let exCurso = null, exEstado = null, exFilas = [], exTimer = null, exAbierta = n
 async function abrirExamen() {
   exCurso = actual; exAbierta = new Set(); cargarAjustesExamen().catch(() => {});
   if (!PRACTICA) { const { data } = await sb.rpc("examen_enlace"); exEnlace = data || null; }
-  $("#ex-sub").textContent = `${TIPO[exCurso.tipo]} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
+  $("#ex-sub").textContent = `${tipoTxt(exCurso)} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
   $("#ex-preguntas").classList.toggle("hidden", !esSuper);
   $("#ex-lista").innerHTML = `<tr><td colspan="5" class="vacio-t">Cargando…</td></tr>`;
   $("#dlg-examen").showModal();
@@ -4052,7 +4060,7 @@ $("#ex-copiar").addEventListener("click", async () => {
 function pintarPantalla() {
   const u = urlExamen(exEstado.token), q = $("#pt-qr");
   if (q.dataset.u !== u) { q.innerHTML = qrSvg(u); q.dataset.u = u; }
-  $("#pt-curso").textContent = `${TIPO[exCurso.tipo]} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
+  $("#pt-curso").textContent = `${tipoTxt(exCurso)} · ${exCurso.sede} · ${textoFechas(exCurso.fechas)}`;
   const n = exFilas.filter(exDe).length;
   $("#pt-cuenta").textContent = `${n} / ${exFilas.length}`;
   $("#pt-cuenta-t").textContent = exEstado.abierto ? "exámenes entregados" : "El examen está cerrado";
@@ -4084,7 +4092,7 @@ $("#ex-acta").addEventListener("click", async () => {
   td:first-child{width:22px;text-align:center}.res{margin:12px 0 26px;font-size:13px}
   .firmas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}.firmas div{border-top:1px solid #333;padding-top:6px;min-height:70px}
   footer{margin-top:24px;color:#666;font-size:10.5px}</style></head><body>
-  <header><div><h1>Acta de evaluación · Adiestramiento de ${TIPO[c.tipo].toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${esc(c.sede)}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
+  <header><div><h1>Acta de evaluación · Adiestramiento de ${tipoTxt(c).toLowerCase()}</h1><p>${textoFechas(c.fechas)} · ${esc(c.sede)}</p></div><img src="${base}icons/logo.png" alt="WORTACH"></header>
   <div class="datos"><span>Docente:</span><b>${esc(docente?.nombre || "—")}</b><span>Horas lectivas:</span><b>${c.horas || HORAS[c.tipo]}</b><span>Nota mínima para apto:</span><b>${exNotaMin == null ? "—" : notaTxt(exNotaMin)} sobre 10</b></div>
   <table><thead><tr><th>#</th><th>Nombre y apellidos</th><th>DNI / NIE</th><th>Centro técnico</th><th class="c">Aciertos</th><th class="c">Nota</th><th class="c">Resultado</th></tr></thead><tbody>${filas}</tbody></table>
   <p class="res">Presentados: <b>${hechos.length}</b> de ${exFilas.length} · Aptos: <b>${aptos}</b> · No aptos: <b>${hechos.length - aptos}</b></p>

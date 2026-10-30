@@ -50,7 +50,7 @@
       const ini = alDia(mas(hoy, off), tipo === "iniciacion" ? 1 : 4), dias = tipo === "iniciacion" ? 4 : 2;
       const fechas = Array.from({ length: dias }, (_, j) => mas(ini, j));
       const c = { id: uid(), tipo, sede, fechas, fecha_inicio: fechas[0], fecha_fin: fechas.at(-1), cupo_max: 10, quorum_min: 6, estado: off === 100 ? "cerrado" : "abierto",
-        notas: null, created_at: ahora(), docente_id: off === 9 || sede.startsWith("VDO") ? null : firmantes[k % 2].id, horas: tipo === "iniciacion" ? 30 : 14, horarios: null, publicado_at: off > 40 ? ahora() : mas(hoy, -200) + "T09:00:00Z" };
+        notas: null, created_at: ahora(), docente_id: off === 9 || off === -45 ? null : sede.startsWith("VDO") ? firmantes[0].id : firmantes[k % 2].id, horas: tipo === "iniciacion" ? 30 : 14, horarios: null, publicado_at: off > 40 ? ahora() : mas(hoy, -200) + "T09:00:00Z" };
       cursos.push(c);
       for (let j = 0; j < n; j++) {
         const te = tecnicos[t++ % tecnicos.length];
@@ -228,9 +228,19 @@
     const yo = docP ? db.admins.find(a => a.docente_id) : sedeP ? db.admins.find(a => a.sede) : db.admins[0];
     if (sedeP) { yo.sede = sedeP; yo.nombre = `Gestor ${sedeP} (práctica)`; }
     if (P === "gestor") { yo.nivel = "gestor"; yo.nombre = "Gestor de todas las sedes (práctica)"; }
-    // como en la base real, cada perfil solo ve lo suyo: su sede o los cursos en los que es docente
+    // como en la base real, cada perfil solo ve lo suyo: su sede o los cursos en los que es docente.
+    // La formación VDO solo la ven los administradores y su coordinador
+    if (P === "gestor") {
+      const vdo = new Set(db.cursos.filter(esVdo).map(c => c.id));
+      const tecW = new Set(db.inscripciones.filter(i => !vdo.has(i.curso_id)).map(i => i.tecnico_id)), cenW = new Set(db.inscripciones.filter(i => !vdo.has(i.curso_id)).map(i => i.centro_id));
+      const tecV = new Set(db.inscripciones.filter(i => vdo.has(i.curso_id)).map(i => i.tecnico_id)), cenV = new Set(db.inscripciones.filter(i => vdo.has(i.curso_id)).map(i => i.centro_id));
+      db.cursos = db.cursos.filter(c => !vdo.has(c.id));
+      const insV = new Set(db.inscripciones.filter(i => vdo.has(i.curso_id)).map(i => i.id));
+      db.inscripciones = db.inscripciones.filter(i => !insV.has(i.id)); db.correos = db.correos.filter(x => !insV.has(x.inscripcion_id));
+      db.tecnicos = db.tecnicos.filter(t => tecW.has(t.id) || !tecV.has(t.id)); db.centros = db.centros.filter(c => cenW.has(c.id) || !cenV.has(c.id));
+    }
     if (sedeP || docP) {
-      const vis = new Set(db.cursos.filter(c => sedeP ? c.sede === sedeP || (sedeP === "Sevilla" && c.sede === "VDO Sevilla") : c.docente_id === yo.docente_id).map(c => c.id));
+      const vis = new Set(db.cursos.filter(c => sedeP ? c.sede === sedeP : c.docente_id === yo.docente_id).map(c => c.id));
       db.cursos = db.cursos.filter(c => vis.has(c.id));
       db.inscripciones = db.inscripciones.filter(i => vis.has(i.curso_id));
       const ins = new Set(db.inscripciones.map(i => i.id)), tecs = new Set(db.inscripciones.map(i => i.tecnico_id)), cens = new Set(db.inscripciones.map(i => i.centro_id));
