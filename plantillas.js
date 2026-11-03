@@ -3,11 +3,15 @@
 (function () {
   // Enlace público del formulario de inscripción (lo que ve la gente en los correos como {web})
   const FORMULARIO = "https://www.wortach.com/curso-adiestramiento";
+  // Formación VDO: su propio formulario (enlace directo, no sale en la web)
+  const FORMULARIO_VDO = "https://www.wortach.com/curso-adiestramiento/vdo";
+  const esVdo = c => String(c?.sede || "").startsWith("VDO");
   // Dónde se imparte cada sede (sale en los correos y en el calendario .ics)
   const DIRECCIONES = {
     Sevilla: { lineas: ["Calle Aviación 31, Local 11", "Sevilla"] },
     Zaragoza: { lineas: ["Ciudad del Transporte", "C/ PB 134, San Juan de Mozarrifar", "50820 Zaragoza"] },
   };
+  DIRECCIONES["VDO Sevilla"] = DIRECCIONES.Sevilla;
   const direccion = sede => DIRECCIONES[sede] ? DIRECCIONES[sede].lineas.join(", ") : "";
   const mapa = sede => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(direccion(sede));
   const POR_DEFECTO = {
@@ -61,11 +65,12 @@
 
   function variables(nombre, curso, web) {
     const f = curso.fechas, cargo = D(f[0]); cargo.setUTCDate(cargo.getUTCDate() - 45);
-    const tipo = curso.tipo === "iniciacion" ? "Iniciación" : "Actualización";
+    const vdo = esVdo(curso);
+    const tipo = vdo ? (curso.tipo === "iniciacion" ? "TIPO A Iniciación" : "TIPO A Reciclaje") : curso.tipo === "iniciacion" ? "Iniciación" : "Actualización";
     const h0 = (curso.horarios && curso.horarios[0]) || HSTD(0, curso.sede);
     return { nombre, tipo, sede: curso.sede, curso: `${tipo} · ${curso.sede}`, anio: String(D(f[0]).getUTCFullYear()), num_jornadas: String(f.length),
       fechas: f.map(fd).join(", ").replace(/, ([^,]*)$/, " y $1"), hora_inicio: hora(h0[0]),
-      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: FORMULARIO, direccion: direccion(curso.sede) || "Online" };
+      cargo: `${cargo.getUTCDate()} de ${MESES[cargo.getUTCMonth()]}`, web: vdo ? FORMULARIO_VDO : FORMULARIO, direccion: direccion(curso.sede) || "Online" };
   }
   // «web» (parámetro de componer) es solo la dirección desde la que se cargan el logo y los iconos
   // sustituye {variables}; en HTML escapa el texto y convierte {web} en enlace
@@ -85,6 +90,7 @@
   }
   function componer(tipo, plantilla, nombre, curso, web, comunes) {
     const p = { ...POR_DEFECTO[tipo], ...(plantilla || {}) }, v = variables(nombre, curso, web), color = COLOR[tipo] || "#268c56";
+    if (esVdo(curso) && /\{cargo\}/.test(p.nota || "")) p.nota = "";   // en la formación VDO no hay cargo de WORTACH
     const C = { ...COMUNES }; for (const [k, x] of Object.entries(comunes || {})) if (k in C && x != null && String(x).trim() !== "") C[k] = String(x);
     const fechas = curso.fechas, anio = D(fechas[0]).getUTCFullYear();
     const filas = fechas.map((f, i) => { const h = (curso.horarios && curso.horarios[i]) || HSTD(i, curso.sede);
@@ -113,5 +119,5 @@ ${p.nota ? `<p style="margin:18px 0 0;font-size:14px;line-height:1.55;color:#5a6
 </table></td></tr></table></body></html>`;
     return { asunto: rellenar(p.asunto, v, false), html };
   }
-  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, COMUNES, COMUNES_INFO, componer, FORMULARIO, DIRECCIONES, direccion, mapa };
+  window.PlantillasCorreo = { POR_DEFECTO, VARIABLES, COMUNES, COMUNES_INFO, componer, FORMULARIO, FORMULARIO_VDO, DIRECCIONES, direccion, mapa };
 })();

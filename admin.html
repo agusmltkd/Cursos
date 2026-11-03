@@ -17,8 +17,8 @@
 <script src="industria.js?v=20261013a" defer></script>
 <script src="qrcode.js?v=20261014a" defer></script>
 <script src="correos.js?v=20261011b"></script>
-<script src="plantillas.js?v=20261027a"></script>
-<script src="simdb.js?v=20261030b"></script>
+<script src="plantillas.js?v=20261103a"></script>
+<script src="simdb.js?v=20261103a"></script>
 <style>
 :root{
   --verde:#268c56; --verde-osc:#1f7448; --verde-noche:#0f3a24; --verde-suave:#e4f1e9;
@@ -531,7 +531,7 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
 
     <!-- FORMACIÓN VDO -->
     <section data-panel="vdo" class="hidden">
-      <div class="vdo-info"><div><b>Formación VDO Sevilla</b>Va aparte de los adiestramientos WORTACH: aquí solo se llevan las inscripciones y el registro de asistencia. No se envían correos ni hay examen, certificados ni comunicaciones (todo eso lo gestiona VDO), y no cuenta para la caducidad del adiestramiento de los técnicos.
+      <div class="vdo-info"><div><b>Formación VDO Sevilla</b>Va aparte de los adiestramientos WORTACH: aquí se llevan las inscripciones (con sus correos de confirmación, lista de espera y recordatorios, igual que en WORTACH) y el registro de asistencia. No hay examen, certificados ni comunicaciones (todo eso lo gestiona VDO), y no cuenta para la caducidad del adiestramiento de los técnicos.
         <span class="solo-gestion"><br>Sus convocatorias no salen en el formulario de WORTACH: los talleres se inscriben con este enlace directo.</span>
         <div class="vdo-enlace solo-gestion"><code id="v-enlace"></code><button class="btn sec mini" id="v-copiar">Copiar enlace</button><a class="btn sec mini" id="v-ver" target="_blank" rel="noopener">Abrir</a></div></div></div>
       <div class="toolbar">
@@ -1545,7 +1545,8 @@ function pintarCursos() {
   }).join("") || `<tr><td colspan="8" class="vacio-t">No hay cursos con estos filtros. Marca “Mostrar celebrados” o cambia de año.</td></tr>`;
 }
 /* ---------- formación VDO ---------- */
-const enlaceVdo = () => location.href.replace(/[?#].*$/, "").replace(/[^/]*$/, "") + "?sede=vdo";
+// dirección pública del formulario VDO (página de la web de WORTACH que carga ?sede=vdo; no sale en el menú)
+const enlaceVdo = () => "https://www.wortach.com/curso-adiestramiento/vdo";
 function pintarVdo() {
   const vs = cursos.filter(esVdo);
   // la pestaña la ve la gestión (todas las sedes o Sevilla); un docente, solo si coordina algún curso VDO
@@ -1687,10 +1688,10 @@ $("#dc-tb").addEventListener("click", async e => {
   if (b.dataset.act === "plaza") {
     const conf = inscritos.filter(x => x.estado === "confirmada").length;
     const lleno = conf >= actual.cupo_max;
-    if (lleno && !confirm(`El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max}${esVdo(actual) ? "" : " y recibirá el correo de plaza asignada"}.`)) return;
+    if (lleno && !confirm(`El curso ya tiene ${conf} de ${actual.cupo_max} plazas. ¿Dar plaza a ${i.tecnicos.nombre} igualmente? Quedará en ${conf + 1} de ${actual.cupo_max} y recibirá el correo de plaza asignada.`)) return;
     marcar(true);
     const cursoId = actual.id, otra = i.estado === "lista_espera" && dupAnioIns.get(i.id)?.otros.find(o => o.inicio > hoy);
-    conDeshacer(`Dando plaza a ${i.tecnicos.nombre}${esVdo(actual) ? "" : " (recibirá el correo de plaza asignada)"}${otra ? `; se anulará su plaza en ${otra.sede} del ${fcorta(otra.inicio)}` : ""}`, async () => {
+    conDeshacer(`Dando plaza a ${i.tecnicos.nombre} (recibirá el correo de plaza asignada)${otra ? `; se anulará su plaza en ${otra.sede} del ${fcorta(otra.inicio)}` : ""}`, async () => {
       const data = await ejecutar(sb.rpc("dar_plaza", { p_ins: i.id, p_directo: false }));
       toast((data.extra ? `Plaza dada: ${data.ocupadas} de ${data.cupo} (${data.extra} por encima del cupo)` : "Plaza dada")
         + (data.anuladas ? `. Tenía otra plaza este año y se ha anulado` : ""));
@@ -2122,7 +2123,7 @@ fc.addEventListener("submit", async e => {
   const horarios = jj.map(x => x.h), habitual = horarios.every((h, i) => h[0] === HORARIO_STD(i, fc.sede.value)[0] && h[1] === HORARIO_STD(i, fc.sede.value)[1]);
   const row = { tipo: fc.tipo.value, sede: fc.sede.value, fechas, cupo_max: +fc.cupo_max.value, quorum_min: +fc.quorum_min.value, estado: fc.estado.value, notas: fc.notas.value.trim() || null, docente_id: fc.docente.value || null,
     horas: +fc.horas.value || HORAS[fc.tipo.value], horarios: habitual ? null : horarios };
-  if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm(esVdo(row) ? "¿Cancelar este curso VDO?" : "Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;
+  if (editando && row.estado === "cancelado" && editando.estado !== "cancelado" && !confirm("Al cancelar se enviará un correo a todos los inscritos. ¿Continuar?")) return;
   const { error } = editando ? await sb.from("cursos").update(row).eq("id", editando.id) : await sb.from("cursos").insert(row);
   if (error) { $("#fe-err").textContent = error.message; return; }
   $("#dlg-edit").close(); toast("Curso guardado");

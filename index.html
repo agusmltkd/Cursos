@@ -344,7 +344,7 @@ body{font:400 16px/1.55 var(--f)}
             <label class="c">Persona de contacto<input name="contacto" class="mayus" autocomplete="name"></label>
             <label class="c">Teléfono del centro<input name="tel_contacto" type="tel" autocomplete="tel" inputmode="tel"></label>
             <label class="c">Provincia del centro<select name="provincia" id="provincia"><option value="">Elige la provincia</option></select></label>
-            <label class="c">Correo del centro técnico <span class="ayuda" data-no-vdo>recibe copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
+            <label class="c">Correo del centro técnico <span class="ayuda">recibe copia de la confirmación</span><input name="email_centro" type="email" inputmode="email" autocomplete="email"></label>
           </div>
         </fieldset>
         <fieldset>
@@ -399,9 +399,7 @@ if (VDO) {
   document.body.classList.add("vdo");
   $("#anio").previousSibling.textContent = "Formación VDO ";
   $(".que-curso").remove();
-  $("#cond-plazas").textContent = "Se adjudican automáticamente al enviar la inscripción. Si el curso está completo, el técnico queda en lista de espera y, si se libera una plaza, se le asigna por orden.";
   $$(".condiciones > div").slice(1).forEach(d => d.remove());
-  $$("[data-no-vdo]").forEach(x => x.remove());
   $('#f-tipo [data-v="actualizacion"]').textContent = "TIPO A Reciclaje"; $('#f-tipo [data-v="iniciacion"]').textContent = "TIPO A Iniciación";
   $("#acepto-txt").textContent = "Los datos son correctos y el técnico consiente que WORTACH trate sus datos para gestionar su inscripción en la formación VDO.";
   const guia = $('.pie a[href^="docs/"]'); if (guia) { guia.nextSibling.textContent = "Asistencia Técnica · "; guia.remove(); }
@@ -599,7 +597,7 @@ function bloqueTec(v = {}) {
       <label class="c ancho">Nombre y apellidos<input data-k="nombre" class="mayus" autocomplete="off"></label>
       <label class="c">DNI o NIE <span class="ayuda">con su letra</span><input data-k="dni" placeholder="12345678Z o X1234567L" autocapitalize="characters" autocomplete="off" maxlength="12"><span class="dni-estado">${MSG_DNI}</span></label>
       <label class="c">Teléfono<input data-k="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
-      <label class="c ancho">Correo electrónico <span class="ayuda">${VDO ? "por si hay que avisarle de algún cambio" : "aquí recibe la confirmación y los recordatorios"}</span><input data-k="email" type="email" inputmode="email" autocomplete="off"></label>
+      <label class="c ancho">Correo electrónico <span class="ayuda">aquí recibe la confirmación y los recordatorios</span><input data-k="email" type="email" inputmode="email" autocomplete="off"></label>
     </div><div class="err-tec hidden"></div>`;
   for (const k of ["nombre","dni","telefono","email"]) if (v[k]) b.querySelector(`[data-k=${k}]`).value = v[k];
   const dni = b.querySelector("[data-k=dni]");
@@ -701,8 +699,7 @@ function mostrarFinal(res, v) {
   const uno = res.length === 1, soloEspera = !plaza.length;
   const titulo = uno ? (soloEspera ? `En lista de espera, posición ${espera[0].data.posicion}` : "Plaza reservada")
     : [plaza.length ? `${plaza.length} plaza${plaza.length > 1 ? "s" : ""} reservada${plaza.length > 1 ? "s" : ""}` : "", espera.length ? `${espera.length} en lista de espera` : ""].filter(Boolean).join(" · ");
-  const texto = VDO ? (soloEspera ? "Si se libera una plaza, se asigna por orden de la lista de espera." : "La inscripción ha quedado registrada. Si hay algún cambio en la convocatoria, os avisaremos.")
-    : uno ? (soloEspera ? `Si se libera una plaza se asigna por orden y ${esc(res[0].t.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(res[0].t.email)}. También recibirá un recordatorio una semana antes y el día anterior.`)
+  const texto = uno ? (soloEspera ? `Si se libera una plaza se asigna por orden y ${esc(res[0].t.nombre.split(" ")[0])} recibirá un correo.` : `Hemos enviado la confirmación a ${esc(res[0].t.email)}. También recibirá un recordatorio una semana antes y el día anterior.`)
     : `Cada técnico recibe la confirmación en su correo y el centro una copia. ${espera.length ? "Si se libera una plaza, se asigna por orden de la lista de espera y se avisa por correo." : "También reciben un recordatorio una semana antes y el día anterior."}`;
   const col = soloEspera ? "var(--ambar)" : "var(--verde)";
   $("#final").innerHTML = `
@@ -739,7 +736,7 @@ function descargarIcs(c, v) {
     return ["BEGIN:VEVENT", `UID:${c.id}-${i}@wortach`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0,15)}Z`,
       `DTSTART;TZID=Europe/Madrid:${d}T${h0}`, `DTEND;TZID=Europe/Madrid:${d}T${h1}`,
       VDO ? `SUMMARY:Formación VDO (${tipoTxt(c)}) · jornada ${i + 1}/${c.fechas.length}` : `SUMMARY:Adiestramiento tacógrafos WORTACH (${tipoTxt(c)}) · jornada ${i + 1}/${c.fechas.length}`,
-      `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[c.sede] || (esVdo(c) ? ciudad(c.sede) : "Online")}`,
+      `LOCATION:${({ Sevilla: "WORTACH\\, Calle Aviación 31\\, Local 11\\, Sevilla", Zaragoza: "WORTACH\\, Ciudad del Transporte\\, C/ PB 134\\, San Juan de Mozarrifar\\, 50820 Zaragoza" })[esVdo(c) ? "Sevilla" : c.sede] || "Online"}`,
       `DESCRIPTION:Asistente: ${v.nombre}. Dudas: asistencia@wortach.com / 954 360 572`, "END:VEVENT"].join("\r\n");
   });
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//WORTACH//Adiestramientos//ES", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n");

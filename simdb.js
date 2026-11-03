@@ -255,8 +255,7 @@
       if (accion === "cambio") { a = {}; d = {}; for (const k of Object.keys(cambios || {})) { if (antes && String(antes[k]) !== String(fila[k])) { a[k] = antes[k]; d[k] = fila[k]; } } if (antes && !Object.keys(d).length) return; if (!antes) { d = cambios; } }
       db.auditoria.unshift({ id: db.auditoria.length + 1, fecha: ahora(), usuario: tabla === "inscripciones" && accion === "alta" && fila.origen === "web" ? "formulario web" : sim.email, tabla, registro: fila.id || null, accion, antes: accion === "borrado" ? fila : a, despues: accion === "alta" ? fila : d, contexto: ctx });
     };
-    // los cursos VDO no envían correos
-    sim.correo = (ins, tipo) => esVdo(db.cursos.find(c => c.id === db.inscripciones.find(i => i.id === ins)?.curso_id)) ? 0 : db.correos.push({ id: uid(), inscripcion_id: ins, tipo, estado: "pendiente", intentos: 0, error: null, created_at: ahora(), enviado_at: null });
+    sim.correo = (ins, tipo) => db.correos.push({ id: uid(), inscripcion_id: ins, tipo, estado: "pendiente", intentos: 0, error: null, created_at: ahora(), enviado_at: null });
     // como en la base real: al recibir plaza desde la lista de espera se anula su otra plaza de ese año (en un curso que no ha empezado)
     sim.anular = insId => {
       const i = db.inscripciones.find(x => x.id === insId), c = i && db.cursos.find(x => x.id === i.curso_id); if (!c) return 0;
