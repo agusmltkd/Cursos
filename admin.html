@@ -598,6 +598,11 @@ body.docente .col-cargo,body.docente .col-tram{display:none}
         <div id="es-examen"></div>
       </div>
       <div class="caja pad" style="margin-bottom:22px">
+        <h3 class="es-t">Calidad y satisfacción <span class="gris" style="font-weight:400;font-size:14px">desde 2021</span></h3>
+        <p class="gris es-s">Cómo evolucionan la nota del examen y la satisfacción con la formación. «Muy satisfechos» son los que puntúan 9 o 10 y «poco satisfechos» los que ponen 6 o menos.</p>
+        <div id="es-calidad"></div>
+      </div>
+      <div class="caja pad" style="margin-bottom:22px">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
           <div><h3 class="es-t">De dónde vienen <span id="es-mapa-anio"></span></h3><p class="gris es-s">Plazas confirmadas según la provincia del taller.</p></div>
           <button class="btn sec mini hidden" id="es-sinprov"></button>
@@ -2766,6 +2771,7 @@ async function cargarEstadisticas() {
   try {
     insStats = await todas(() => sb.from("inscripciones").select("tecnico_id,centro_id,curso_id,estado,asistio,centros(nombre,provincia)"));
     exStats = await todas(() => sb.from("examenes").select("id,nota,apto,satisfaccion,repetiria,detalle,inscripciones(curso_id)")).catch(() => []);
+    if (!firmantes.length) await cargarFirmantes().catch(() => {});
     cargarMapa().then(() => pintarEstadisticas()).catch(() => {}); botonSinProv();
   } catch { return toast("No se han podido cargar las estadísticas"); }
   const anios = [...new Set(cursos.map(c => c.fecha_inicio.slice(0, 4)))].sort().reverse();
@@ -2862,6 +2868,76 @@ function pintarEstadisticas() {
   pintarMapa(anio, r);
   pintarEmbudo();
   pintarExamenEst(anio, sede);
+  pintarCalidad(anio, sede);
+}
+/* ---------- calidad y satisfacción ---------- */
+// gráfico de líneas sencillo: series [{nombre, color, datos:[{l, v, tip}]}] con el mismo eje x
+function lineas(series, { alto = 200, ancho = 560, min = 0, max = 10, fmt = v => v } = {}) {
+  const W = Math.max(280, ancho), H = alto, pl = 30, pr = 14, pt = 18, pb = 26, n = series[0]?.datos.length || 0;
+  const x = i => n < 2 ? W / 2 : pl + (W - pl - pr) * i / (n - 1), y = v => pt + (H - pt - pb) * (1 - (v - min) / (max - min));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let k = 0; k <= 4; k++) { const v = min + (max - min) * k / 4, yy = y(v);
+    s += `<line x1="${pl}" x2="${W - pr}" y1="${yy}" y2="${yy}" stroke="var(--linea)"/><text x="${pl - 6}" y="${yy + 4}" text-anchor="end" style="font-size:11px;fill:var(--gris)">${fmt(Math.round(v * 10) / 10)}</text>`; }
+  series[0]?.datos.forEach((d, i) => { s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" style="font-size:12px;fill:var(--gris)">${esc(d.l)}</text>`; });
+  for (const [k, se] of series.entries()) {
+    const pts = se.datos.map((d, i) => d.v == null ? null : [x(i), y(Math.max(min, Math.min(max, d.v)))]);
+    const tramo = pts.filter(Boolean).map((q, k) => `${k ? "L" : "M"}${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join("");
+    s += `<path d="${tramo}" fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    se.datos.forEach((d, i) => { if (!pts[i]) return;
+      s += `<g data-tip="${esc(d.tip || "")}"><circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="9" fill="transparent"/><circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="4" fill="#fff" stroke="${se.color}" stroke-width="2.5"/>
+        <text x="${pts[i][0]}" y="${pts[i][1] + (k % 2 ? 19 : -9)}" text-anchor="middle" style="font-size:11.5px;font-weight:700;fill:${se.color}">${fmt(d.v)}</text></g>`; });
+  }
+  return s + "</svg>";
+}
+function resumenCalidad(xs) {
+  const n = xs.length, sat = xs.filter(x => x.satisfaccion), rep = xs.filter(x => x.repetiria != null);
+  const m = (a, f) => a.length ? a.reduce((t, x) => t + f(x), 0) / a.length : null;
+  return { n, nota: m(xs, x => +x.nota), diez: xs.filter(x => +x.nota >= 10).length, aptos: xs.filter(x => x.apto).length,
+    sat: m(sat, x => x.satisfaccion), nsat: sat.length, muy: sat.filter(x => x.satisfaccion >= 9).length, poco: sat.filter(x => x.satisfaccion <= 6).length,
+    rep: rep.filter(x => x.repetiria).length, nrep: rep.length };
+}
+function pintarCalidad(anio, sede) {
+  const z = $("#es-calidad"); if (!z) return;
+  const porId = new Map(cursos.map(c => [c.id, c]));
+  const de = x => porId.get(x.inscripciones?.curso_id);
+  const todos = exStats.filter(x => { const c = de(x); return c && !esVdo(c) && (!sede || c.sede === sede); });
+  if (!todos.length) { z.innerHTML = `<p class="gris" style="margin:0">Todavía no hay exámenes${sede ? " en " + sede : ""}.</p>`; return; }
+  const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
+  const d1 = v => v == null ? "—" : notaTxt(Math.round(v * 100) / 100);
+  const anios = [...new Set(todos.map(x => de(x).fecha_inicio.slice(0, 4)))].sort();
+  const porAnio = anios.map(a => ({ a, r: resumenCalidad(todos.filter(x => de(x).fecha_inicio.startsWith(a))) }));
+  const ancho = Math.round(z.clientWidth || 560);
+  const tipA = ({ a, r }) => `<b>${a}</b><br>${r.n} exámenes · nota media ${d1(r.nota)}<br>satisfacción ${d1(r.sat)} · ${pct(r.muy, r.nsat)} muy satisfechos`;
+  const graf = lineas([
+    { nombre: "Satisfacción", color: "var(--verde)", datos: porAnio.map(o => ({ l: o.a, v: o.r.sat == null ? null : Math.round(o.r.sat * 10) / 10, tip: tipA(o) })) },
+    { nombre: "Nota del examen", color: "var(--azul)", datos: porAnio.map(o => ({ l: o.a, v: o.r.nota == null ? null : Math.round(o.r.nota * 10) / 10, tip: tipA(o) })) },
+  ], { ancho, min: Math.min(7, Math.floor(Math.min(...porAnio.flatMap(o => [o.r.sat, o.r.nota]).filter(v => v != null)) - 0.5)), max: 10, fmt: v => String(v).replace(".", ",") });
+  const tabAnios = `<table><thead><tr><th>Año</th><th>Exámenes</th><th>Nota media</th><th class="hide-m">Sacan un 10</th><th class="hide-m">Aptos</th><th>Satisfacción</th><th>Muy satisfechos</th><th class="hide-m">Poco satisfechos</th><th class="hide-m">Repetiría</th></tr></thead><tbody>
+    ${porAnio.map(({ a, r }) => `<tr${a === anio ? ' style="background:var(--verde-suave)"' : ""}><td><b>${a}</b></td><td>${r.n}</td><td>${d1(r.nota)}</td><td class="hide-m">${pct(r.diez, r.n)}</td><td class="hide-m">${pct(r.aptos, r.n)}</td>
+      <td><b>${d1(r.sat)}</b></td><td>${pct(r.muy, r.nsat)}</td><td class="hide-m">${r.poco ? `${pct(r.poco, r.nsat)} <span class="gris">(${r.poco})</span>` : "0 %"}</td><td class="hide-m">${pct(r.rep, r.nrep)}</td></tr>`).join("")}</tbody></table>`;
+  // del año elegido: por sede y por docente, y las convocatorias con menos satisfacción
+  const delAnio = todos.filter(x => de(x).fecha_inicio.startsWith(anio));
+  const grupo = (clave, nombre) => {
+    const g = new Map();
+    for (const x of delAnio) { const k = clave(de(x)); if (!g.has(k)) g.set(k, []); g.get(k).push(x); }
+    return [...g.entries()].map(([k, xs]) => ({ k, nombre: nombre(k), r: resumenCalidad(xs) })).sort((a, b) => b.r.n - a.r.n);
+  };
+  const fila = o => `<tr><td>${o.nombre}</td><td>${o.r.n}</td><td>${d1(o.r.nota)}</td><td><b>${d1(o.r.sat)}</b></td><td class="hide-m">${pct(o.r.muy, o.r.nsat)}</td></tr>`;
+  const cab = t => `<thead><tr><th>${t}</th><th>Exámenes</th><th>Nota</th><th>Satisfacción</th><th class="hide-m">Muy satisfechos</th></tr></thead>`;
+  const porSede = grupo(c => c.sede, s => sedeTag(s));
+  const porDoc = grupo(c => c.docente_id || "", id => id ? esc(firmantes.find(f => f.id === id)?.nombre || "Docente") : `<span class="gris">Sin docente asignado</span>`);
+  const porCurso = grupo(c => c.id, id => { const c = porId.get(id); return `<a class="enlace" data-ver="${id}">${textoFechas(c.fechas)}</a> <span class="gris">· ${esc(c.sede)}</span>`; })
+    .filter(o => o.r.nsat >= 3).sort((a, b) => a.r.sat - b.r.sat).slice(0, 5);
+  z.innerHTML = `${graf}<div class="leyenda" style="margin:6px 0 14px"><span><i style="background:var(--verde)"></i>Satisfacción media (sobre 10)</span><span><i style="background:var(--azul)"></i>Nota media del examen</span></div>
+    <div class="scroll">${tabAnios}</div>
+    ${delAnio.length ? `<div class="es-grid" style="margin:18px 0 0">
+      <div><h4 style="margin:0 0 8px;font-size:14px">Por sede en ${anio}</h4><table>${cab("Sede")}<tbody>${porSede.map(fila).join("")}</tbody></table>
+        <h4 style="margin:16px 0 8px;font-size:14px">Por docente en ${anio}</h4><table>${cab("Docente")}<tbody>${porDoc.map(fila).join("")}</tbody></table></div>
+      <div><h4 style="margin:0 0 8px;font-size:14px">Convocatorias con menos satisfacción en ${anio}</h4>
+        ${porCurso.length ? `<table><thead><tr><th>Convocatoria</th><th>Respuestas</th><th>Satisfacción</th><th class="hide-m">Poco satisfechos</th></tr></thead><tbody>
+          ${porCurso.map(o => `<tr><td>${o.nombre}</td><td>${o.r.nsat}</td><td><b>${d1(o.r.sat)}</b></td><td class="hide-m">${o.r.poco}</td></tr>`).join("")}</tbody></table>
+          <p class="gris" style="font-size:12.5px;margin:6px 0 0">Solo convocatorias con al menos 3 respuestas.</p>` : `<p class="gris" style="margin:0">No hay convocatorias con al menos 3 respuestas.</p>`}</div></div>`
+    : `<p class="gris" style="margin:14px 0 0">No hay exámenes en ${anio}${sede ? " en " + sede : ""}.</p>`}`;
 }
 let exStats = [];
 function pintarExamenEst(anio, sede) {
