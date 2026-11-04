@@ -2868,13 +2868,13 @@ function pintarExamenEst(anio, sede) {
   $("#es-ex-anio").textContent = anio;
   const porId = new Map(cursos.map(c => [c.id, c]));
   const xs = exStats.filter(x => { const c = porId.get(x.inscripciones?.curso_id); return c && c.fecha_inicio.startsWith(anio) && (!sede || c.sede === sede); });
-  if (!xs.length) { $("#es-examen").innerHTML = `<p class="gris" style="margin:0">Todavía no hay exámenes hechos con la plataforma en ${anio}${sede ? " en " + sede : ""}.</p>`; return; }
+  if (!xs.length) { $("#es-examen").innerHTML = `<p class="gris" style="margin:0">Todavía no hay exámenes en ${anio}${sede ? " en " + sede : ""}.</p>`; return; }
   const pct = (a, b) => b ? Math.round(a / b * 100) + " %" : "—";
   const aptos = xs.filter(x => x.apto).length, media = xs.reduce((t, x) => t + +x.nota, 0) / xs.length;
   const sat = xs.filter(x => x.satisfaccion), satM = sat.length ? sat.reduce((t, x) => t + x.satisfaccion, 0) / sat.length : null;
   const rep = xs.filter(x => x.repetiria != null), si = rep.filter(x => x.repetiria).length;
   const fallos = new Map();
-  for (const x of xs) for (const d of x.detalle || []) { const o = fallos.get(d.texto) || { n: 0, mal: 0 }; o.n++; if (d.elegida !== d.correcta) o.mal++; fallos.set(d.texto, o); }
+  for (const x of xs) for (const d of x.detalle || []) { if (d.correcta == null) continue; const o = fallos.get(d.texto) || { n: 0, mal: 0 }; o.n++; if (d.elegida !== d.correcta) o.mal++; fallos.set(d.texto, o); }
   const peores = [...fallos.entries()].filter(([, o]) => o.mal).sort((a, b) => b[1].mal / b[1].n - a[1].mal / a[1].n).slice(0, 5);
   const dist = Array.from({ length: 10 }, (_, k) => sat.filter(x => x.satisfaccion === k + 1).length);
   $("#es-examen").innerHTML = `<div class="cifras" style="margin:6px 0 14px">
@@ -4024,8 +4024,10 @@ function pintarExamen() {
       <td>${x ? `<b>${notaTxt(x.nota)}</b> <span class="gris" style="font-size:13px">${x.aciertos}/${x.total}</span>` : "—"}</td>
       <td class="hide-m">${x?.satisfaccion ? `${x.satisfaccion}/10${x.repetiria === true ? " · repetiría" : x.repetiria === false ? " · no repetiría" : ""}` : "—"}</td>
       <td><div class="acc">${x ? `<button class="btn sec mini" type="button" data-ex-ver="${i.id}">${exAbierta.has(i.id) ? "Ocultar" : "Respuestas"}</button><button class="btn sec mini" type="button" data-ex-repetir="${i.id}" title="Borra su examen para que pueda hacerlo otra vez">Repetir</button>` : ""}</div></td></tr>`;
-    const det = x && exAbierta.has(i.id) ? `<tr class="ex-det"><td colspan="5"><ol>${(x.detalle || []).map(d => {
-      const ok = d.elegida === d.correcta, op = k => k == null ? "sin contestar" : `${L[k]}) ${esc((d.opciones || [])[k] ?? "")}`;
+    const det = x && exAbierta.has(i.id) ? `<tr class="ex-det"><td colspan="5">${x.detalle?.[0]?.historico ? `<p class="gris" style="margin:0 0 6px;font-size:13px">Examen anterior a la plataforma, importado de Google Forms${x.detalle.some(d => d.correcta == null) ? ": de este no se sabe qué preguntas falló, solo la nota" : ""}.</p>` : ""}<ol>${(x.detalle || []).map(d => {
+      const op = k => k == null ? "sin contestar" : `${L[k]}) ${esc(String((d.opciones || [])[k] ?? "").replace(/^[a-c]\)\s*/i, ""))}`;
+      if (d.correcta == null) return `<li><b>${esc(d.texto)}</b><br><span class="gris">${op(d.elegida)}</span></li>`;
+      const ok = d.elegida === d.correcta;
       return `<li><b>${esc(d.texto)}</b><br><span class="${ok ? "bien" : "mal"}">${ok ? "✓" : "✗"} ${op(d.elegida)}</span>${ok ? "" : ` <span class="gris">· correcta: ${op(d.correcta)}</span>`}</li>`; }).join("")}</ol></td></tr>` : "";
     return fila + det;
   }).join("") || `<tr><td colspan="5" class="vacio-t">Este curso no tiene técnicos con plaza.</td></tr>`;
